@@ -98,6 +98,7 @@ services:
     build:
       context: .
       dockerfile: docker/console-gw.Dockerfile
+      target: development
     container_name: idrac-console-gw
     restart: unless-stopped
     ports:

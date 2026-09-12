@@ -13,9 +13,12 @@ RUN corepack enable && corepack prepare pnpm@9 --activate
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
+COPY apps/console-gw/package.json ./apps/console-gw/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/db/package.json ./packages/db/
+COPY packages/adapters/package.json ./packages/adapters/
 
 RUN pnpm install --frozen-lockfile
 
