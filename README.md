@@ -3,7 +3,7 @@
 > Zero-client-install, Docker-hosted web platform for managing Dell PowerEdge servers
 > across ALL iDRAC generations (6, 7, 8, 9) from a single browser UI.
 
-[![CI](https://github.com/your-org/universal-idrac-console/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/universal-idrac-console/actions/workflows/ci.yml)
+[![CI](https://github.com/sumit-kumawat/universal-idrac-console/actions/workflows/ci.yml/badge.svg)](https://github.com/sumit-kumawat/universal-idrac-console/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## What is this?
@@ -58,7 +58,7 @@ the iDRAC generation and routes to the correct console type:
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/your-org/universal-idrac-console.git
+git clone https://github.com/sumit-kumawat/universal-idrac-console.git
 cd universal-idrac-console
 cp .env.example .env
 ```

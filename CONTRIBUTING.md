@@ -26,7 +26,7 @@ and instructions for contributing to the Universal iDRAC Console project.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/universal-idrac-console.git
+git clone https://github.com/sumit-kumawat/universal-idrac-console.git
 cd universal-idrac-console
 
 # Install dependencies
