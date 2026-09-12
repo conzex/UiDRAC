@@ -1,0 +1,97 @@
+# ═══════════════════════════════════════════════════════════════
+# traefik-dynamic.yml — Traefik dynamic configuration
+# Defines middlewares, TLS options, and routing rules.
+# ═══════════════════════════════════════════════════════════════
+
+http:
+  middlewares:
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        frameDeny: false
+        customFrameOptionsValue: "SAMEORIGIN"
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customResponseHeaders:
+          X-Powered-By: ""
+          Server: ""
+
+    rate-limit-login:
+      rateLimit:
+        average: 5
+        period: 1m
+        burst: 3
+
+    rate-limit-api:
+      rateLimit:
+        average: 100
+        period: 1s
+        burst: 50
+
+    compress:
+      compress: {}
+
+  routers:
+    api:
+      rule: "PathPrefix(`/api`)"
+      service: api
+      middlewares:
+        - security-headers
+        - rate-limit-api
+        - compress
+      entryPoints:
+        - websecure
+
+    api-login:
+      rule: "Path(`/api/auth/login`)"
+      service: api
+      middlewares:
+        - security-headers
+        - rate-limit-login
+      entryPoints:
+        - websecure
+      priority: 100
+
+    console:
+      rule: "PathPrefix(`/console`)"
+      service: console-gw
+      middlewares:
+        - security-headers
+      entryPoints:
+        - websecure
+
+    web:
+      rule: "PathPrefix(`/`)"
+      service: web
+      middlewares:
+        - security-headers
+        - compress
+      entryPoints:
+        - websecure
+
+  services:
+    api:
+      loadBalancer:
+        servers:
+          - url: "http://api:4000"
+    console-gw:
+      loadBalancer:
+        servers:
+          - url: "http://console-gw:6080"
+    web:
+      loadBalancer:
+        servers:
+          - url: "http://web:3000"
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      sniStrict: true

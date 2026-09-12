@@ -1,0 +1,41 @@
+{
+  "name": "universal-idrac-console",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zero-client-install web platform for managing Dell PowerEdge servers across all iDRAC generations",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "db:generate": "pnpm --filter @idrac/db generate",
+    "db:migrate": "pnpm --filter @idrac/db migrate",
+    "db:seed": "pnpm --filter @idrac/db seed",
+    "db:studio": "pnpm --filter @idrac/db studio",
+    "docker:dev": "docker compose up -d",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up -d",
+    "docker:build": "docker compose -f docker-compose.prod.yml build",
+    "clean": "turbo clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.16.2",
+    "@swc/register": "^0.1.10",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.5.0",
+    "prettier": "^3.3.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.15.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^1.6.0"
+  }
+}

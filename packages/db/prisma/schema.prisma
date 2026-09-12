@@ -1,0 +1,184 @@
+// ═══════════════════════════════════════════════════════════════
+// Universal iDRAC Console — Prisma Schema
+// Database: PostgreSQL 16
+// All models are tenant-isolated via tenantId foreign key.
+// ═══════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+// ── Tenant ──
+// Top-level organization. All data is scoped to a tenant.
+model Tenant {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(100)
+  slug      String   @unique @db.VarChar(100)
+  plan      String   @default("free") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // IP allowlist for tenant-level access control (JSON array of CIDR strings)
+  ipAllowlist String[] @default([]) @map("ip_allowlist")
+
+  users     User[]
+  servers   Server[]
+  auditLogs AuditLog[]
+
+  @@map("tenants")
+}
+
+// ── User ──
+// Platform user with RBAC role scoped to a single tenant.
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  email        String    @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         UserRole  @default(OPERATOR)
+  totpSecret   String?   @map("totp_secret") @db.VarChar(255)
+  totpEnabled  Boolean   @default(false) @map("totp_enabled")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  lastLoginAt  DateTime? @map("last_login_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions        Session[]
+  consoleSessions ConsoleSession[]
+  auditLogs       AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+
+  @@map("user_role")
+}
+
+// ── Server ──
+// A managed iDRAC endpoint belonging to a tenant.
+model Server {
+  id                   String         @id @default(uuid()) @db.Uuid
+  tenantId             String         @map("tenant_id") @db.Uuid
+  name                 String         @db.VarChar(255)
+  ip                   String         @db.VarChar(255)
+  generation           IdracGen
+  model                String?        @db.VarChar(255)
+  serviceTag           String?        @map("service_tag") @db.VarChar(20)
+  firmwareVersion      String?        @map("firmware_version") @db.VarChar(50)
+  credentialsEncrypted Bytes?         @map("credentials_encrypted")
+  credentialsIv        Bytes?         @map("credentials_iv")
+  credentialsTag       Bytes?         @map("credentials_tag")
+  credentialsMode      CredentialMode @default(SESSION) @map("credentials_mode")
+  tags                 String[]       @default([])
+  health               HealthStatus   @default(UNKNOWN)
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+  lastSeenAt           DateTime?      @map("last_seen_at")
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  consoleSessions ConsoleSession[]
+  auditLogs       AuditLog[]
+
+  @@unique([tenantId, ip])
+  @@index([tenantId])
+  @@index([health])
+  @@map("servers")
+}
+
+enum IdracGen {
+  GEN6
+  GEN7
+  GEN8
+  GEN9
+
+  @@map("idrac_gen")
+}
+
+enum CredentialMode {
+  SAVED
+  SESSION
+
+  @@map("credential_mode")
+}
+
+enum HealthStatus {
+  HEALTHY
+  WARNING
+  CRITICAL
+  UNKNOWN
+
+  @@map("health_status")
+}
+
+// ── Session ──
+// JWT refresh token tracking for secure token rotation.
+model Session {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  refreshTokenHash String   @map("refresh_token_hash") @db.VarChar(255)
+  ip               String   @db.VarChar(45)
+  userAgent        String   @map("user_agent") @db.VarChar(512)
+  expiresAt        DateTime @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ── Console Session ──
+// Tracks active and historical virtual console sessions (containers).
+model ConsoleSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  serverId      String    @map("server_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  containerId   String?   @map("container_id") @db.VarChar(100)
+  startedAt     DateTime  @default(now()) @map("started_at")
+  endedAt       DateTime? @map("ended_at")
+  recordingPath String?   @map("recording_path") @db.VarChar(500)
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([serverId])
+  @@index([userId])
+  @@map("console_sessions")
+}
+
+// ── Audit Log ──
+// Immutable log of every significant action within a tenant.
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  serverId  String?  @map("server_id") @db.Uuid
+  action    String   @db.VarChar(100)
+  payload   Json     @default("{}")
+  ip        String   @db.VarChar(45)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([userId])
+  @@index([serverId])
+  @@index([action])
+  @@map("audit_logs")
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@idrac/db",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "seed": "tsx src/seed.ts",
+    "studio": "prisma studio",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist generated"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.15.0",
+    "@idrac/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "prisma": "^5.15.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0"
+  }
+}
