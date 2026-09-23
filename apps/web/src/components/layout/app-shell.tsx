@@ -2,7 +2,7 @@
 'use client';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
-import { User, LogOut, LayoutDashboard, Server, FileText, Settings, BookOpen } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, Server, FileText, Settings, BookOpen, Shield } from 'lucide-react';
 import { useSessionTimeout } from '@/lib/useSessionTimeout';
 import SessionTimeoutModal from './session-timeout-modal';
 import PublicFooter from './public-footer';
@@ -35,12 +35,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
+  const isOwner = user?.role === 'OWNER';
+
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
     { href: '/servers', label: 'Servers', Icon: Server },
     { href: '/audit', label: 'Audit Log', Icon: FileText },
     { href: '/settings', label: 'Settings', Icon: Settings },
-    { href: '/docs', label: 'Docs', Icon: BookOpen },
+    ...(isOwner ? [{ href: '/admin', label: 'Admin', Icon: Shield }] : []),
   ];
 
   return (
@@ -55,6 +57,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-semibold tracking-wide">Universal iDRAC Console</span>
         </a>
         <div className="ml-auto flex items-center gap-4">
+          {/* Docs link in header before user profile */}
+          <a href="/docs" className="text-white/70 hover:text-white text-sm flex items-center gap-1.5 transition-colors">
+            <BookOpen className="w-3.5 h-3.5" /> Docs
+          </a>
+          <div className="w-px h-5 bg-white/20" />
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2 text-sm hover:text-white/80">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
@@ -75,12 +82,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Secondary Nav */}
-      <nav className="h-[40px] bg-white border-b border-border-card flex items-center px-6 shrink-0">
+      <nav className="h-[40px] bg-white border-b border-border-card flex items-center px-6 shrink-0 overflow-x-auto">
         <div className="flex gap-6 text-sm">
           {navLinks.map((link) => {
             const isActive = pathname === link.href || pathname?.startsWith(link.href + '/');
             return (
-              <a key={link.href} href={link.href} className={`flex items-center gap-1.5 ${isActive ? 'text-dell-blue font-semibold' : 'text-text-secondary hover:text-dell-blue'}`}>
+              <a key={link.href} href={link.href} className={`flex items-center gap-1.5 whitespace-nowrap ${isActive ? 'text-dell-blue font-semibold' : 'text-text-secondary hover:text-dell-blue'}`}>
                 <link.Icon className="w-3.5 h-3.5" /> {link.label}
               </a>
             );
