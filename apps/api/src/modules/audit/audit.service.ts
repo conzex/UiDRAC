@@ -6,10 +6,11 @@ import { PrismaService } from '../../prisma.service';
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(tenantId: string, query?: { page?: number; pageSize?: number; action?: string }) {
+  async findAll(tenantId: string | null, query?: { page?: number; pageSize?: number; action?: string }) {
     const page = query?.page ?? 1;
     const pageSize = query?.pageSize ?? 25;
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, unknown> = {};
+    if (tenantId) where.tenantId = tenantId;
     if (query?.action) where.action = query.action;
 
     const [data, total] = await Promise.all([

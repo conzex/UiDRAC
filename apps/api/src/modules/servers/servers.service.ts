@@ -11,23 +11,26 @@ const GEN_REVERSE: Record<string, IdracGeneration> = { GEN6: '6', GEN7: '7', GEN
 export class ServersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(tenantId: string, query?: { page?: number; pageSize?: number; search?: string; generation?: string; health?: string }) {
+  async findAll(tenantId: string | null, query?: { page?: number; pageSize?: number; search?: string; generation?: string; health?: string }) {
     const page = query?.page ?? 1;
     const pageSize = query?.pageSize ?? 25;
-    const where: Record<string, unknown> = { tenantId };
+    const where: Record<string, unknown> = {};
+    if (tenantId) where.tenantId = tenantId;
     if (query?.generation) where.generation = query.generation;
     if (query?.health) where.health = query.health.toUpperCase();
     if (query?.search) where.name = { contains: query.search, mode: 'insensitive' };
 
     const [data, total] = await Promise.all([
-      this.prisma.server.findMany({ where: where as any, skip: (page - 1) * pageSize, take: pageSize, orderBy: { createdAt: 'desc' } }),
+      this.prisma.server.findMany({ where: where as any, skip: (page - 1) * pageSize, take: pageSize, orderBy: { createdAt: 'desc' }, include: { tenant: { select: { name: true, slug: true } } } }),
       this.prisma.server.count({ where: where as any }),
     ]);
     return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
-  async findOne(id: string, tenantId: string) {
-    const server = await this.prisma.server.findFirst({ where: { id, tenantId } });
+  async findOne(id: string, tenantId: string | null) {
+    const where: Record<string, unknown> = { id };
+    if (tenantId) where.tenantId = tenantId;
+    const server = await this.prisma.server.findFirst({ where: where as any });
     if (!server) throw new NotFoundException('Server not found');
     return server;
   }
@@ -58,12 +61,12 @@ export class ServersService {
     return server;
   }
 
-  async update(id: string, tenantId: string, data: { name?: string; tags?: string[] }) {
+  async update(id: string, tenantId: string | null, data: { name?: string; tags?: string[] }) {
     await this.findOne(id, tenantId);
     return this.prisma.server.update({ where: { id }, data });
   }
 
-  async remove(id: string, tenantId: string) {
+  async remove(id: string, tenantId: string | null) {
     await this.findOne(id, tenantId);
     return this.prisma.server.delete({ where: { id } });
   }
@@ -73,63 +76,63 @@ export class ServersService {
     return getAdapter(gen, { ip: server.ip, username, password });
   }
 
-  async getHealth(id: string, tenantId: string) {
+  async getHealth(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getHealth(); } finally { await adapter.disconnect(); }
   }
 
-  async getSystemInfo(id: string, tenantId: string) {
+  async getSystemInfo(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getSystemInfo(); } finally { await adapter.disconnect(); }
   }
 
-  async getStorage(id: string, tenantId: string) {
+  async getStorage(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getStorage(); } finally { await adapter.disconnect(); }
   }
 
-  async getNetwork(id: string, tenantId: string) {
+  async getNetwork(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getNetwork(); } finally { await adapter.disconnect(); }
   }
 
-  async getFirmware(id: string, tenantId: string) {
+  async getFirmware(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getFirmware(); } finally { await adapter.disconnect(); }
   }
 
-  async getSensors(id: string, tenantId: string) {
+  async getSensors(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getSensors(); } finally { await adapter.disconnect(); }
   }
 
-  async getSel(id: string, tenantId: string) {
+  async getSel(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getSel(); } finally { await adapter.disconnect(); }
   }
 
-  async getLogs(id: string, tenantId: string) {
+  async getLogs(id: string, tenantId: string | null) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
     try { return await adapter.getLogs({ limit: 50 }); } finally { await adapter.disconnect(); }
   }
 
-  async powerAction(id: string, tenantId: string, action: string) {
+  async powerAction(id: string, tenantId: string | null, action: string) {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();

@@ -2,7 +2,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Info, AlertTriangle, AlertOctagon, RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
+
+const sevIcons: Record<string, any> = { informational: Info, warning: AlertTriangle, critical: AlertOctagon };
 
 export default function MaintenancePage() {
   const { id } = useParams() as { id: string };
@@ -37,16 +40,16 @@ export default function MaintenancePage() {
     }
   };
 
-  const sevIcons: Record<string, string> = { informational: '🔵', warning: '🟡', critical: '🔴' };
-
   if (loading) return <div className="animate-pulse space-y-4"><div className="h-48 bg-gray-200 rounded" /><div className="h-48 bg-gray-200 rounded" /><div className="h-48 bg-gray-200 rounded" /></div>;
 
   if (error && !firmware && logs.length === 0 && sensors.length === 0) return (
     <div className="bg-red-50 border border-red-200 rounded p-8 text-center">
-      <div className="text-red-critical text-4xl mb-3">⚠</div>
+      <AlertTriangle className="w-10 h-10 text-red-critical mx-auto mb-3" />
       <h2 className="text-lg font-semibold text-text-primary mb-2">Unable to Load Maintenance Data</h2>
       <p className="text-sm text-text-secondary mb-4 max-w-md mx-auto">{error}</p>
-      <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover">Retry</button>
+      <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5">
+        <RefreshCw className="w-4 h-4" /> Retry
+      </button>
     </div>
   );
 
@@ -57,7 +60,7 @@ export default function MaintenancePage() {
         <div className="bg-card-header px-4 py-2.5 border-b border-border-card"><h2 className="text-[13px] font-bold uppercase tracking-wide">Firmware Inventory</h2></div>
         {firmware?.components?.length > 0 ? (
           <table className="w-full text-sm"><thead><tr className="bg-row-alt"><th className="text-left p-3">Component</th><th className="text-left p-3">Version</th><th className="text-left p-3">Updateable</th></tr></thead>
-            <tbody>{firmware.components.map((c: any, i: number) => <tr key={i} className="border-t border-border-card"><td className="p-3">{c.name}</td><td className="p-3 font-mono text-xs">{c.version}</td><td className="p-3">{c.updateable ? '✅' : '—'}</td></tr>)}</tbody></table>
+            <tbody>{firmware.components.map((c: any, i: number) => <tr key={i} className="border-t border-border-card"><td className="p-3">{c.name}</td><td className="p-3 font-mono text-xs">{c.version}</td><td className="p-3">{c.updateable ? 'Yes' : '—'}</td></tr>)}</tbody></table>
         ) : <p className="text-sm text-text-secondary text-center py-6">No firmware inventory available</p>}
       </div>
 
@@ -74,9 +77,16 @@ export default function MaintenancePage() {
       <div className="bg-white border border-border-card rounded">
         <div className="bg-card-header px-4 py-2.5 border-b border-border-card"><h2 className="text-[13px] font-bold uppercase tracking-wide">System Event Log</h2></div>
         {logs.length > 0 ? (
-          <div className="divide-y divide-border-card">{logs.map((l: any, i: number) => (
-            <div key={i} className="flex items-start gap-3 px-4 py-2.5"><span>{sevIcons[l.severity] || '🔵'}</span><div className="flex-1"><p className="text-sm">{l.message}</p><p className="text-xs text-text-secondary">{new Date(l.timestamp).toLocaleString()}</p></div></div>
-          ))}</div>
+          <div className="divide-y divide-border-card">{logs.map((l: any, i: number) => {
+            const SevIcon = sevIcons[l.severity] || Info;
+            const sevColor = l.severity === 'critical' ? 'text-red-critical' : l.severity === 'warning' ? 'text-amber-warning' : 'text-dell-blue';
+            return (
+              <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                <SevIcon className={`w-4 h-4 mt-0.5 shrink-0 ${sevColor}`} />
+                <div className="flex-1"><p className="text-sm">{l.message}</p><p className="text-xs text-text-secondary">{new Date(l.timestamp).toLocaleString()}</p></div>
+              </div>
+            );
+          })}</div>
         ) : <p className="text-sm text-text-secondary text-center py-6">No system event log entries</p>}
       </div>
 

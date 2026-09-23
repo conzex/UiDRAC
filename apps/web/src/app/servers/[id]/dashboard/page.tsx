@@ -2,14 +2,17 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { CheckCircle, AlertTriangle, XCircle, HelpCircle, RefreshCw, Power, Locate, Info, AlertOctagon } from 'lucide-react';
 import api from '@/lib/api';
 
-const healthBanners: Record<string, { bg: string; icon: string; text: string }> = {
-  healthy: { bg: 'bg-green-healthy', icon: '✓', text: 'SYSTEM IS HEALTHY' },
-  warning: { bg: 'bg-amber-warning', icon: '⚠', text: 'SYSTEM WARNING' },
-  critical: { bg: 'bg-red-critical', icon: '✗', text: 'SYSTEM CRITICAL' },
-  unknown: { bg: 'bg-gray-400', icon: '?', text: 'STATUS UNKNOWN' },
+const healthBanners: Record<string, { bg: string; Icon: any; text: string }> = {
+  healthy: { bg: 'bg-green-healthy', Icon: CheckCircle, text: 'SYSTEM IS HEALTHY' },
+  warning: { bg: 'bg-amber-warning', Icon: AlertTriangle, text: 'SYSTEM WARNING' },
+  critical: { bg: 'bg-red-critical', Icon: XCircle, text: 'SYSTEM CRITICAL' },
+  unknown: { bg: 'bg-gray-400', Icon: HelpCircle, text: 'STATUS UNKNOWN' },
 };
+
+const sevIcons: Record<string, any> = { informational: Info, warning: AlertTriangle, critical: AlertOctagon };
 
 export default function ServerDashboardPage() {
   const params = useParams();
@@ -39,35 +42,43 @@ export default function ServerDashboardPage() {
 
   if (error && !health && !sysInfo) return (
     <div className="bg-red-50 border border-red-200 rounded p-8 text-center">
-      <div className="text-red-critical text-4xl mb-3">⚠</div>
+      <AlertTriangle className="w-10 h-10 text-red-critical mx-auto mb-3" />
       <h2 className="text-lg font-semibold text-text-primary mb-2">Unable to Load Server Data</h2>
       <p className="text-sm text-text-secondary mb-4 max-w-md mx-auto">{error}</p>
-      <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover">Retry</button>
+      <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5">
+        <RefreshCw className="w-4 h-4" /> Retry
+      </button>
     </div>
   );
 
   const banner = healthBanners[health?.overall || 'unknown'];
-  const sevIcons: Record<string, string> = { informational: '🔵', warning: '🟡', critical: '🔴' };
+  const BannerIcon = banner.Icon;
 
   return (
     <div className="space-y-4">
       {/* Error banner (partial) */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchData} className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-xs font-medium">Retry</button>
+          <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</div>
+          <button onClick={fetchData} className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-xs font-medium flex items-center gap-1">
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
         </div>
       )}
 
       {/* Health Banner */}
       <div className={`${banner.bg} text-white p-4 rounded flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{banner.icon}</span>
+          <BannerIcon className="w-6 h-6" />
           <span className="text-lg font-bold">{banner.text}</span>
         </div>
         <div className="flex gap-2">
-          <button className="px-3 py-1.5 bg-white/20 rounded text-sm font-medium hover:bg-white/30">Graceful Shutdown</button>
-          <button className="px-3 py-1.5 bg-white/20 rounded text-sm font-medium hover:bg-white/30">Identify System</button>
+          <button className="px-3 py-1.5 bg-white/20 rounded text-sm font-medium hover:bg-white/30 flex items-center gap-1.5">
+            <Power className="w-3.5 h-3.5" /> Graceful Shutdown
+          </button>
+          <button className="px-3 py-1.5 bg-white/20 rounded text-sm font-medium hover:bg-white/30 flex items-center gap-1.5">
+            <Locate className="w-3.5 h-3.5" /> Identify System
+          </button>
         </div>
       </div>
 
@@ -101,7 +112,7 @@ export default function ServerDashboardPage() {
           <div className="p-4">
             {sysInfo ? (
               [
-                ['Power State', sysInfo.powerState === 'on' ? '🟢 Powered On' : '⚪ Powered Off'],
+                ['Power State', sysInfo.powerState === 'on' ? 'Powered On' : 'Powered Off'],
                 ['Model', sysInfo.model || '—'],
                 ['Host Name', sysInfo.hostName || '—'],
                 ['OS Name', sysInfo.osName || '—'],
@@ -134,15 +145,19 @@ export default function ServerDashboardPage() {
           <div className="divide-y divide-border-card">
             {logs.length === 0 ? (
               <div className="p-4 text-sm text-text-secondary text-center">No recent logs</div>
-            ) : logs.map((log: any, i: number) => (
-              <div key={i} className="flex items-start gap-3 px-4 py-2.5">
-                <span className="mt-0.5">{sevIcons[log.severity] || '🔵'}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-text-primary truncate">{log.message}</p>
-                  <p className="text-xs text-text-secondary mt-0.5">{new Date(log.timestamp).toLocaleString()}</p>
+            ) : logs.map((log: any, i: number) => {
+              const SevIcon = sevIcons[log.severity] || Info;
+              const sevColor = log.severity === 'critical' ? 'text-red-critical' : log.severity === 'warning' ? 'text-amber-warning' : 'text-dell-blue';
+              return (
+                <div key={i} className="flex items-start gap-3 px-4 py-2.5">
+                  <SevIcon className={`w-4 h-4 mt-0.5 shrink-0 ${sevColor}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-text-primary truncate">{log.message}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">{new Date(log.timestamp).toLocaleString()}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -161,7 +176,7 @@ export default function ServerDashboardPage() {
             <div className="bg-card-header px-4 py-2.5 border-b border-border-card">
               <h2 className="text-[13px] font-bold uppercase text-text-primary tracking-wide">Notes</h2>
             </div>
-            <div className="p-4"><textarea placeholder="Add a note..." className="w-full px-3 py-2 border border-border-card rounded text-sm resize-none h-20 focus:ring-2 focus:ring-dell-blue" /></div>
+            <div className="p-4"><textarea placeholder="Add a note about this server..." className="w-full px-3 py-2 border border-border-card rounded text-sm resize-none h-20 focus:ring-2 focus:ring-dell-blue" /></div>
           </div>
         </div>
       </div>

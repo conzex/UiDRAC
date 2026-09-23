@@ -2,6 +2,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { User, LogOut, LayoutDashboard, Server, FileText, Settings } from 'lucide-react';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -22,25 +23,25 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       {/* Top Banner */}
       <header className="h-[52px] bg-dell-blue flex items-center px-6 text-white shrink-0">
-        <div className="flex items-center gap-3">
-          <svg viewBox="0 0 60 20" className="w-[48px] h-[16px] fill-white">
-            <text x="0" y="16" fontFamily="Arial Black" fontSize="18" fontWeight="900">DELL</text>
-          </svg>
+        <a href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer">
+          <img src="/dell-logo.png" alt="Dell" className="h-5 brightness-0 invert" />
           <div className="w-px h-6 bg-white/30" />
           <span className="text-sm font-semibold tracking-wide">Universal iDRAC Console</span>
-        </div>
+        </a>
         <div className="ml-auto flex items-center gap-4">
           <div className="relative">
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2 text-sm hover:text-white/80">
-              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
-                {user?.email?.[0]?.toUpperCase() || 'U'}
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                <User className="w-4 h-4" />
               </div>
               <span className="hidden sm:block">{user?.email || 'User'}</span>
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-10 bg-white text-text-primary rounded shadow-lg py-1 w-48 z-50">
-                <div className="px-3 py-2 text-xs text-text-secondary border-b border-border-card">{user?.role || 'user'}</div>
-                <button onClick={logout} className="w-full text-left px-3 py-2 text-sm hover:bg-row-hover">Sign Out</button>
+                <div className="px-3 py-2 text-xs text-text-secondary border-b border-border-card capitalize">{user?.role?.toLowerCase() || 'user'}</div>
+                <button onClick={logout} className="w-full text-left px-3 py-2 text-sm hover:bg-row-hover flex items-center gap-2">
+                  <LogOut className="w-3.5 h-3.5" /> Sign Out
+                </button>
               </div>
             )}
           </div>
@@ -50,10 +51,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Secondary Nav */}
       <nav className="h-[40px] bg-white border-b border-border-card flex items-center px-6 shrink-0">
         <div className="flex gap-6 text-sm">
-          <a href="/dashboard" className="text-dell-blue font-semibold hover:text-dell-blue-hover">Dashboard</a>
-          <a href="/servers" className="text-text-secondary hover:text-dell-blue">Servers</a>
-          <a href="/audit" className="text-text-secondary hover:text-dell-blue">Audit Log</a>
-          <a href="/settings" className="text-text-secondary hover:text-dell-blue">Settings</a>
+          <a href="/dashboard" className="text-dell-blue font-semibold hover:text-dell-blue-hover flex items-center gap-1.5">
+            <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+          </a>
+          <a href="/servers" className="text-text-secondary hover:text-dell-blue flex items-center gap-1.5">
+            <Server className="w-3.5 h-3.5" /> Servers
+          </a>
+          <a href="/audit" className="text-text-secondary hover:text-dell-blue flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5" /> Audit Log
+          </a>
+          <a href="/settings" className="text-text-secondary hover:text-dell-blue flex items-center gap-1.5">
+            <Settings className="w-3.5 h-3.5" /> Settings
+          </a>
         </div>
       </nav>
 
@@ -63,8 +72,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Footer */}
-      <footer className="h-8 bg-white border-t border-border-card flex items-center justify-center text-[11px] text-text-secondary shrink-0">
-        © Universal iDRAC Console v1.0.0 · Server time: {new Date().toLocaleString()}
+      <footer className="h-10 bg-white border-t border-border-card flex items-center justify-center text-[11px] text-text-secondary shrink-0 gap-1">
+        <span>Universal iDRAC Console v1.0.0</span>
+        <span className="mx-1">·</span>
+        <span>Built by</span>
+        <a href="https://www.sumitkumawat.com" target="_blank" rel="noopener noreferrer" className="text-dell-blue hover:underline">Sumit Kumawat</a>
+        <span className="mx-1">·</span>
+        <a href="mailto:hello@sumitkumawat.com" className="text-dell-blue hover:underline">hello@sumitkumawat.com</a>
       </footer>
     </div>
   );

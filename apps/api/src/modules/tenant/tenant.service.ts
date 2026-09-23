@@ -1,4 +1,4 @@
-/** tenant.service.ts — Tenant management. */
+/** tenant.service.ts — Tenant management. Super admin sees all tenants. */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 
@@ -10,14 +10,20 @@ export class TenantService {
     return this.prisma.tenant.findUnique({ where: { id: tenantId } });
   }
 
+  async findAll() {
+    return this.prisma.tenant.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
   async update(tenantId: string, data: { name?: string }) {
     return this.prisma.tenant.update({ where: { id: tenantId }, data });
   }
 
-  async getUsers(tenantId: string) {
+  async getUsers(tenantId: string | null) {
+    const where = tenantId ? { tenantId } : {};
     return this.prisma.user.findMany({
-      where: { tenantId },
-      select: { id: true, email: true, role: true, createdAt: true, lastLoginAt: true },
+      where,
+      select: { id: true, email: true, role: true, tenantId: true, createdAt: true, lastLoginAt: true, tenant: { select: { name: true } } },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

@@ -2,6 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import AppShell from '@/components/layout/app-shell';
+import { PlusCircle, Search, ServerCrash, AlertTriangle, RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
 
 const healthColors: Record<string, string> = { HEALTHY: 'bg-green-healthy', WARNING: 'bg-amber-warning', CRITICAL: 'bg-red-critical', UNKNOWN: 'bg-gray-400' };
@@ -30,14 +31,18 @@ export default function DashboardPage() {
     <AppShell>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text-primary">Server Fleet</h1>
-        <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors">+ Add Server</a>
+        <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
+          <PlusCircle className="w-4 h-4" /> Add Server
+        </a>
       </div>
 
       {/* Error banner */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-4 rounded mb-6 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={fetchServers} className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-xs font-medium transition-colors">Retry</button>
+          <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</div>
+          <button onClick={fetchServers} className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-xs font-medium transition-colors flex items-center gap-1">
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
         </div>
       )}
 
@@ -58,9 +63,10 @@ export default function DashboardPage() {
 
       {/* Search */}
       {servers.length > 0 && (
-        <div className="mb-4">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search servers..."
-            className="w-full max-w-md px-3 py-2 border border-border-card rounded text-sm focus:outline-none focus:ring-2 focus:ring-dell-blue" />
+        <div className="mb-4 relative max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or IP address..."
+            className="w-full pl-9 pr-3 py-2 border border-border-card rounded text-sm focus:outline-none focus:ring-2 focus:ring-dell-blue" />
         </div>
       )}
 
@@ -72,20 +78,19 @@ export default function DashboardPage() {
       ) : servers.length === 0 ? (
         <div className="text-center py-20 bg-white rounded border border-border-card">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dell-blue/10 mb-4">
-            <svg className="w-8 h-8 text-dell-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h14M12 5v14" />
-            </svg>
+            <ServerCrash className="w-8 h-8 text-dell-blue" />
           </div>
           <h2 className="text-lg font-semibold text-text-primary mb-2">No servers yet</h2>
           <p className="text-sm text-text-secondary mb-6 max-w-sm mx-auto">
-            Get started by adding your first Dell PowerEdge server. You'll need the iDRAC IP address and credentials.
+            Get started by adding your first Dell PowerEdge server. You will need the iDRAC IP address and credentials.
           </p>
-          <a href="/servers/new" className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors">
-            Add Your First Server
+          <a href="/servers/new" className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors items-center gap-1.5">
+            <PlusCircle className="w-4 h-4" /> Add Your First Server
           </a>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-text-secondary">
+          <Search className="w-8 h-8 mx-auto mb-3 opacity-40" />
           <p className="text-lg mb-2">No servers match your search</p>
           <p className="text-sm">Try adjusting your search query</p>
         </div>
@@ -105,7 +110,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${healthColors[server.health] || 'bg-gray-400'}`} />
-                  <span className="text-xs text-text-secondary">{server.health?.toLowerCase()}</span>
+                  <span className="text-xs text-text-secondary capitalize">{server.health?.toLowerCase()}</span>
                 </div>
                 <span className="text-xs text-text-secondary">{server.model || 'PowerEdge'}</span>
               </div>
