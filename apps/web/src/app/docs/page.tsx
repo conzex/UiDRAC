@@ -265,7 +265,7 @@ export default function DocsPage() {
       <div className="flex-1 px-4 sm:px-6 py-6">
         <div className="max-w-layout mx-auto flex flex-col lg:flex-row gap-0 bg-white border border-border-card rounded overflow-hidden min-h-[calc(100vh-180px)]">
         {/* Sidebar */}
-        <aside className="w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0 lg:sticky lg:top-[92px] lg:self-start lg:max-h-[calc(100vh-120px)] overflow-y-auto">
+        <aside className="w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0 lg:sticky lg:top-[52px] lg:self-start lg:max-h-[calc(100vh-180px)] overflow-y-auto">
           <div className="p-4 border-b border-border-card">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
