@@ -115,28 +115,34 @@ export default function DocsPage() {
       <PublicHeader />
 
       <div className="flex-1 flex">
-        {/* Sidebar */}
-        <aside className="w-72 bg-white border-r border-border-card shrink-0 hidden lg:block">
+        {/* Sidebar — sticky */}
+        <aside className="w-72 bg-white border-r border-border-card shrink-0 hidden lg:block sticky top-[52px] h-[calc(100vh-52px)] overflow-y-auto">
           <div className="p-4 border-b border-border-card">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search docs..." className="w-full pl-9 pr-3 py-2 border border-border-card rounded text-sm focus:ring-1 focus:ring-dell-blue" />
             </div>
           </div>
-          <nav className="p-2">
-            {filteredSections.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => setActiveSection(s.id)}
-                className={`w-full text-left px-3 py-2.5 rounded text-sm flex items-center gap-2.5 transition-colors ${activeSection === s.id ? 'bg-dell-blue/10 text-dell-blue font-semibold' : 'text-text-secondary hover:text-text-primary hover:bg-row-hover'}`}
-              >
-                <s.icon className="w-4 h-4 shrink-0" />
-                <div>
-                  <div className="text-xs text-text-secondary/60 font-normal">{String(i + 1).padStart(2, '0')}</div>
-                  <div>{s.title}</div>
-                </div>
-              </button>
-            ))}
+          <nav className="p-2 space-y-0.5">
+            {filteredSections.map((s, i) => {
+              const isActive = activeSection === s.id;
+              const num = String(i + 1).padStart(2, '0');
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActiveSection(s.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded flex items-center gap-3 transition-colors ${isActive ? 'bg-dell-blue/10 text-dell-blue' : 'text-text-secondary hover:text-text-primary hover:bg-row-hover'}`}
+                >
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-dell-blue text-white' : 'bg-gray-100 text-text-secondary'}`}>
+                    <s.icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className={`text-[10px] uppercase tracking-wider ${isActive ? 'text-dell-blue/60' : 'text-text-secondary/50'}`}>{num}</div>
+                    <div className={`text-sm truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>{s.title}</div>
+                  </div>
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
