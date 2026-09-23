@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
+import { PAGE_CONTAINER_CLASS } from '@/components/layout/page-container';
 
 const features = [
   { Icon: Server, title: 'Multi-Generation Support', desc: 'Manage iDRAC 6, 7, 8, and 9 from a single pane of glass with automatic generation detection.' },
@@ -61,7 +62,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-dell-blue via-dell-blue to-dell-dark text-white overflow-hidden">
         <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 sm:py-28 lg:py-32">
+        <div className={`relative ${PAGE_CONTAINER_CLASS} py-20 sm:py-28 lg:py-32`}>
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-medium mb-6 border border-white/20">
               <Activity className="w-3 h-3" /> Open Source · Self-Hosted · Zero Client Install
@@ -96,7 +97,7 @@ export default function HomePage() {
 
       {/* Stats */}
       <section className="bg-white border-b border-border-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className={PAGE_CONTAINER_CLASS}>
           <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-border-card">
             {stats.map((s) => (
               <div key={s.label} className="py-8 sm:py-10 text-center px-4">
@@ -111,7 +112,7 @@ export default function HomePage() {
 
       {/* Generation Support */}
       <section className="py-14 sm:py-16 bg-bg-body">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className={PAGE_CONTAINER_CLASS}>
           <div className="text-center mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">All Generations. One Platform.</h2>
             <p className="text-sm text-text-secondary max-w-2xl mx-auto">Automatic protocol detection adapts seamlessly — Redfish REST for modern, legacy XML/CGI for older hardware.</p>
@@ -146,7 +147,7 @@ export default function HomePage() {
 
       {/* Features Grid */}
       <section className="py-14 sm:py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className={PAGE_CONTAINER_CLASS}>
           <div className="text-center mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Everything You Need</h2>
             <p className="text-sm text-text-secondary max-w-2xl mx-auto">Full-featured iDRAC management with every capability of the native web console — and more.</p>
@@ -171,7 +172,7 @@ export default function HomePage() {
 
       {/* Tech Stack */}
       <section className="py-14 sm:py-16 bg-bg-body">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className={PAGE_CONTAINER_CLASS}>
           <div className="text-center mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Built on Modern Infrastructure</h2>
             <p className="text-sm text-text-secondary">Production-grade stack designed for reliability, performance, and developer experience.</p>
@@ -192,7 +193,7 @@ export default function HomePage() {
 
       {/* Why Section */}
       <section className="py-14 sm:py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className={PAGE_CONTAINER_CLASS}>
           <div className="text-center mb-10">
             <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">Why Universal iDRAC Console?</h2>
             <p className="text-sm text-text-secondary">The platform that eliminates the pain of managing mixed-generation Dell server fleets.</p>

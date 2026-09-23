@@ -1,5 +1,6 @@
 /** health.controller.ts — Health check and API root handler. */
 import { Controller, Get } from '@nestjs/common';
+import { APP_VERSION } from '@idrac/shared';
 import { Public } from '../auth/decorators';
 
 @Controller()
@@ -9,7 +10,7 @@ export class HealthController {
   root() {
     return {
       name: 'Universal iDRAC Console API',
-      version: '1.0.0',
+      version: APP_VERSION,
       status: 'running',
       timestamp: new Date().toISOString(),
       docs: '/api/health',
@@ -19,6 +20,6 @@ export class HealthController {
   @Public()
   @Get('health')
   check() {
-    return { status: 'ok', timestamp: new Date().toISOString() };
+    return { status: 'ok', version: APP_VERSION, timestamp: new Date().toISOString() };
   }
 }

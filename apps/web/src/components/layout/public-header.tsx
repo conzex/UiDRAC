@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { BookOpen, Mail, Menu, X, LayoutDashboard } from 'lucide-react';
+import { PAGE_CONTAINER_CLASS } from './page-container';
+import UserMenu from './user-menu';
 import { useAuthUser } from '@/lib/auth-client';
 import {
   isAppNavActive,
@@ -12,14 +14,12 @@ import {
   PUBLIC_LOGGED_OUT_LINKS,
   visibleAppNavItems,
 } from '@/lib/navigation';
-import UserMenu from './user-menu';
 
 export default function PublicHeader() {
   const pathname = usePathname();
   const { user, loggedInOrToken, ready } = useAuthUser();
   const [mobileOpen, setMobileOpen] = useState(false);
   const marketing = isPublicMarketingPath(pathname);
-  const containerClass = pathname === '/' ? 'max-w-7xl' : 'max-w-layout';
   const appItems = visibleAppNavItems(user);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function PublicHeader() {
 
   return (
     <header className="bg-dell-blue text-white shrink-0 sticky top-0 z-50 shadow-md">
-      <div className={`${containerClass} mx-auto px-4 sm:px-6`}>
+      <div className={PAGE_CONTAINER_CLASS}>
         <div className="h-[52px] flex items-center justify-between gap-4 min-w-0">
           <Link href={logoHref} className="flex items-center gap-3 hover:opacity-90 transition-opacity shrink-0 min-w-0">
             <img src="/logo.png" alt="iDRAC Console" className="h-7 brightness-0 invert" />
@@ -123,7 +123,7 @@ export default function PublicHeader() {
       </div>
 
       {mobileOpen && (
-        <div className={`md:hidden border-t border-white/20 px-4 py-3 space-y-2 text-sm ${containerClass} mx-auto`}>
+        <div className={`md:hidden border-t border-white/20 py-3 space-y-2 text-sm ${PAGE_CONTAINER_CLASS}`}>
           {!loggedInOrToken && (
             <>
               {PUBLIC_LOGGED_OUT_LINKS.map((link) => (

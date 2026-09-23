@@ -1,13 +1,13 @@
 /** Documentation hub — 12-section interactive guide. */
 'use client';
 import { useState, useCallback } from 'react';
-import { BookOpen, Server, Shield, Monitor, Zap, HardDrive, Wrench, Globe, Settings, FileText, ChevronRight, Search, Package, Rocket, Copy, Check, ChevronDown } from 'lucide-react';
-import PublicHeader from '@/components/layout/public-header';
-import PublicFooter from '@/components/layout/public-footer';
+import { BookOpen, Server, Shield, Monitor, Zap, HardDrive, Wrench, Globe, Settings, FileText, ChevronRight, Package, Rocket, Copy, Check, ChevronDown } from 'lucide-react';
 import AppShell from '@/components/layout/app-shell';
 import AuthGate from '@/components/layout/auth-gate';
+import DocsSidebar from '@/components/layout/docs-sidebar';
+import PublicChrome from '@/components/layout/public-chrome';
 import { useAuthUser } from '@/lib/auth-client';
-import { headerStickyOffset } from '@/lib/navigation';
+import { headerStickyOffsetPx } from '@/lib/navigation';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -246,7 +246,7 @@ export default function DocsPage() {
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set(sections[0].content.map((_, i) => i)));
 
   const section = sections.find((s) => s.id === activeSection) || sections[0];
-  const stickyTop = headerStickyOffset(loggedIn);
+  const stickyTopPx = headerStickyOffsetPx(loggedIn);
 
   const filteredSections = search
     ? sections.filter((s) => s.title.toLowerCase().includes(search.toLowerCase()) || s.content.some((c) => c.heading.toLowerCase().includes(search.toLowerCase()) || c.body.toLowerCase().includes(search.toLowerCase())))
@@ -272,52 +272,20 @@ export default function DocsPage() {
     );
   }
 
-  const docsBody = (
-    <div className="flex-1 px-4 sm:px-6 py-6">
-      <div
-        className="max-w-layout mx-auto flex flex-col lg:flex-row gap-0 bg-white border border-border-card rounded overflow-hidden min-h-[calc(100vh-12rem)]"
-        style={{ ['--docs-sticky-top' as string]: stickyTop }}
-      >
-        <aside
-          className="w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0 lg:sticky lg:self-start overflow-y-auto z-10"
-          style={{ top: stickyTop, maxHeight: `calc(100vh - ${stickyTop} - 5rem)` }}
-          aria-label="Documentation sections"
-        >
-          <div className="p-4 border-b border-border-card">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search docs..." className="w-full pl-9 pr-3 py-2 border border-border-card rounded text-sm focus:outline-none focus:ring-1 focus:ring-dell-blue" />
-            </div>
-          </div>
-          <nav className="p-2 space-y-0.5">
-            {filteredSections.map((s, i) => {
-              const isActive = activeSection === s.id;
-              const num = String(i + 1).padStart(2, '0');
-              return (
-                <button key={s.id} onClick={() => handleSectionChange(s.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded flex items-center gap-3 transition-colors ${isActive ? 'bg-dell-blue/10 text-dell-blue' : 'text-text-secondary hover:text-text-primary hover:bg-row-hover'}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-dell-blue text-white' : 'bg-gray-100 text-text-secondary'}`}>
-                    <s.icon className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className={`text-[10px] uppercase tracking-wider ${isActive ? 'text-dell-blue/60' : 'text-text-secondary/50'}`}>{num}</div>
-                    <div className={`text-sm truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>{s.title}</div>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
+  const docsPanel = (
+    <div className="flex flex-col lg:flex-row gap-0 bg-white border border-border-card rounded overflow-hidden min-h-[min(640px,calc(100vh-12rem))]">
+      <DocsSidebar
+        sections={sections}
+        filteredSections={filteredSections}
+        activeSection={activeSection}
+        search={search}
+        onSearchChange={setSearch}
+        onSectionChange={handleSectionChange}
+        headerOffsetPx={stickyTopPx}
+      />
 
-        {/* Content */}
-        <main className="flex-1 min-w-0 bg-bg-body">
-          <div className="lg:hidden p-4 bg-white border-b border-border-card">
-            <select value={activeSection} onChange={(e) => handleSectionChange(e.target.value)} className="w-full px-3 py-2 border border-border-card rounded text-sm">
-              {sections.map((s, i) => <option key={s.id} value={s.id}>{i + 1}. {s.title}</option>)}
-            </select>
-          </div>
-
-          <div className="px-4 sm:px-6 py-6 sm:py-8">
+      <main className="flex-1 min-w-0 bg-bg-body">
+        <div className="px-4 sm:px-6 py-6 sm:py-8">
             <div className="flex items-center gap-3 mb-2">
               <section.icon className="w-8 h-8 text-dell-blue" />
               <div>
@@ -362,24 +330,21 @@ export default function DocsPage() {
               ) : <div />}
             </div>
           </div>
-        </main>
-      </div>
+      </main>
     </div>
   );
 
   if (loggedIn) {
     return (
       <AuthGate>
-        <AppShell>{docsBody}</AppShell>
+        <AppShell>{docsPanel}</AppShell>
       </AuthGate>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg-body">
-      <PublicHeader />
-      {docsBody}
-      <PublicFooter />
-    </div>
+    <PublicChrome mainClassName="py-6">
+      {docsPanel}
+    </PublicChrome>
   );
 }

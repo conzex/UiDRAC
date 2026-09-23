@@ -77,7 +77,9 @@ export function isPublicMarketingPath(pathname: string | null): boolean {
   return (PUBLIC_MARKETING_PATHS as readonly string[]).includes(pathname);
 }
 
+export const PUBLIC_HEADER_OFFSET_PX = 52;
+
 /** Sticky offset below fixed header(s). App shell = 52 + 40. */
-export function headerStickyOffset(underAppShell: boolean): string {
-  return underAppShell ? '92px' : '52px';
+export function headerStickyOffsetPx(underAppShell: boolean): number {
+  return underAppShell ? 92 : PUBLIC_HEADER_OFFSET_PX;
 }

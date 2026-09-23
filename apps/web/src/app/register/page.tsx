@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, Shield, Building2 } from 'lucide-react';
 import api from '@/lib/api';
 import { persistAuth } from '@/lib/auth-client';
-import PublicHeader from '@/components/layout/public-header';
-import PublicFooter from '@/components/layout/public-footer';
+import PublicChrome from '@/components/layout/public-chrome';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -29,9 +28,8 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <PublicHeader />
-      <main className="flex-1 flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20">
+    <PublicChrome mainClassName="flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20" contained={false}>
+      <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex justify-center">
         <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8">
           <div className="text-center mb-6">
             <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
@@ -81,8 +79,7 @@ export default function RegisterPage() {
             </p>
           </div>
         </div>
-      </main>
-      <PublicFooter />
-    </div>
+      </div>
+    </PublicChrome>
   );
 }

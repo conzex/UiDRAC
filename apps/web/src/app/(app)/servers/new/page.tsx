@@ -1,26 +1,20 @@
 /** Add server wizard */
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import { readStoredUser } from '@/lib/auth-client';
-import { canMutateServers } from '@/lib/rbac';
 
 export default function AddServerPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [ip, setIp] = useState('');
   const [username, setUsername] = useState('root');
-  const [password, setPassword] = useState('calvin');
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [probe, setProbe] = useState<any>(null);
   const [credMode, setCredMode] = useState('session');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!canMutateServers(readStoredUser()?.role)) router.replace('/servers');
-  }, [router]);
 
   const doProbe = async () => {
     setLoading(true); setError('');

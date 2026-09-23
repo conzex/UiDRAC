@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { Eye, EyeOff, Lock, Shield, Clock } from 'lucide-react';
 import api from '@/lib/api';
 import { persistAuth } from '@/lib/auth-client';
-import PublicHeader from '@/components/layout/public-header';
-import PublicFooter from '@/components/layout/public-footer';
+import PublicChrome from '@/components/layout/public-chrome';
 
 function LoginForm() {
   const router = useRouter();
@@ -99,9 +98,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <PublicHeader />
-      <main className="flex-1 flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20">
+    <PublicChrome mainClassName="flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20" contained={false}>
+      <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex justify-center">
         <Suspense fallback={
           <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8 text-center">
             <div className="animate-spin w-8 h-8 border-4 border-dell-blue border-t-transparent rounded-full mx-auto" />
@@ -109,8 +107,7 @@ export default function LoginPage() {
         }>
           <LoginForm />
         </Suspense>
-      </main>
-      <PublicFooter />
-    </div>
+      </div>
+    </PublicChrome>
   );
 }
