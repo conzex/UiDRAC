@@ -22,15 +22,21 @@ export default function ConfigurationPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true); setError('');
-    Promise.all([
-      api.get(`/servers/${id}/bios`).then((r) => setBios(r.data)).catch(() => {}),
-      api.get(`/servers/${id}/cpus`).then((r) => setCpus(r.data || [])).catch(() => {}),
-      api.get(`/servers/${id}/memory`).then((r) => setMemory(r.data || [])).catch(() => {}),
-      api.get(`/servers/${id}/pcie`).then((r) => setPcie(r.data || [])).catch(() => {}),
-    ]).catch((err) => setError(err?.response?.data?.message || 'Unable to load configuration from iDRAC.'))
-      .finally(() => setLoading(false));
+    const results = await Promise.allSettled([
+      api.get(`/servers/${id}/bios`),
+      api.get(`/servers/${id}/cpus`),
+      api.get(`/servers/${id}/memory`),
+      api.get(`/servers/${id}/pcie`),
+    ]);
+    if (results[0].status === 'fulfilled') setBios(results[0].value.data);
+    if (results[1].status === 'fulfilled') setCpus(results[1].value.data || []);
+    if (results[2].status === 'fulfilled') setMemory(results[2].value.data || []);
+    if (results[3].status === 'fulfilled') setPcie(results[3].value.data || []);
+    const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    if (firstErr && !bios) setError(firstErr.reason?.response?.data?.message || 'Unable to load configuration from iDRAC.');
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [id]);

@@ -11,15 +11,17 @@ export default function SystemPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true);
     setError('');
-    Promise.all([
-      api.get(`/servers/${id}/system`).then((r) => setInfo(r.data)),
-      api.get(`/servers/${id}/network`).then((r) => setNetwork(r.data)).catch(() => {}),
-    ]).catch((err) => {
-      setError(err?.response?.data?.message || `Unable to reach iDRAC. Check network connectivity.`);
-    }).finally(() => setLoading(false));
+    const results = await Promise.allSettled([
+      api.get(`/servers/${id}/system`),
+      api.get(`/servers/${id}/network`),
+    ]);
+    if (results[0].status === 'fulfilled') setInfo(results[0].value.data);
+    else if (!info) setError(results[0].reason?.response?.data?.message || 'Unable to reach iDRAC. Check network connectivity.');
+    if (results[1].status === 'fulfilled') setNetwork(results[1].value.data);
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [id]);

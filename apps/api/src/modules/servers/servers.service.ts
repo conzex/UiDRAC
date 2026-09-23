@@ -1,5 +1,5 @@
 /** servers.service.ts — Server CRUD and full iDRAC adapter integration. */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadGatewayException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { getAdapter, probeGeneration } from '@idrac/adapters';
 import type { IdracGeneration, IdracAdapter } from '@idrac/shared';
@@ -38,14 +38,23 @@ export class ServersService {
   }
 
   async probe(ip: string, username: string, password: string) {
-    const gen = await probeGeneration(ip, username, password);
-    const adapter = getAdapter(gen, { ip, username, password });
-    await adapter.connect();
+    let gen: IdracGeneration;
     try {
+      gen = await probeGeneration(ip, username, password);
+    } catch (err: any) {
+      throw new BadGatewayException(`Unable to detect iDRAC at ${ip}. Ensure the host is reachable and credentials are correct.`);
+    }
+    const adapter = getAdapter(gen, { ip, username, password });
+    try {
+      await adapter.connect();
       const info = await adapter.getSystemInfo();
       const health = await adapter.getHealth();
       return { generation: gen, model: info.model, serviceTag: info.serviceTag, firmwareVersion: info.biosVersion, health: health.overall };
-    } finally { await adapter.disconnect(); }
+    } catch (err: any) {
+      throw new BadGatewayException(`Connected to iDRAC ${gen} at ${ip} but failed to retrieve data: ${err?.message || 'Unknown error'}`);
+    } finally {
+      await adapter.disconnect().catch(() => {});
+    }
   }
 
   async create(tenantId: string, data: { name: string; ip: string; username: string; password: string; credentialsMode: string; tags?: string[] }) {
@@ -83,8 +92,26 @@ export class ServersService {
   private async withAdapter<T>(id: string, tenantId: string | null, fn: (adapter: IdracAdapter) => Promise<T>): Promise<T> {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await fn(adapter); } finally { await adapter.disconnect(); }
+    try {
+      await adapter.connect();
+    } catch (err: any) {
+      const msg = err?.code === 'ECONNREFUSED' ? `iDRAC at ${server.ip} refused the connection. Verify the iDRAC is powered on and accessible.`
+        : err?.code === 'ETIMEDOUT' || err?.code === 'ECONNABORTED' || err?.message?.includes('timeout') ? `Connection to iDRAC at ${server.ip} timed out. Check network connectivity.`
+        : err?.code === 'ENOTFOUND' ? `Cannot resolve hostname ${server.ip}. Check the address.`
+        : err?.response?.status === 401 ? `Authentication failed for iDRAC at ${server.ip}. Check credentials.`
+        : `Unable to connect to iDRAC at ${server.ip}: ${err?.message || 'Unknown error'}`;
+      throw new BadGatewayException(msg);
+    }
+    try {
+      return await fn(adapter);
+    } catch (err: any) {
+      if (err instanceof NotFoundException || err instanceof BadGatewayException) throw err;
+      const msg = err?.message?.includes('timeout') ? `iDRAC at ${server.ip} timed out while fetching data.`
+        : `Error communicating with iDRAC at ${server.ip}: ${err?.message || 'Unknown error'}`;
+      throw new BadGatewayException(msg);
+    } finally {
+      await adapter.disconnect().catch(() => {});
+    }
   }
 
   // ── Core Features ──

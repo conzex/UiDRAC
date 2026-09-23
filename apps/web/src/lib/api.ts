@@ -1,7 +1,7 @@
 /** api.ts — Axios API client with auth interceptors. */
 import axios from 'axios';
 
-const api = axios.create({ baseURL: '/api' });
+const api = axios.create({ baseURL: '/api', timeout: 15000 });
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {

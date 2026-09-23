@@ -20,20 +20,20 @@ export function getAdapter(generation: IdracGeneration, creds: Credentials): Idr
 }
 
 export async function probeGeneration(ip: string, username: string, password: string): Promise<IdracGeneration> {
-  const http = createHttpClient(ip);
+  const http = createHttpClient(ip, 4000);
   try {
-    const res = await http.get('/redfish/v1/', { timeout: 5000, auth: { username, password } });
+    const res = await http.get('/redfish/v1/', { timeout: 4000, auth: { username, password } });
     if (res.status === 200) {
       const version = res.data?.RedfishVersion ?? '';
       return version >= '1.6' ? '9' : '8';
     }
   } catch { /* not redfish */ }
   try {
-    const res = await http.get('/data?get=version', { timeout: 5000, auth: { username, password } });
+    const res = await http.get('/data?get=version', { timeout: 3000, auth: { username, password } });
     if (res.status === 200) return '7';
   } catch { /* not iDRAC 7 */ }
   try {
-    const res = await http.get('/cgi-bin/webcgi/login', { timeout: 5000 });
+    const res = await http.get('/cgi-bin/webcgi/login', { timeout: 3000 });
     if (res.status === 200) return '6';
   } catch { /* not iDRAC 6 */ }
   throw new Error(`Unable to detect iDRAC generation at ${ip}. Ensure the iDRAC is reachable and credentials are correct.`);

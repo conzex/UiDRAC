@@ -5,10 +5,10 @@
 import axios from 'axios';
 import * as https from 'https';
 
-export function createHttpClient(ip: string) {
+export function createHttpClient(ip: string, timeout = 8000) {
   return axios.create({
     baseURL: `https://${ip}`,
-    timeout: 20000,
+    timeout,
     httpsAgent: new https.Agent({ rejectUnauthorized: false }),
     headers: { 'Content-Type': 'application/json' },
   });

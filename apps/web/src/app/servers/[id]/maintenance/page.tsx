@@ -22,16 +22,23 @@ export default function MaintenancePage() {
   const [powerMsg, setPowerMsg] = useState('');
   const [powerCapInput, setPowerCapInput] = useState('');
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true); setError('');
-    Promise.all([
-      api.get(`/servers/${id}/firmware`).then((r) => setFirmware(r.data)).catch(() => {}),
-      api.get(`/servers/${id}/logs`).then((r) => setLogs(Array.isArray(r.data) ? r.data : [])).catch(() => {}),
-      api.get(`/servers/${id}/sensors`).then((r) => setSensors(Array.isArray(r.data) ? r.data : [])).catch(() => {}),
-      api.get(`/servers/${id}/power/readings`).then((r) => setPowerReadings(r.data)).catch(() => {}),
-      api.get(`/servers/${id}/thermal`).then((r) => setThermal(r.data)).catch(() => {}),
-    ]).catch((err) => setError(err?.response?.data?.message || 'Unable to load maintenance data.'))
-      .finally(() => setLoading(false));
+    const results = await Promise.allSettled([
+      api.get(`/servers/${id}/firmware`),
+      api.get(`/servers/${id}/logs`),
+      api.get(`/servers/${id}/sensors`),
+      api.get(`/servers/${id}/power/readings`),
+      api.get(`/servers/${id}/thermal`),
+    ]);
+    if (results[0].status === 'fulfilled') setFirmware(results[0].value.data);
+    if (results[1].status === 'fulfilled') { const d = results[1].value.data; setLogs(Array.isArray(d) ? d : []); }
+    if (results[2].status === 'fulfilled') { const d = results[2].value.data; setSensors(Array.isArray(d) ? d : []); }
+    if (results[3].status === 'fulfilled') setPowerReadings(results[3].value.data);
+    if (results[4].status === 'fulfilled') setThermal(results[4].value.data);
+    const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    if (firstErr && !firmware && logs.length === 0) setError(firstErr.reason?.response?.data?.message || 'Unable to load maintenance data.');
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [id]);

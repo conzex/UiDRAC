@@ -20,17 +20,25 @@ export default function IdracPage() {
   const [error, setError] = useState('');
   const [actionMsg, setActionMsg] = useState('');
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true); setError('');
-    Promise.all([
-      api.get(`/servers/${id}/idrac-network`).then((r) => setNetwork(r.data)).catch(() => {}),
-      api.get(`/servers/${id}/idrac-users`).then((r) => setUsers(r.data || [])).catch(() => {}),
-      api.get(`/servers/${id}/virtual-media`).then((r) => setVmedia(r.data)).catch(() => {}),
-      api.get(`/servers/${id}/certificates`).then((r) => setCerts(r.data || [])).catch(() => {}),
-      api.get(`/servers/${id}/licenses`).then((r) => setLicenses(r.data || [])).catch(() => {}),
-      api.get(`/servers/${id}/lc-jobs`).then((r) => setJobs(r.data || [])).catch(() => {}),
-    ]).catch((err) => setError(err?.response?.data?.message || 'Unable to load iDRAC settings.'))
-      .finally(() => setLoading(false));
+    const results = await Promise.allSettled([
+      api.get(`/servers/${id}/idrac-network`),
+      api.get(`/servers/${id}/idrac-users`),
+      api.get(`/servers/${id}/virtual-media`),
+      api.get(`/servers/${id}/certificates`),
+      api.get(`/servers/${id}/licenses`),
+      api.get(`/servers/${id}/lc-jobs`),
+    ]);
+    if (results[0].status === 'fulfilled') setNetwork(results[0].value.data);
+    if (results[1].status === 'fulfilled') setUsers(results[1].value.data || []);
+    if (results[2].status === 'fulfilled') setVmedia(results[2].value.data);
+    if (results[3].status === 'fulfilled') setCerts(results[3].value.data || []);
+    if (results[4].status === 'fulfilled') setLicenses(results[4].value.data || []);
+    if (results[5].status === 'fulfilled') setJobs(results[5].value.data || []);
+    const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    if (firstErr && !network && users.length === 0) setError(firstErr.reason?.response?.data?.message || 'Unable to load iDRAC settings.');
+    setLoading(false);
   };
 
   useEffect(() => { fetchData(); }, [id]);

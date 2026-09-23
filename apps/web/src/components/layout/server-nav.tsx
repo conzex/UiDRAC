@@ -1,8 +1,13 @@
-/** server-nav.tsx — Secondary navigation for server detail pages. */
+/** server-nav.tsx — Secondary navigation for server detail pages with power actions. */
 'use client';
+import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Server, HardDrive, Settings, Wrench, Shield, Monitor } from 'lucide-react';
+import {
+  LayoutDashboard, Server, HardDrive, Settings, Wrench, Shield, Monitor,
+  Power, ChevronDown, Zap, RotateCw, PowerOff, AlertTriangle,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import api from '@/lib/api';
 
 const tabs = [
   { label: 'Dashboard', path: 'dashboard', Icon: LayoutDashboard },
@@ -14,23 +19,88 @@ const tabs = [
   { label: 'Console', path: 'console', Icon: Monitor },
 ];
 
+const powerActions = [
+  { action: 'on', label: 'Power On', Icon: Power, color: 'text-green-600 hover:bg-green-50' },
+  { action: 'graceful-shutdown', label: 'Graceful Shutdown', Icon: PowerOff, color: 'text-amber-600 hover:bg-amber-50' },
+  { action: 'reset', label: 'Reset System', Icon: RotateCw, color: 'text-blue-600 hover:bg-blue-50' },
+  { action: 'power-cycle', label: 'Power Cycle', Icon: Zap, color: 'text-orange-600 hover:bg-orange-50' },
+  { action: 'nmi', label: 'NMI (Debug)', Icon: AlertTriangle, color: 'text-red-600 hover:bg-red-50' },
+];
+
 export default function ServerNav({ serverId }: { serverId: string }) {
   const pathname = usePathname();
+  const [powerOpen, setPowerOpen] = useState(false);
+  const [powerMsg, setPowerMsg] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setPowerOpen(false);
+    };
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setPowerOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleEsc);
+    return () => { document.removeEventListener('mousedown', handleClick); document.removeEventListener('keydown', handleEsc); };
+  }, []);
+
+  const doPowerAction = async (action: string, label: string) => {
+    setPowerOpen(false);
+    try {
+      await api.post(`/servers/${serverId}/power`, { action });
+      setPowerMsg(`${label} command sent successfully`);
+    } catch (err: any) {
+      setPowerMsg(`Failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
+    }
+    setTimeout(() => setPowerMsg(''), 4000);
+  };
+
   return (
-    <nav className="flex gap-0 border-b border-border-card bg-white mb-4">
-      {tabs.map((tab) => {
-        const href = `/servers/${serverId}/${tab.path}`;
-        const isActive = pathname?.endsWith(`/${tab.path}`) || pathname?.includes(`/${tab.path}/`);
-        return (
-          <a key={tab.path} href={href} className={cn(
-            'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5',
-            isActive ? 'border-dell-blue text-dell-blue' : 'border-transparent text-text-secondary hover:text-dell-blue hover:border-dell-blue/30'
-          )}>
-            <tab.Icon className="w-3.5 h-3.5" />
-            {tab.label}
-          </a>
-        );
-      })}
-    </nav>
+    <div className="mb-4">
+      <nav className="flex items-center border-b border-border-card bg-white">
+        <div className="flex gap-0 flex-1 overflow-x-auto">
+          {tabs.map((tab) => {
+            const href = `/servers/${serverId}/${tab.path}`;
+            const isActive = pathname?.endsWith(`/${tab.path}`) || pathname?.includes(`/${tab.path}/`);
+            return (
+              <a key={tab.path} href={href} className={cn(
+                'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap',
+                isActive ? 'border-dell-blue text-dell-blue' : 'border-transparent text-text-secondary hover:text-dell-blue hover:border-dell-blue/30'
+              )}>
+                <tab.Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </a>
+            );
+          })}
+        </div>
+
+        {/* Power Actions — right side */}
+        <div className="relative shrink-0 px-2" ref={menuRef}>
+          <button
+            onClick={() => setPowerOpen(!powerOpen)}
+            className="px-3 py-1.5 bg-dell-blue text-white text-xs font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5"
+          >
+            <Power className="w-3.5 h-3.5" /> Power <ChevronDown className={cn('w-3 h-3 transition-transform', powerOpen && 'rotate-180')} />
+          </button>
+          {powerOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-white border border-border-card rounded shadow-lg py-1 w-52 z-50">
+              {powerActions.map((pa) => (
+                <button
+                  key={pa.action}
+                  onClick={() => doPowerAction(pa.action, pa.label)}
+                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors ${pa.color}`}
+                >
+                  <pa.Icon className="w-3.5 h-3.5" /> {pa.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </nav>
+      {powerMsg && (
+        <div className={`mt-2 text-xs px-3 py-2 rounded ${powerMsg.startsWith('Failed') ? 'bg-red-50 text-red-critical' : 'bg-green-50 text-green-700'}`}>
+          {powerMsg}
+        </div>
+      )}
+    </div>
   );
 }

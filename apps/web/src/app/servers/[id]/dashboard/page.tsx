@@ -23,20 +23,31 @@ export default function ServerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true);
     setError('');
-    Promise.all([
-      api.get(`/servers/${id}/health`).then((r) => setHealth(r.data)).catch((e) => { throw e; }),
-      api.get(`/servers/${id}/system`).then((r) => setSysInfo(r.data)).catch((e) => { throw e; }),
-      api.get(`/servers/${id}/logs`).then((r) => setLogs(r.data?.slice?.(0, 5) || r.data || [])).catch(() => {}),
-    ]).catch((err) => {
-      const msg = err?.response?.data?.message || err?.message || 'Unable to reach iDRAC. Check network connectivity and credentials.';
-      setError(msg);
-    }).finally(() => setLoading(false));
+    const results = await Promise.allSettled([
+      api.get(`/servers/${id}/health`),
+      api.get(`/servers/${id}/system`),
+      api.get(`/servers/${id}/logs`),
+    ]);
+
+    if (results[0].status === 'fulfilled') setHealth(results[0].value.data);
+    if (results[1].status === 'fulfilled') setSysInfo(results[1].value.data);
+    if (results[2].status === 'fulfilled') {
+      const d = results[2].value.data;
+      setLogs(Array.isArray(d) ? d.slice(0, 5) : d?.slice?.(0, 5) || []);
+    }
+
+    const firstError = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
+    if (firstError && !health && !sysInfo) {
+      const err = firstError.reason;
+      setError(err?.response?.data?.message || err?.message || 'Unable to reach iDRAC. Check network connectivity and credentials.');
+    }
+    setLoading(false);
   };
 
-  useEffect(() => { fetchData(); const interval = setInterval(fetchData, 30000); return () => clearInterval(interval); }, [id]);
+  useEffect(() => { fetchData(); const interval = setInterval(fetchData, 60000); return () => clearInterval(interval); }, [id]);
 
   if (loading) return <div className="animate-pulse space-y-4"><div className="h-12 bg-gray-200 rounded" /><div className="grid grid-cols-2 gap-4"><div className="h-64 bg-gray-200 rounded" /><div className="h-64 bg-gray-200 rounded" /></div></div>;
 
