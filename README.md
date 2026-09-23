@@ -73,11 +73,23 @@ bash scripts/generate-keys.sh
 ### 3. Start everything
 
 ```bash
-# Development (with hot reload)
-docker compose up -d
+# From repo root (NOT frontend/ — this is a pnpm monorepo under apps/web)
+bash scripts/host.sh
 
+# Or manually:
+docker compose up -d --build
+```
+
+**Portal:** http://localhost:3000  
+**API:** http://localhost:4000/api  
+
+Verify: `curl -s http://localhost:4000/api/health`
+
+> **Note:** Commands like `cd frontend && docker compose up app` are for **rscd-agent-master**, not this project. Services here are named `web`, `api`, `postgres`, `redis`, `console-gw`.
+
+```bash
 # Production (with TLS)
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### 4. Access the UI

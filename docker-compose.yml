@@ -53,6 +53,13 @@ services:
     restart: unless-stopped
     ports:
       - "4000:4000"
+    command:
+      - sh
+      - -c
+      - |
+        pnpm db:generate
+        pnpm exec prisma db push --schema=packages/db/prisma/schema.prisma --skip-generate
+        node -r @swc/register apps/api/src/main.ts
     environment:
       NODE_ENV: development
       POSTGRES_URL: postgresql://${POSTGRES_USER:-idrac}:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/${POSTGRES_DB:-idrac}
@@ -62,7 +69,11 @@ services:
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     volumes:
       - ./apps/api/src:/app/apps/api/src
-      - ./packages:/app/packages
+      - ./apps/api/tsconfig.json:/app/apps/api/tsconfig.json
+      - ./packages/adapters/src:/app/packages/adapters/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/db/prisma:/app/packages/db/prisma
+      - ./packages/db/src:/app/packages/db/src
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,11 +94,13 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: development
+      API_UPSTREAM: http://api:4000
       NEXT_PUBLIC_API_URL: http://localhost:4000/api
       NEXT_PUBLIC_CONSOLE_URL: http://localhost:6080/console
     volumes:
       - ./apps/web/src:/app/apps/web/src
-      - ./packages:/app/packages
+      - ./apps/web/next.config.js:/app/apps/web/next.config.js
+      - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       - api
     networks:

@@ -94,6 +94,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      API_UPSTREAM: http://api:4000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_CONSOLE_URL: ${NEXT_PUBLIC_CONSOLE_URL}
     depends_on:

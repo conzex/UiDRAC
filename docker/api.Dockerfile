@@ -44,7 +44,7 @@ RUN pnpm --filter @idrac/shared build && \
 
 # ── Stage 3: Development (hot reload) ──
 FROM node:20-alpine AS development
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ openssl libc6-compat
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@9 --activate
