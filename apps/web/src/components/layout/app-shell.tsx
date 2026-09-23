@@ -48,7 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {showWarning && <SessionTimeoutModal remainingSeconds={remainingSeconds} onStayLoggedIn={resetTimer} />}
 
       {/* Top Banner */}
-      <header className="h-[52px] bg-dell-blue flex items-center px-6 text-white shrink-0">
+      <header className="h-[52px] bg-dell-blue flex items-center px-6 text-white shrink-0 sticky top-0 z-50 shadow-md">
         <a href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer">
           <img src="/logo.png" alt="iDRAC Console" className="h-6 brightness-0 invert" />
           <div className="w-px h-6 bg-white/30" />

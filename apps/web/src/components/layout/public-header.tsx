@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, LogOut, LayoutDashboard, Server, FileText, Settings, BookOpen, Menu, X } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, Server, FileText, Settings, BookOpen, Menu, X, Mail } from 'lucide-react';
 
 export default function PublicHeader() {
   const router = useRouter();
@@ -40,7 +40,7 @@ export default function PublicHeader() {
   const isLoggedIn = !!user?.email;
 
   return (
-    <header className="bg-dell-blue text-white shrink-0">
+    <header className="bg-dell-blue text-white shrink-0 sticky top-0 z-50 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="h-[52px] flex items-center justify-between">
           <a href={isLoggedIn ? '/dashboard' : '/'} className="flex items-center gap-3 hover:opacity-90 transition-opacity">
@@ -73,7 +73,7 @@ export default function PublicHeader() {
               </>
             ) : (
               <>
-                <a href="/contact" className="text-white/80 hover:text-white">Contact</a>
+                <a href="/contact" className="text-white/80 hover:text-white flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Contact</a>
                 <a href="/login" className="px-4 py-1.5 bg-white/20 rounded text-sm font-medium hover:bg-white/30">Sign In</a>
                 <a href="/register" className="px-4 py-1.5 bg-white text-dell-blue rounded text-sm font-semibold hover:bg-white/90">Get Started</a>
               </>
