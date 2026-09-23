@@ -1,19 +1,32 @@
-/** app-shell.tsx — Main application layout with Dell-styled navigation. */
+/** app-shell.tsx — Authenticated layout wrapping the shared public header/footer. */
 'use client';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { User, LogOut, LayoutDashboard, Server, FileText, Settings } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { User, LogOut, LayoutDashboard, Server, FileText, Settings, BookOpen } from 'lucide-react';
 import { useSessionTimeout } from '@/lib/useSessionTimeout';
 import SessionTimeoutModal from './session-timeout-modal';
+import PublicFooter from './public-footer';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<Record<string, string>>({});
   const { showWarning, remainingSeconds, resetTimer } = useSessionTimeout();
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try { setUser(JSON.parse(localStorage.getItem('user') || '{}')); } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleEsc);
+    return () => { document.removeEventListener('mousedown', handleClick); document.removeEventListener('keydown', handleEsc); };
   }, []);
 
   const logout = () => {
@@ -22,18 +35,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
+  const navLinks = [
+    { href: '/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+    { href: '/servers', label: 'Servers', Icon: Server },
+    { href: '/audit', label: 'Audit Log', Icon: FileText },
+    { href: '/settings', label: 'Settings', Icon: Settings },
+    { href: '/docs', label: 'Docs', Icon: BookOpen },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-bg-body">
       {showWarning && <SessionTimeoutModal remainingSeconds={remainingSeconds} onStayLoggedIn={resetTimer} />}
+
       {/* Top Banner */}
       <header className="h-[52px] bg-dell-blue flex items-center px-6 text-white shrink-0">
         <a href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer">
-          <img src="/dell-logo.png" alt="Dell" className="h-5 brightness-0 invert" />
+          <img src="/logo.png" alt="iDRAC Console" className="h-6 brightness-0 invert" />
           <div className="w-px h-6 bg-white/30" />
           <span className="text-sm font-semibold tracking-wide">Universal iDRAC Console</span>
         </a>
         <div className="ml-auto flex items-center gap-4">
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="flex items-center gap-2 text-sm hover:text-white/80">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                 <User className="w-4 h-4" />
@@ -55,18 +77,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Secondary Nav */}
       <nav className="h-[40px] bg-white border-b border-border-card flex items-center px-6 shrink-0">
         <div className="flex gap-6 text-sm">
-          <a href="/dashboard" className="text-dell-blue font-semibold hover:text-dell-blue-hover flex items-center gap-1.5">
-            <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
-          </a>
-          <a href="/servers" className="text-text-secondary hover:text-dell-blue flex items-center gap-1.5">
-            <Server className="w-3.5 h-3.5" /> Servers
-          </a>
-          <a href="/audit" className="text-text-secondary hover:text-dell-blue flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Audit Log
-          </a>
-          <a href="/settings" className="text-text-secondary hover:text-dell-blue flex items-center gap-1.5">
-            <Settings className="w-3.5 h-3.5" /> Settings
-          </a>
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href || pathname?.startsWith(link.href + '/');
+            return (
+              <a key={link.href} href={link.href} className={`flex items-center gap-1.5 ${isActive ? 'text-dell-blue font-semibold' : 'text-text-secondary hover:text-dell-blue'}`}>
+                <link.Icon className="w-3.5 h-3.5" /> {link.label}
+              </a>
+            );
+          })}
         </div>
       </nav>
 
@@ -75,15 +93,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="max-w-layout mx-auto">{children}</div>
       </main>
 
-      {/* Footer */}
-      <footer className="h-10 bg-white border-t border-border-card flex items-center justify-center text-[11px] text-text-secondary shrink-0 gap-1">
-        <span>Universal iDRAC Console v1.0.0</span>
-        <span className="mx-1">·</span>
-        <span>Built by</span>
-        <a href="https://www.sumitkumawat.com" target="_blank" rel="noopener noreferrer" className="text-dell-blue hover:underline">Sumit Kumawat</a>
-        <span className="mx-1">·</span>
-        <a href="mailto:hello@sumitkumawat.com" className="text-dell-blue hover:underline">hello@sumitkumawat.com</a>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

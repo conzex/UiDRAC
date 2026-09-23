@@ -41,7 +41,7 @@ export default function LoginPage() {
       <div className="bg-white rounded shadow-2xl w-full max-w-md p-8">
         {/* Logo */}
         <div className="text-center mb-6">
-          <img src="/dell-logo.png" alt="Dell" className="h-10 mx-auto mb-4" />
+          <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
           <h1 className="text-xl font-bold text-text-primary">Universal iDRAC Console</h1>
           <p className="text-sm text-text-secondary mt-1">Sign in to your account</p>
         </div>

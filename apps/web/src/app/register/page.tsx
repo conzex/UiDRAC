@@ -26,7 +26,11 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-dell-blue to-dell-dark">
       <div className="bg-white rounded shadow-2xl w-full max-w-md p-8">
-        <h1 className="text-xl font-bold text-center mb-6">Create Account</h1>
+        <div className="text-center mb-6">
+          <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-text-primary">Create Account</h1>
+          <p className="text-sm text-text-secondary mt-1">Register your organization</p>
+        </div>
         {error && <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded mb-4">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div><label className="block text-sm font-medium mb-1">Organization Name</label><input value={tenantName} onChange={(e) => setTenantName(e.target.value)} required className="w-full px-3 py-2 border border-border-card rounded text-sm focus:ring-2 focus:ring-dell-blue" /></div>
