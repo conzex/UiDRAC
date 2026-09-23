@@ -1,10 +1,12 @@
-/** Login page — Dell iDRAC 9 styled login screen. */
+/** Login page — Dell iDRAC 9 styled login screen with shared header/footer. */
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Lock, Shield, Clock } from 'lucide-react';
 import api from '@/lib/api';
+import PublicHeader from '@/components/layout/public-header';
+import PublicFooter from '@/components/layout/public-footer';
 
 function LoginForm() {
   const router = useRouter();
@@ -37,11 +39,11 @@ function LoginForm() {
   };
 
   return (
-    <div className="bg-white rounded shadow-2xl w-full max-w-md p-8">
+    <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8">
       <div className="text-center mb-6">
         <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
-        <h1 className="text-xl font-bold text-text-primary">Universal iDRAC Console</h1>
-        <p className="text-sm text-text-secondary mt-1">Sign in to your account</p>
+        <h1 className="text-xl font-bold text-text-primary">Welcome Back</h1>
+        <p className="text-sm text-text-secondary mt-1">Sign in to your iDRAC Console</p>
       </div>
 
       {timedOut && !error && (
@@ -96,14 +98,18 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-dell-blue to-dell-dark">
-      <Suspense fallback={
-        <div className="bg-white rounded shadow-2xl w-full max-w-md p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-dell-blue border-t-transparent rounded-full mx-auto" />
-        </div>
-      }>
-        <LoginForm />
-      </Suspense>
+    <div className="min-h-screen flex flex-col">
+      <PublicHeader />
+      <main className="flex-1 flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20">
+        <Suspense fallback={
+          <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8 text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-dell-blue border-t-transparent rounded-full mx-auto" />
+          </div>
+        }>
+          <LoginForm />
+        </Suspense>
+      </main>
+      <PublicFooter />
     </div>
   );
 }
