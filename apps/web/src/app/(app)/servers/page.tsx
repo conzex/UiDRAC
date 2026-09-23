@@ -1,9 +1,10 @@
 /** Servers list page with edit/delete functionality. */
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import AppShell from '@/components/layout/app-shell';
 import { Plus, Pencil, Trash2, X, Save, AlertTriangle, Search } from 'lucide-react';
 import api from '@/lib/api';
+import { readStoredUser } from '@/lib/auth-client';
+import { canDeleteServers, canMutateServers } from '@/lib/rbac';
 
 export default function ServersPage() {
   const [servers, setServers] = useState<any[]>([]);
@@ -68,14 +69,18 @@ export default function ServersPage() {
 
   const hc: Record<string, string> = { HEALTHY: 'text-green-healthy', WARNING: 'text-amber-warning', CRITICAL: 'text-red-critical' };
   const filtered = servers.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.ip.includes(search));
+  const canEdit = canMutateServers(readStoredUser()?.role);
+  const canDelete = canDeleteServers(readStoredUser()?.role);
 
   return (
-    <AppShell>
+    <>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Servers</h1>
-        <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover flex items-center gap-1.5">
-          <Plus className="w-4 h-4" /> Add Server
-        </a>
+        {canEdit && (
+          <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover flex items-center gap-1.5">
+            <Plus className="w-4 h-4" /> Add Server
+          </a>
+        )}
       </div>
 
       {actionMsg && (
@@ -98,9 +103,11 @@ export default function ServersPage() {
         ) : servers.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-text-secondary mb-4">No servers added yet.</p>
-            <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5">
-              <Plus className="w-4 h-4" /> Add Your First Server
-            </a>
+            {canEdit && (
+              <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5">
+                <Plus className="w-4 h-4" /> Add Your First Server
+              </a>
+            )}
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -119,8 +126,12 @@ export default function ServersPage() {
                 <td className="p-3">{s.serviceTag || '—'}</td>
                 <td className="p-3">
                   <div className="flex gap-2">
-                    <button onClick={() => startEdit(s)} className="p-1 text-text-secondary hover:text-dell-blue" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => { setDeleteId(s.id); setDeleteName(s.name); }} className="p-1 text-text-secondary hover:text-red-critical" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                    {canEdit && (
+                      <button onClick={() => startEdit(s)} className="p-1 text-text-secondary hover:text-dell-blue" title="Edit"><Pencil className="w-3.5 h-3.5" /></button>
+                    )}
+                    {canDelete && (
+                      <button onClick={() => { setDeleteId(s.id); setDeleteName(s.name); }} className="p-1 text-text-secondary hover:text-red-critical" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -165,6 +176,6 @@ export default function ServersPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

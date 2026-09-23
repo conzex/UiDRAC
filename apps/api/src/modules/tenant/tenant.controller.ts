@@ -2,10 +2,13 @@
 import { Controller, Get, Patch, Body, Req } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { PrismaService } from '../../prisma.service';
+import { Roles } from '../auth/decorators';
+import { SYSTEM_TENANT_SLUG } from '../../common/rbac.constants';
 
-const SYSTEM_SLUG = 'system';
+const SYSTEM_SLUG = SYSTEM_TENANT_SLUG;
 
 @Controller('tenant')
+@Roles('VIEWER')
 export class TenantController {
   constructor(private tenantService: TenantService, private prisma: PrismaService) {}
 
@@ -23,6 +26,7 @@ export class TenantController {
   }
 
   @Patch()
+  @Roles('ADMIN')
   update(@Req() req: any, @Body() body: { name?: string }) { return this.tenantService.update(req.user?.tenantId, body); }
 
   @Get('users')

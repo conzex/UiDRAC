@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff, Lock, Shield, Clock } from 'lucide-react';
 import api from '@/lib/api';
+import { persistAuth } from '@/lib/auth-client';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
 
@@ -28,9 +29,9 @@ function LoginForm() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      router.push('/dashboard');
+      persistAuth(data.accessToken, data.user);
+      const next = searchParams?.get('next');
+      router.push(next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {

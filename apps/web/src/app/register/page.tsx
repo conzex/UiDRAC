@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserPlus, Shield, Building2 } from 'lucide-react';
 import api from '@/lib/api';
+import { persistAuth } from '@/lib/auth-client';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
 
@@ -20,8 +21,7 @@ export default function RegisterPage() {
     setError(''); setLoading(true);
     try {
       const { data } = await api.post('/auth/register', { email, password, tenantName });
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      persistAuth(data.accessToken, data.user);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');

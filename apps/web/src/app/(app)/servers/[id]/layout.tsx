@@ -1,8 +1,7 @@
-/** Server detail layout — wraps all /servers/[id]/* pages. */
+/** Server detail layout — chrome for /servers/[id]/* pages. */
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import AppShell from '@/components/layout/app-shell';
 import ServerNav from '@/components/layout/server-nav';
 import api from '@/lib/api';
 
@@ -18,7 +17,7 @@ export default function ServerLayout({ children }: { children: React.ReactNode }
   const genColors: Record<string, string> = { GEN6: 'bg-gray-500', GEN7: 'bg-amber-warning', GEN8: 'bg-blue-500', GEN9: 'bg-dell-blue' };
 
   return (
-    <AppShell>
+    <>
       {server && (
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-xl font-bold text-text-primary">{server.name}</h1>
@@ -30,6 +29,6 @@ export default function ServerLayout({ children }: { children: React.ReactNode }
       )}
       <ServerNav serverId={id} server={server} />
       {children}
-    </AppShell>
+    </>
   );
 }

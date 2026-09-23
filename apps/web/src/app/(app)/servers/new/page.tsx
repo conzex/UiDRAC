@@ -1,9 +1,10 @@
 /** Add server wizard */
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import AppShell from '@/components/layout/app-shell';
 import api from '@/lib/api';
+import { readStoredUser } from '@/lib/auth-client';
+import { canMutateServers } from '@/lib/rbac';
 
 export default function AddServerPage() {
   const router = useRouter();
@@ -16,6 +17,10 @@ export default function AddServerPage() {
   const [credMode, setCredMode] = useState('session');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!canMutateServers(readStoredUser()?.role)) router.replace('/servers');
+  }, [router]);
 
   const doProbe = async () => {
     setLoading(true); setError('');
@@ -36,7 +41,7 @@ export default function AddServerPage() {
   };
 
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-bold mb-6">Add Server</h1>
       <div className="max-w-lg mx-auto bg-white border border-border-card rounded p-6">
         {error && <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded mb-4">{error}</div>}
@@ -61,6 +66,6 @@ export default function AddServerPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   );
 }

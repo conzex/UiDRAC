@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { AlertTriangle } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function SystemPage() {

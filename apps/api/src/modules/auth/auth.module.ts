@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { RolesGuard } from './roles.guard';
 import { PrismaService } from '../../prisma.service';
 
 @Module({
@@ -14,6 +15,7 @@ import { PrismaService } from '../../prisma.service';
   providers: [
     AuthService, JwtStrategy, PrismaService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
   exports: [AuthService],
 })

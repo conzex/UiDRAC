@@ -1,9 +1,10 @@
 /** Dashboard — Fleet overview with server cards grid. */
 'use client';
 import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/app-shell';
 import { PlusCircle, Search, ServerCrash, AlertTriangle, RefreshCw } from 'lucide-react';
 import api from '@/lib/api';
+import { readStoredUser } from '@/lib/auth-client';
+import { canMutateServers } from '@/lib/rbac';
 
 const healthColors: Record<string, string> = { HEALTHY: 'bg-green-healthy', WARNING: 'bg-amber-warning', CRITICAL: 'bg-red-critical', UNKNOWN: 'bg-gray-400' };
 const genColors: Record<string, string> = { GEN6: 'bg-gray-500', GEN7: 'bg-amber-warning', GEN8: 'bg-blue-500', GEN9: 'bg-dell-blue' };
@@ -26,14 +27,17 @@ export default function DashboardPage() {
 
   const filtered = servers.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.ip.includes(search));
   const stats = { total: servers.length, healthy: servers.filter((s) => s.health === 'HEALTHY').length, warning: servers.filter((s) => s.health === 'WARNING').length, critical: servers.filter((s) => s.health === 'CRITICAL').length };
+  const canAdd = canMutateServers(readStoredUser()?.role);
 
   return (
-    <AppShell>
+    <>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text-primary">Server Fleet</h1>
-        <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
-          <PlusCircle className="w-4 h-4" /> Add Server
-        </a>
+        {canAdd && (
+          <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
+            <PlusCircle className="w-4 h-4" /> Add Server
+          </a>
+        )}
       </div>
 
       {/* Error banner */}
@@ -123,6 +127,6 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

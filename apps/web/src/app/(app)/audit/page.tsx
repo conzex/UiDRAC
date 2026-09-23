@@ -1,14 +1,13 @@
 /** Audit log page */
 'use client';
 import { useEffect, useState } from 'react';
-import AppShell from '@/components/layout/app-shell';
 import api from '@/lib/api';
 
 export default function AuditPage() {
   const [logs, setLogs] = useState<any[]>([]);
   useEffect(() => { api.get('/audit').then((r) => setLogs(r.data?.data || [])).catch(() => {}); }, []);
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-bold mb-4">Audit Log</h1>
       <div className="bg-white border border-border-card rounded">
         <table className="w-full text-sm">
@@ -17,6 +16,6 @@ export default function AuditPage() {
         </table>
         {logs.length === 0 && <div className="p-8 text-center text-text-secondary">No audit logs found</div>}
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 /** roles.guard.ts — RBAC role checking guard. */
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './decorators';
 
@@ -17,6 +17,8 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
     if (!user) return false;
     const userLevel = ROLE_HIERARCHY[user.role] ?? 0;
-    return requiredRoles.some((role) => userLevel >= (ROLE_HIERARCHY[role] ?? 999));
+    const ok = requiredRoles.some((role) => userLevel >= (ROLE_HIERARCHY[role] ?? 999));
+    if (!ok) throw new ForbiddenException('Insufficient permissions for this action');
+    return true;
   }
 }

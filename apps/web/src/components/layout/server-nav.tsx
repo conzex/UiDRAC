@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
+import { readStoredUser } from '@/lib/auth-client';
+import { canMutateServers } from '@/lib/rbac';
 
 const tabs = [
   { label: 'Dashboard', path: 'dashboard', Icon: LayoutDashboard },
@@ -56,6 +58,7 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
   };
 
   const genLabel = server?.generation?.replace('GEN', 'iDRAC ') ?? 'iDRAC';
+  const canPower = canMutateServers(readStoredUser()?.role);
 
   return (
     <div className="mb-4">
@@ -63,7 +66,7 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
         <div className="flex gap-0 flex-1 overflow-x-auto">
           {tabs.map((tab) => {
             const href = `/servers/${serverId}/${tab.path}`;
-            const isActive = pathname?.endsWith(`/${tab.path}`) || pathname?.includes(`/${tab.path}/`);
+            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
             return (
               <a key={tab.path} href={href} className={cn(
                 'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap',
@@ -102,7 +105,7 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
             )}
           </div>
 
-          {/* Power dropdown */}
+          {canPower && (
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setPowerOpen(!powerOpen)}
@@ -124,6 +127,7 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
               </div>
             )}
           </div>
+          )}
         </div>
       </nav>
       {powerMsg && (

@@ -4,6 +4,10 @@ import { useState, useCallback } from 'react';
 import { BookOpen, Server, Shield, Monitor, Zap, HardDrive, Wrench, Globe, Settings, FileText, ChevronRight, Search, Package, Rocket, Copy, Check, ChevronDown } from 'lucide-react';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
+import AppShell from '@/components/layout/app-shell';
+import AuthGate from '@/components/layout/auth-gate';
+import { useAuthUser } from '@/lib/auth-client';
+import { headerStickyOffset } from '@/lib/navigation';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -86,7 +90,7 @@ const sections = [
   {
     id: 'server-management', icon: Server, title: 'Server Management', subtitle: 'Adding, editing, and removing servers',
     content: [
-      { heading: 'Adding a Server', body: '1. Navigate to **Dashboard** then click **Add Server**\n2. Enter the iDRAC IP address and credentials (default: root/calvin)\n3. Click **Probe Server** -- the system auto-detects the iDRAC generation\n4. Review detected information (model, service tag, health status)\n5. Name your server and choose credential storage mode:\n   - **Session Only** -- credentials kept in memory for 30 minutes\n   - **Save Encrypted** -- credentials stored with AES-256-GCM encryption' },
+      { heading: 'Adding a Server', body: '1. Navigate to **Dashboard** then click **Add Server**\n2. Enter the iDRAC IP address and credentials\n3. Click **Probe Server** -- the system auto-detects the iDRAC generation\n4. Review detected information (model, service tag, health status)\n5. Name your server and choose credential storage mode:\n   - **Session Only** -- credentials kept in memory for 30 minutes\n   - **Save Encrypted** -- credentials stored with AES-256-GCM encryption' },
       { heading: 'Editing a Server', body: 'From the server list or detail page, click the edit button to modify:\n\n- Server display name\n- Tags for organization\n- Credential storage mode\n\nChanges are saved immediately and logged in the audit trail.' },
       { heading: 'Deleting a Server', body: 'Servers can be deleted from the server list or detail page. Deletion is permanent and removes:\n\n- Server record and all associated data\n- Console session history\n- Server-specific audit log entries (via cascade)\n\nA confirmation dialog prevents accidental deletion.' },
       { heading: 'Auto-Detection', body: 'When probing a server, the adapter factory tries protocols in order:\n\n1. **Redfish** (`/redfish/v1/`) -- if RedfishVersion >= 1.6 then iDRAC 9, else iDRAC 8\n2. **Legacy XML** (`/data?get=version`) -- iDRAC 7\n3. **Legacy CGI** (`/cgi-bin/webcgi/login`) -- iDRAC 6\n\nIf none respond, an error is returned with connectivity troubleshooting guidance.' },
@@ -236,11 +240,13 @@ function renderInline(text: string) {
 }
 
 export default function DocsPage() {
+  const { loggedIn, ready } = useAuthUser();
   const [activeSection, setActiveSection] = useState(sections[0].id);
   const [search, setSearch] = useState('');
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set(sections[0].content.map((_, i) => i)));
 
   const section = sections.find((s) => s.id === activeSection) || sections[0];
+  const stickyTop = headerStickyOffset(loggedIn);
 
   const filteredSections = search
     ? sections.filter((s) => s.title.toLowerCase().includes(search.toLowerCase()) || s.content.some((c) => c.heading.toLowerCase().includes(search.toLowerCase()) || c.body.toLowerCase().includes(search.toLowerCase())))
@@ -258,14 +264,25 @@ export default function DocsPage() {
     setExpandedCards(next);
   };
 
-  return (
-    <div className="min-h-screen flex flex-col bg-bg-body">
-      <PublicHeader />
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-body text-sm text-text-secondary">
+        Loading…
+      </div>
+    );
+  }
 
-      <div className="flex-1 px-4 sm:px-6 py-6">
-        <div className="max-w-layout mx-auto flex flex-col lg:flex-row gap-0 bg-white border border-border-card rounded overflow-hidden min-h-[calc(100vh-180px)]">
-        {/* Sidebar */}
-        <aside className="w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0 lg:sticky lg:top-[52px] lg:self-start lg:max-h-[calc(100vh-180px)] overflow-y-auto">
+  const docsBody = (
+    <div className="flex-1 px-4 sm:px-6 py-6">
+      <div
+        className="max-w-layout mx-auto flex flex-col lg:flex-row gap-0 bg-white border border-border-card rounded overflow-hidden min-h-[calc(100vh-12rem)]"
+        style={{ ['--docs-sticky-top' as string]: stickyTop }}
+      >
+        <aside
+          className="w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0 lg:sticky lg:self-start overflow-y-auto z-10"
+          style={{ top: stickyTop, maxHeight: `calc(100vh - ${stickyTop} - 5rem)` }}
+          aria-label="Documentation sections"
+        >
           <div className="p-4 border-b border-border-card">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
@@ -346,9 +363,22 @@ export default function DocsPage() {
             </div>
           </div>
         </main>
-        </div>
       </div>
+    </div>
+  );
 
+  if (loggedIn) {
+    return (
+      <AuthGate>
+        <AppShell>{docsBody}</AppShell>
+      </AuthGate>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-bg-body">
+      <PublicHeader />
+      {docsBody}
       <PublicFooter />
     </div>
   );

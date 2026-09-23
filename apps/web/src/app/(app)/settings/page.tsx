@@ -1,7 +1,6 @@
 /** Settings page */
 'use client';
 import { useEffect, useState } from 'react';
-import AppShell from '@/components/layout/app-shell';
 import api from '@/lib/api';
 
 export default function SettingsPage() {
@@ -12,7 +11,7 @@ export default function SettingsPage() {
     api.get('/tenant/users').then((r) => setUsers(r.data || [])).catch(() => {});
   }, []);
   return (
-    <AppShell>
+    <>
       <h1 className="text-2xl font-bold mb-4">Settings</h1>
       <div className="space-y-4">
         <div className="bg-white border border-border-card rounded p-6">
@@ -28,6 +27,6 @@ export default function SettingsPage() {
           </table>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

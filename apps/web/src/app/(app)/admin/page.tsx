@@ -6,7 +6,6 @@ import {
   Shield, Users, Building2, Server, Activity, Trash2, Search, RefreshCw,
   ChevronDown, ChevronRight, Eye, Clock, AlertTriangle,
 } from 'lucide-react';
-import AppShell from '@/components/layout/app-shell';
 import api from '@/lib/api';
 
 interface Tenant { id: string; name: string; slug: string; plan: string; createdAt: string; _count?: { users: number; servers: number } }
@@ -29,11 +28,6 @@ export default function AdminPage() {
   const [expandedTenant, setExpandedTenant] = useState<string | null>(null);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.role !== 'OWNER') {
-      router.push('/dashboard');
-      return;
-    }
     loadData();
   }, []);
 
@@ -90,16 +84,14 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <AppShell>
-        <div className="flex items-center justify-center py-20">
-          <RefreshCw className="w-6 h-6 animate-spin text-dell-blue" />
-        </div>
-      </AppShell>
+      <div className="flex items-center justify-center py-20">
+        <RefreshCw className="w-6 h-6 animate-spin text-dell-blue" />
+      </div>
     );
   }
 
   return (
-    <AppShell>
+    <>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -398,6 +390,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

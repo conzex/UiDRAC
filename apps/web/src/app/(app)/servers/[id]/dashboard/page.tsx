@@ -172,7 +172,7 @@ export default function ServerDashboardPage() {
           </div>
         </div>
 
-        {/* Virtual Console + Notes */}
+        {/* Virtual Console */}
         <div className="space-y-4">
           <div className="bg-white border border-border-card rounded">
             <div className="bg-card-header px-4 py-2.5 border-b border-border-card">
@@ -182,12 +182,6 @@ export default function ServerDashboardPage() {
               <div className="aspect-video bg-gray-900 rounded mb-3 flex items-center justify-center text-white/50 text-sm">Console Preview</div>
               <a href={`/servers/${id}/console`} className="inline-block px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover">Launch Console</a>
             </div>
-          </div>
-          <div className="bg-white border border-border-card rounded">
-            <div className="bg-card-header px-4 py-2.5 border-b border-border-card">
-              <h2 className="text-[13px] font-bold uppercase text-text-primary tracking-wide">Notes</h2>
-            </div>
-            <div className="p-4"><textarea placeholder="Add a note about this server..." className="w-full px-3 py-2 border border-border-card rounded text-sm resize-none h-20 focus:ring-2 focus:ring-dell-blue" /></div>
           </div>
         </div>
       </div>
