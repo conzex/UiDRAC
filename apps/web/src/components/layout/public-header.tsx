@@ -74,8 +74,8 @@ export default function PublicHeader() {
             ) : (
               <>
                 <a href="/contact" className="text-white/80 hover:text-white flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Contact</a>
-                <a href="/login" className="px-4 py-1.5 bg-white/20 rounded text-sm font-medium hover:bg-white/30">Sign In</a>
-                <a href="/register" className="px-4 py-1.5 bg-white text-dell-blue rounded text-sm font-semibold hover:bg-white/90">Get Started</a>
+                <a href="/login" className="px-4 py-2 bg-white/20 rounded text-sm font-semibold hover:bg-white/30 transition-colors">Sign In</a>
+                <a href="/register" className="px-4 py-2 bg-white text-dell-blue rounded text-sm font-semibold hover:bg-white/90 transition-colors">Get Started</a>
               </>
             )}
           </nav>

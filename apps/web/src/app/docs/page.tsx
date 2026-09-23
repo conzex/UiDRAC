@@ -164,11 +164,13 @@ export default function DocsPage() {
               </div>
             </div>
 
-            <div className="mt-8 space-y-8">
+            <div className="mt-8 space-y-4">
               {section.content.map((block, i) => (
-                <div key={i} className="bg-white border border-border-card rounded-lg p-6">
-                  <h2 className="text-lg font-bold text-text-primary mb-3">{block.heading}</h2>
-                  <div className="prose prose-sm max-w-none text-text-secondary leading-relaxed">
+                <div key={i} className="bg-white border border-border-card rounded">
+                  <div className="bg-card-header px-4 py-2.5 border-b border-border-card">
+                    <h2 className="text-[13px] font-bold uppercase tracking-wide text-text-primary">{block.heading}</h2>
+                  </div>
+                  <div className="p-4 prose prose-sm max-w-none text-text-secondary leading-relaxed">
                     {block.body.split('\n').map((line, j) => {
                       if (line.startsWith('```')) return null;
                       if (line.startsWith('• **')) {
@@ -191,15 +193,15 @@ export default function DocsPage() {
             </div>
 
             {/* Prev/Next */}
-            <div className="mt-8 flex justify-between">
+            <div className="mt-6 flex justify-between">
               {sections.findIndex((s) => s.id === activeSection) > 0 ? (
-                <button onClick={() => setActiveSection(sections[sections.findIndex((s) => s.id === activeSection) - 1].id)} className="px-4 py-2 text-sm text-dell-blue hover:underline flex items-center gap-1">
-                  <ChevronRight className="w-4 h-4 rotate-180" /> Previous: {sections[sections.findIndex((s) => s.id === activeSection) - 1].title}
+                <button onClick={() => setActiveSection(sections[sections.findIndex((s) => s.id === activeSection) - 1].id)} className="px-4 py-2 bg-white border border-border-card text-sm font-semibold text-dell-blue rounded hover:bg-row-hover transition-colors flex items-center gap-1.5">
+                  <ChevronRight className="w-4 h-4 rotate-180" /> {sections[sections.findIndex((s) => s.id === activeSection) - 1].title}
                 </button>
               ) : <div />}
               {sections.findIndex((s) => s.id === activeSection) < sections.length - 1 ? (
-                <button onClick={() => setActiveSection(sections[sections.findIndex((s) => s.id === activeSection) + 1].id)} className="px-4 py-2 text-sm text-dell-blue hover:underline flex items-center gap-1">
-                  Next: {sections[sections.findIndex((s) => s.id === activeSection) + 1].title} <ChevronRight className="w-4 h-4" />
+                <button onClick={() => setActiveSection(sections[sections.findIndex((s) => s.id === activeSection) + 1].id)} className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
+                  {sections[sections.findIndex((s) => s.id === activeSection) + 1].title} <ChevronRight className="w-4 h-4" />
                 </button>
               ) : <div />}
             </div>

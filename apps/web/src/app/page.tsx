@@ -1,8 +1,7 @@
-/** Landing page — Hero section with features and CTA. */
+/** Landing page — Hero section with features and CTA. Styled to match internal panel. */
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Server, Shield, Zap, Monitor, Globe, Lock, BarChart3, Wrench, Cpu, HardDrive, Thermometer, BookOpen, ArrowRight, CheckCircle } from 'lucide-react';
+import { Server, Shield, Zap, Monitor, Globe, Lock, BarChart3, Wrench, Cpu, HardDrive, Thermometer, BookOpen, ArrowRight, CheckCircle, LayoutDashboard } from 'lucide-react';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
 
@@ -29,7 +28,6 @@ const generations = [
 ];
 
 export default function HomePage() {
-  const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
@@ -41,30 +39,28 @@ export default function HomePage() {
       <PublicHeader />
 
       {/* Hero */}
-      <section className="bg-gradient-to-br from-dell-blue via-dell-blue to-dell-dark text-white py-20 sm:py-28">
+      <section className="bg-gradient-to-br from-dell-blue via-dell-blue to-dell-dark text-white py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
-          <div className="mb-6">
-            <img src="/logo.png" alt="iDRAC Console" className="h-16 mx-auto brightness-0 invert mb-6" />
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+          <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto brightness-0 invert mb-6" />
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">
             Universal iDRAC Console
           </h1>
-          <p className="text-lg sm:text-xl text-white/80 max-w-3xl mx-auto mb-10">
+          <p className="text-sm sm:text-base text-white/80 max-w-2xl mx-auto mb-8">
             Zero-client-install, Docker-hosted web platform for managing Dell PowerEdge servers
             across all iDRAC generations — from legacy iDRAC 6 to modern iDRAC 9.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             {isLoggedIn ? (
-              <a href="/dashboard" className="px-8 py-3.5 bg-white text-dell-blue text-lg font-bold rounded-lg hover:bg-white/90 transition-colors inline-flex items-center gap-2">
-                <LayoutDashboard className="w-5 h-5" /> Go to Dashboard <ArrowRight className="w-5 h-5" />
+              <a href="/dashboard" className="px-5 py-2.5 bg-white text-dell-blue text-sm font-semibold rounded hover:bg-white/90 transition-colors inline-flex items-center justify-center gap-2">
+                <LayoutDashboard className="w-4 h-4" /> Go to Dashboard <ArrowRight className="w-4 h-4" />
               </a>
             ) : (
               <>
-                <a href="/register" className="px-8 py-3.5 bg-white text-dell-blue text-lg font-bold rounded-lg hover:bg-white/90 transition-colors inline-flex items-center gap-2">
-                  Get Started Free <ArrowRight className="w-5 h-5" />
+                <a href="/register" className="px-5 py-2.5 bg-white text-dell-blue text-sm font-semibold rounded hover:bg-white/90 transition-colors inline-flex items-center justify-center gap-2">
+                  Get Started Free <ArrowRight className="w-4 h-4" />
                 </a>
-                <a href="/login" className="px-8 py-3.5 bg-white/10 text-white text-lg font-semibold rounded-lg hover:bg-white/20 transition-colors border border-white/30">
-                  Sign In
+                <a href="/login" className="px-5 py-2.5 bg-white/20 text-white text-sm font-semibold rounded hover:bg-white/30 transition-colors border border-white/30 inline-flex items-center justify-center gap-2">
+                  <Lock className="w-4 h-4" /> Sign In
                 </a>
               </>
             )}
@@ -73,19 +69,19 @@ export default function HomePage() {
       </section>
 
       {/* Generation Support */}
-      <section className="py-16 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <h2 className="text-3xl font-bold text-center mb-4">All Generations. One Platform.</h2>
-          <p className="text-text-secondary text-center mb-12 max-w-2xl mx-auto">Automatic protocol detection adapts to each iDRAC generation — Redfish REST API for modern, legacy XML/CGI for older hardware.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <h2 className="text-xl font-bold text-text-primary text-center mb-2">All Generations. One Platform.</h2>
+          <p className="text-sm text-text-secondary text-center mb-8 max-w-2xl mx-auto">Automatic protocol detection adapts to each iDRAC generation — Redfish REST API for modern, legacy XML/CGI for older hardware.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {generations.map((g) => (
-              <div key={g.gen} className="border border-border-card rounded-lg p-6 text-center hover:shadow-lg transition-shadow">
-                <div className={`inline-flex w-12 h-12 rounded-full ${g.color} text-white items-center justify-center mb-4`}>
-                  <Server className="w-6 h-6" />
+              <div key={g.gen} className="bg-white border border-border-card rounded p-5 text-center hover:border-dell-blue hover:shadow-md transition-all">
+                <div className={`inline-flex w-10 h-10 rounded ${g.color} text-white items-center justify-center mb-3`}>
+                  <Server className="w-5 h-5" />
                 </div>
-                <h3 className="text-lg font-bold mb-1">{g.gen}</h3>
-                <p className="text-sm text-text-secondary mb-2">{g.protocol}</p>
-                <p className="text-xs text-text-secondary">{g.servers}</p>
+                <h3 className="text-sm font-bold text-text-primary mb-1">{g.gen}</h3>
+                <p className="text-xs text-text-secondary mb-1">{g.protocol}</p>
+                <p className="text-[11px] text-text-secondary">{g.servers}</p>
               </div>
             ))}
           </div>
@@ -93,16 +89,20 @@ export default function HomePage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-16 bg-bg-body">
+      <section className="py-12 bg-bg-body">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <h2 className="text-3xl font-bold text-center mb-4">Everything You Need</h2>
-          <p className="text-text-secondary text-center mb-12 max-w-2xl mx-auto">Full-featured iDRAC management with every capability of the native web console — and more.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="text-xl font-bold text-text-primary text-center mb-2">Everything You Need</h2>
+          <p className="text-sm text-text-secondary text-center mb-8 max-w-2xl mx-auto">Full-featured iDRAC management with every capability of the native web console — and more.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((f) => (
-              <div key={f.title} className="bg-white border border-border-card rounded-lg p-6 hover:border-dell-blue hover:shadow-md transition-all">
-                <f.Icon className="w-8 h-8 text-dell-blue mb-4" />
-                <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{f.desc}</p>
+              <div key={f.title} className="bg-white border border-border-card rounded hover:border-dell-blue hover:shadow-md transition-all">
+                <div className="bg-card-header px-4 py-2.5 border-b border-border-card flex items-center gap-2">
+                  <f.Icon className="w-4 h-4 text-dell-blue" />
+                  <h3 className="text-[13px] font-bold uppercase tracking-wide text-text-primary">{f.title}</h3>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-sm text-text-secondary leading-relaxed">{f.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -110,40 +110,45 @@ export default function HomePage() {
       </section>
 
       {/* Why Section */}
-      <section className="py-16 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Universal iDRAC Console?</h2>
-          <div className="space-y-4">
-            {[
-              'No client-side Java, ActiveX, or browser plugins required',
-              'Works with every Dell PowerEdge server from 11th to 16th generation',
-              'Docker-hosted — deploy anywhere in minutes',
-              'Multi-tenant with full RBAC and audit logging',
-              'Session timeout with automatic logout for security',
-              'AES-256-GCM encrypted credential storage',
-              'Real-time sensor monitoring and alerting',
-              'Server Configuration Profile export/import',
-            ].map((item) => (
-              <div key={item} className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-healthy shrink-0 mt-0.5" />
-                <span className="text-text-primary">{item}</span>
-              </div>
-            ))}
+          <h2 className="text-xl font-bold text-text-primary text-center mb-8">Why Universal iDRAC Console?</h2>
+          <div className="bg-white border border-border-card rounded">
+            <div className="bg-card-header px-4 py-2.5 border-b border-border-card">
+              <h3 className="text-[13px] font-bold uppercase tracking-wide text-text-primary">Key Benefits</h3>
+            </div>
+            <div className="p-4 space-y-2.5">
+              {[
+                'No client-side Java, ActiveX, or browser plugins required',
+                'Works with every Dell PowerEdge server from 11th to 16th generation',
+                'Docker-hosted — deploy anywhere in minutes',
+                'Multi-tenant with full RBAC and audit logging',
+                'Session timeout with automatic logout for security',
+                'AES-256-GCM encrypted credential storage',
+                'Real-time sensor monitoring and alerting',
+                'Server Configuration Profile export/import',
+              ].map((item, i) => (
+                <div key={item} className={`flex items-center gap-3 py-1.5 px-2 rounded ${i % 2 === 1 ? 'bg-row-alt' : ''}`}>
+                  <CheckCircle className="w-4 h-4 text-green-healthy shrink-0" />
+                  <span className="text-sm text-text-primary">{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-dell-blue text-white text-center">
+      <section className="py-12 bg-dell-blue text-white text-center">
         <div className="max-w-3xl mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-4">Ready to Manage Your Fleet?</h2>
-          <p className="text-white/80 mb-8">Get started in minutes. No client software required.</p>
-          <div className="flex gap-4 justify-center">
-            <a href={isLoggedIn ? '/dashboard' : '/register'} className="px-8 py-3 bg-white text-dell-blue font-bold rounded-lg hover:bg-white/90 inline-flex items-center gap-2">
-              {isLoggedIn ? 'Go to Dashboard' : 'Get Started'} <ArrowRight className="w-5 h-5" />
+          <h2 className="text-xl font-bold mb-3">Ready to Manage Your Fleet?</h2>
+          <p className="text-sm text-white/80 mb-6">Get started in minutes. No client software required.</p>
+          <div className="flex gap-3 justify-center">
+            <a href={isLoggedIn ? '/dashboard' : '/register'} className="px-5 py-2.5 bg-white text-dell-blue text-sm font-semibold rounded hover:bg-white/90 transition-colors inline-flex items-center gap-2">
+              {isLoggedIn ? 'Go to Dashboard' : 'Get Started'} <ArrowRight className="w-4 h-4" />
             </a>
-            <a href="/docs" className="px-8 py-3 bg-white/10 text-white font-semibold rounded-lg border border-white/30 hover:bg-white/20">
-              Read the Docs
+            <a href="/docs" className="px-5 py-2.5 bg-white/20 text-white text-sm font-semibold rounded border border-white/30 hover:bg-white/30 transition-colors inline-flex items-center gap-2">
+              <BookOpen className="w-4 h-4" /> Read the Docs
             </a>
           </div>
         </div>
@@ -152,8 +157,4 @@ export default function HomePage() {
       <PublicFooter />
     </div>
   );
-}
-
-function LayoutDashboard(props: any) {
-  return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
 }
