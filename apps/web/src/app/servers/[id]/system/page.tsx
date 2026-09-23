@@ -30,7 +30,7 @@ export default function SystemPage() {
 
   if (error && !info) return (
     <div className="bg-red-50 border border-red-200 rounded p-8 text-center">
-      <div className="text-red-critical text-4xl mb-3">⚠</div>
+      <AlertTriangle className="w-10 h-10 text-red-critical mx-auto mb-3" />
       <h2 className="text-lg font-semibold text-text-primary mb-2">Unable to Load System Information</h2>
       <p className="text-sm text-text-secondary mb-4 max-w-md mx-auto">{error}</p>
       <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover">Retry</button>

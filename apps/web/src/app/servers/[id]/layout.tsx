@@ -28,7 +28,7 @@ export default function ServerLayout({ children }: { children: React.ReactNode }
           </span>
         </div>
       )}
-      <ServerNav serverId={id} />
+      <ServerNav serverId={id} server={server} />
       {children}
     </AppShell>
   );

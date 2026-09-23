@@ -1,10 +1,10 @@
-/** server-nav.tsx — Secondary navigation for server detail pages with power actions. */
+/** server-nav.tsx — Server detail navigation with power actions and info tooltip. */
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Server, HardDrive, Settings, Wrench, Shield, Monitor,
-  Power, ChevronDown, Zap, RotateCw, PowerOff, AlertTriangle,
+  Power, ChevronDown, Zap, RotateCw, PowerOff, AlertTriangle, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
@@ -27,10 +27,11 @@ const powerActions = [
   { action: 'nmi', label: 'NMI (Debug)', Icon: AlertTriangle, color: 'text-red-600 hover:bg-red-50' },
 ];
 
-export default function ServerNav({ serverId }: { serverId: string }) {
+export default function ServerNav({ serverId, server }: { serverId: string; server?: any }) {
   const pathname = usePathname();
   const [powerOpen, setPowerOpen] = useState(false);
   const [powerMsg, setPowerMsg] = useState('');
+  const [showInfo, setShowInfo] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +55,8 @@ export default function ServerNav({ serverId }: { serverId: string }) {
     setTimeout(() => setPowerMsg(''), 4000);
   };
 
+  const genLabel = server?.generation?.replace('GEN', 'iDRAC ') ?? 'iDRAC';
+
   return (
     <div className="mb-4">
       <nav className="flex items-center border-b border-border-card bg-white">
@@ -73,27 +76,54 @@ export default function ServerNav({ serverId }: { serverId: string }) {
           })}
         </div>
 
-        {/* Power Actions — right side */}
-        <div className="relative shrink-0 px-2" ref={menuRef}>
-          <button
-            onClick={() => setPowerOpen(!powerOpen)}
-            className="px-3 py-1.5 bg-dell-blue text-white text-xs font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5"
-          >
-            <Power className="w-3.5 h-3.5" /> Power <ChevronDown className={cn('w-3 h-3 transition-transform', powerOpen && 'rotate-180')} />
-          </button>
-          {powerOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-white border border-border-card rounded shadow-lg py-1 w-52 z-50">
-              {powerActions.map((pa) => (
-                <button
-                  key={pa.action}
-                  onClick={() => doPowerAction(pa.action, pa.label)}
-                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors ${pa.color}`}
-                >
-                  <pa.Icon className="w-3.5 h-3.5" /> {pa.label}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Right side: Info + Power */}
+        <div className="flex items-center gap-1.5 shrink-0 px-2">
+          {/* Info tooltip */}
+          <div className="relative">
+            <button
+              onMouseEnter={() => setShowInfo(true)}
+              onMouseLeave={() => setShowInfo(false)}
+              className="p-1.5 text-text-secondary hover:text-dell-blue transition-colors rounded hover:bg-gray-100"
+              title="Connection Information"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+            {showInfo && server && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-border-card rounded shadow-lg p-3 w-56 z-50 text-xs">
+                <div className="font-semibold text-text-primary mb-2">Connection Information</div>
+                <div className="space-y-1.5 text-text-secondary">
+                  <div className="flex justify-between"><span>Server</span><span className="font-medium text-text-primary">{server.name}</span></div>
+                  <div className="flex justify-between"><span>iDRAC IP</span><span className="font-mono text-text-primary">{server.ip}</span></div>
+                  <div className="flex justify-between"><span>Generation</span><span className="font-medium text-text-primary">{genLabel}</span></div>
+                  <div className="flex justify-between"><span>Health</span><span className="font-medium text-text-primary capitalize">{server.health?.toLowerCase()}</span></div>
+                  {server.serviceTag && <div className="flex justify-between"><span>Service Tag</span><span className="font-mono text-text-primary">{server.serviceTag}</span></div>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Power dropdown */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setPowerOpen(!powerOpen)}
+              className="px-3 py-1.5 bg-dell-blue text-white text-xs font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5"
+            >
+              <Power className="w-3.5 h-3.5" /> Power <ChevronDown className={cn('w-3 h-3 transition-transform', powerOpen && 'rotate-180')} />
+            </button>
+            {powerOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-border-card rounded shadow-lg py-1 w-52 z-50">
+                {powerActions.map((pa) => (
+                  <button
+                    key={pa.action}
+                    onClick={() => doPowerAction(pa.action, pa.label)}
+                    className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors ${pa.color}`}
+                  >
+                    <pa.Icon className="w-3.5 h-3.5" /> {pa.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </nav>
       {powerMsg && (

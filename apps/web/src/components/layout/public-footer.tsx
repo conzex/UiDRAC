@@ -3,7 +3,7 @@ export default function PublicFooter() {
   const year = new Date().getFullYear();
   return (
     <footer className="bg-white border-t border-border-card py-4 shrink-0">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-layout mx-auto px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-text-secondary">
           <div className="flex items-center gap-1">
             <img src="/logo.png" alt="iDRAC Console" className="h-4 opacity-50" />

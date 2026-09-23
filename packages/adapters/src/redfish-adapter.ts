@@ -331,7 +331,7 @@ export class RedfishAdapter implements IdracAdapter {
   // ── Console ──
 
   async getConsoleUrl(): Promise<ConsoleLaunch> {
-    return { type: 'html5', url: `https://${this.ip}/console/console.html`, generation: this.generation };
+    return { type: 'html5', url: `https://${this.ip}/restgui/start.html`, generation: this.generation };
   }
 
   // ── Virtual Media ──
