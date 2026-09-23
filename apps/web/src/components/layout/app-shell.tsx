@@ -3,11 +3,14 @@
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { User, LogOut, LayoutDashboard, Server, FileText, Settings } from 'lucide-react';
+import { useSessionTimeout } from '@/lib/useSessionTimeout';
+import SessionTimeoutModal from './session-timeout-modal';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<Record<string, string>>({});
+  const { showWarning, remainingSeconds, resetTimer } = useSessionTimeout();
 
   useEffect(() => {
     try { setUser(JSON.parse(localStorage.getItem('user') || '{}')); } catch { /* ignore */ }
@@ -21,6 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {showWarning && <SessionTimeoutModal remainingSeconds={remainingSeconds} onStayLoggedIn={resetTimer} />}
       {/* Top Banner */}
       <header className="h-[52px] bg-dell-blue flex items-center px-6 text-white shrink-0">
         <a href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity cursor-pointer">

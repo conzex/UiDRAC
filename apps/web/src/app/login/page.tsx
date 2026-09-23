@@ -1,18 +1,24 @@
 /** Login page — Dell iDRAC 9 styled login screen. */
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, EyeOff, Lock, Shield } from 'lucide-react';
+import { Eye, EyeOff, Lock, Shield, Clock } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (searchParams?.get('reason') === 'timeout') setTimedOut(true);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +46,11 @@ export default function LoginPage() {
           <p className="text-sm text-text-secondary mt-1">Sign in to your account</p>
         </div>
 
+        {timedOut && !error && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm p-3 rounded mb-4 flex items-center gap-2">
+            <Clock className="w-4 h-4 shrink-0" /> Your session expired due to inactivity. Please sign in again.
+          </div>
+        )}
         {error && <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">

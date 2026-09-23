@@ -1,4 +1,4 @@
-/** servers.controller.ts — Server management endpoints. */
+/** servers.controller.ts — Full iDRAC server management endpoints. */
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req } from '@nestjs/common';
 import { ServersService } from './servers.service';
 import { Public } from '../auth/decorators';
@@ -16,36 +16,28 @@ export class ServersController {
     return req.user?.tenantId ?? '';
   }
 
+  // ── CRUD ──
+
   @Get()
-  async findAll(@Req() req: any, @Query() query: any) {
-    return this.servers.findAll(await this.tenantId(req), query);
-  }
+  async findAll(@Req() req: any, @Query() query: any) { return this.servers.findAll(await this.tenantId(req), query); }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: any) {
-    return this.servers.findOne(id, await this.tenantId(req));
-  }
+  async findOne(@Param('id') id: string, @Req() req: any) { return this.servers.findOne(id, await this.tenantId(req)); }
 
   @Post()
-  create(@Body() body: any, @Req() req: any) {
-    return this.servers.create(req.user?.tenantId, body);
-  }
+  create(@Body() body: any, @Req() req: any) { return this.servers.create(req.user?.tenantId, body); }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
-    return this.servers.update(id, await this.tenantId(req), body);
-  }
+  async update(@Param('id') id: string, @Body() body: any, @Req() req: any) { return this.servers.update(id, await this.tenantId(req), body); }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req: any) {
-    return this.servers.remove(id, await this.tenantId(req));
-  }
+  async remove(@Param('id') id: string, @Req() req: any) { return this.servers.remove(id, await this.tenantId(req)); }
 
   @Public()
   @Post('probe')
-  probe(@Body() body: { ip: string; username: string; password: string }) {
-    return this.servers.probe(body.ip, body.username, body.password);
-  }
+  probe(@Body() body: { ip: string; username: string; password: string }) { return this.servers.probe(body.ip, body.username, body.password); }
+
+  // ── Core ──
 
   @Get(':id/health')
   async getHealth(@Param('id') id: string, @Req() req: any) { return this.servers.getHealth(id, await this.tenantId(req)); }
@@ -71,8 +63,130 @@ export class ServersController {
   @Get(':id/logs')
   async getLogs(@Param('id') id: string, @Req() req: any) { return this.servers.getLogs(id, await this.tenantId(req)); }
 
+  // ── Power ──
+
   @Post(':id/power')
   async powerAction(@Param('id') id: string, @Body() body: { action: string }, @Req() req: any) {
     return this.servers.powerAction(id, await this.tenantId(req), body.action);
   }
+
+  @Get(':id/power/readings')
+  async getPowerReadings(@Param('id') id: string, @Req() req: any) { return this.servers.getPowerReadings(id, await this.tenantId(req)); }
+
+  @Get(':id/thermal')
+  async getThermal(@Param('id') id: string, @Req() req: any) { return this.servers.getThermal(id, await this.tenantId(req)); }
+
+  @Patch(':id/power/cap')
+  async setPowerCap(@Param('id') id: string, @Body() body: { watts: number | null }, @Req() req: any) {
+    return this.servers.setPowerCap(id, await this.tenantId(req), body.watts);
+  }
+
+  @Post(':id/identify')
+  async setIdentify(@Param('id') id: string, @Body() body: { on: boolean }, @Req() req: any) {
+    return this.servers.setIdentify(id, await this.tenantId(req), body.on);
+  }
+
+  // ── BIOS ──
+
+  @Get(':id/bios')
+  async getBiosConfig(@Param('id') id: string, @Req() req: any) { return this.servers.getBiosConfig(id, await this.tenantId(req)); }
+
+  @Patch(':id/bios')
+  async setBiosAttributes(@Param('id') id: string, @Body() body: { attributes: Record<string, string> }, @Req() req: any) {
+    return this.servers.setBiosAttributes(id, await this.tenantId(req), body.attributes);
+  }
+
+  @Patch(':id/boot-order')
+  async setBootOrder(@Param('id') id: string, @Body() body: { order: string[] }, @Req() req: any) {
+    return this.servers.setBootOrder(id, await this.tenantId(req), body.order);
+  }
+
+  // ── iDRAC Users ──
+
+  @Get(':id/idrac-users')
+  async getIdracUsers(@Param('id') id: string, @Req() req: any) { return this.servers.getIdracUsers(id, await this.tenantId(req)); }
+
+  @Post(':id/idrac-users')
+  async createIdracUser(@Param('id') id: string, @Body() body: { name: string; password: string; privilege: string }, @Req() req: any) {
+    return this.servers.createIdracUser(id, await this.tenantId(req), body.name, body.password, body.privilege);
+  }
+
+  @Delete(':id/idrac-users/:userId')
+  async deleteIdracUser(@Param('id') id: string, @Param('userId') userId: string, @Req() req: any) {
+    return this.servers.deleteIdracUser(id, await this.tenantId(req), parseInt(userId));
+  }
+
+  @Patch(':id/idrac-users/:userId/password')
+  async updateIdracUserPassword(@Param('id') id: string, @Param('userId') userId: string, @Body() body: { password: string }, @Req() req: any) {
+    return this.servers.updateIdracUserPassword(id, await this.tenantId(req), parseInt(userId), body.password);
+  }
+
+  // ── Virtual Media ──
+
+  @Get(':id/virtual-media')
+  async getVirtualMedia(@Param('id') id: string, @Req() req: any) { return this.servers.getVirtualMedia(id, await this.tenantId(req)); }
+
+  @Post(':id/virtual-media/mount')
+  async mountVirtualMedia(@Param('id') id: string, @Body() body: { image: string }, @Req() req: any) {
+    return this.servers.mountVirtualMedia(id, await this.tenantId(req), body.image);
+  }
+
+  @Post(':id/virtual-media/eject')
+  async ejectVirtualMedia(@Param('id') id: string, @Req() req: any) { return this.servers.ejectVirtualMedia(id, await this.tenantId(req)); }
+
+  // ── iDRAC Network ──
+
+  @Get(':id/idrac-network')
+  async getIdracNetwork(@Param('id') id: string, @Req() req: any) { return this.servers.getIdracNetwork(id, await this.tenantId(req)); }
+
+  @Patch(':id/idrac-network')
+  async setIdracNetwork(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    return this.servers.setIdracNetwork(id, await this.tenantId(req), body);
+  }
+
+  // ── Inventory ──
+
+  @Get(':id/memory')
+  async getMemory(@Param('id') id: string, @Req() req: any) { return this.servers.getMemory(id, await this.tenantId(req)); }
+
+  @Get(':id/cpus')
+  async getCpus(@Param('id') id: string, @Req() req: any) { return this.servers.getCpus(id, await this.tenantId(req)); }
+
+  @Get(':id/pcie')
+  async getPcieDevices(@Param('id') id: string, @Req() req: any) { return this.servers.getPcieDevices(id, await this.tenantId(req)); }
+
+  // ── Lifecycle Controller ──
+
+  @Get(':id/lc-jobs')
+  async getLcJobs(@Param('id') id: string, @Req() req: any) { return this.servers.getLcJobs(id, await this.tenantId(req)); }
+
+  @Delete(':id/lc-jobs/:jobId')
+  async deleteLcJob(@Param('id') id: string, @Param('jobId') jobId: string, @Req() req: any) {
+    return this.servers.deleteLcJob(id, await this.tenantId(req), jobId);
+  }
+
+  @Delete(':id/lc-jobs')
+  async clearLcJobs(@Param('id') id: string, @Req() req: any) { return this.servers.clearLcJobs(id, await this.tenantId(req)); }
+
+  // ── Certificates ──
+
+  @Get(':id/certificates')
+  async getCertificates(@Param('id') id: string, @Req() req: any) { return this.servers.getCertificates(id, await this.tenantId(req)); }
+
+  // ── Licenses ──
+
+  @Get(':id/licenses')
+  async getLicenses(@Param('id') id: string, @Req() req: any) { return this.servers.getLicenses(id, await this.tenantId(req)); }
+
+  // ── SCP ──
+
+  @Post(':id/scp/export')
+  async exportScp(@Param('id') id: string, @Body() body: { format: 'xml' | 'json' }, @Req() req: any) {
+    return this.servers.exportScp(id, await this.tenantId(req), body.format);
+  }
+
+  // ── Console ──
+
+  @Get(':id/console-url')
+  async getConsoleUrl(@Param('id') id: string, @Req() req: any) { return this.servers.getConsoleUrl(id, await this.tenantId(req)); }
 }

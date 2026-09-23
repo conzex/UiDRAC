@@ -1,8 +1,8 @@
-/** servers.service.ts — Server CRUD and iDRAC adapter integration. */
+/** servers.service.ts — Server CRUD and full iDRAC adapter integration. */
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { getAdapter, probeGeneration } from '@idrac/adapters';
-import type { IdracGeneration } from '@idrac/shared';
+import type { IdracGeneration, IdracAdapter } from '@idrac/shared';
 
 const GEN_MAP: Record<string, string> = { '6': 'GEN6', '7': 'GEN7', '8': 'GEN8', '9': 'GEN9' };
 const GEN_REVERSE: Record<string, IdracGeneration> = { GEN6: '6', GEN7: '7', GEN8: '8', GEN9: '9' };
@@ -10,6 +10,8 @@ const GEN_REVERSE: Record<string, IdracGeneration> = { GEN6: '6', GEN7: '7', GEN
 @Injectable()
 export class ServersService {
   constructor(private prisma: PrismaService) {}
+
+  // ── CRUD ──
 
   async findAll(tenantId: string | null, query?: { page?: number; pageSize?: number; search?: string; generation?: string; health?: string }) {
     const page = query?.page ?? 1;
@@ -71,71 +73,183 @@ export class ServersService {
     return this.prisma.server.delete({ where: { id } });
   }
 
-  private getAdapterForServer(server: { ip: string; generation: string }, username = 'root', password = 'calvin') {
+  // ── Adapter Helpers ──
+
+  private getAdapterForServer(server: { ip: string; generation: string }, username = 'root', password = 'calvin'): IdracAdapter {
     const gen = GEN_REVERSE[server.generation] ?? '9';
     return getAdapter(gen, { ip: server.ip, username, password });
   }
 
-  async getHealth(id: string, tenantId: string | null) {
+  private async withAdapter<T>(id: string, tenantId: string | null, fn: (adapter: IdracAdapter) => Promise<T>): Promise<T> {
     const server = await this.findOne(id, tenantId);
     const adapter = this.getAdapterForServer(server);
     await adapter.connect();
-    try { return await adapter.getHealth(); } finally { await adapter.disconnect(); }
+    try { return await fn(adapter); } finally { await adapter.disconnect(); }
+  }
+
+  // ── Core Features ──
+
+  async getHealth(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getHealth());
   }
 
   async getSystemInfo(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getSystemInfo(); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getSystemInfo());
   }
 
   async getStorage(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getStorage(); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getStorage());
   }
 
   async getNetwork(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getNetwork(); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getNetwork());
   }
 
   async getFirmware(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getFirmware(); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getFirmware());
   }
 
   async getSensors(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getSensors(); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getSensors());
   }
 
   async getSel(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getSel(); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getSel());
   }
 
   async getLogs(id: string, tenantId: string | null) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { return await adapter.getLogs({ limit: 50 }); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.getLogs({ limit: 50 }));
   }
 
   async powerAction(id: string, tenantId: string | null, action: string) {
-    const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
-    await adapter.connect();
-    try { await adapter.powerAction(action as any); } finally { await adapter.disconnect(); }
+    return this.withAdapter(id, tenantId, (a) => a.powerAction(action as any));
+  }
+
+  // ── Power & Thermal ──
+
+  async getPowerReadings(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getPowerReadings());
+  }
+
+  async getThermal(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getThermal());
+  }
+
+  async setPowerCap(id: string, tenantId: string | null, watts: number | null) {
+    return this.withAdapter(id, tenantId, (a) => a.setPowerCap(watts));
+  }
+
+  // ── BIOS ──
+
+  async getBiosConfig(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getBiosConfig());
+  }
+
+  async setBiosAttributes(id: string, tenantId: string | null, attrs: Record<string, string>) {
+    return this.withAdapter(id, tenantId, (a) => a.setBiosAttributes(attrs));
+  }
+
+  async setBootOrder(id: string, tenantId: string | null, order: string[]) {
+    return this.withAdapter(id, tenantId, (a) => a.setBootOrder(order));
+  }
+
+  // ── iDRAC Users ──
+
+  async getIdracUsers(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getUsers());
+  }
+
+  async createIdracUser(id: string, tenantId: string | null, name: string, password: string, privilege: string) {
+    return this.withAdapter(id, tenantId, (a) => a.createUser(name, password, privilege));
+  }
+
+  async deleteIdracUser(id: string, tenantId: string | null, userId: number) {
+    return this.withAdapter(id, tenantId, (a) => a.deleteUser(userId));
+  }
+
+  async updateIdracUserPassword(id: string, tenantId: string | null, userId: number, password: string) {
+    return this.withAdapter(id, tenantId, (a) => a.updateUserPassword(userId, password));
+  }
+
+  // ── Virtual Media ──
+
+  async getVirtualMedia(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getVirtualMedia());
+  }
+
+  async mountVirtualMedia(id: string, tenantId: string | null, iso: string) {
+    return this.withAdapter(id, tenantId, (a) => a.mountVirtualMedia(iso));
+  }
+
+  async ejectVirtualMedia(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.ejectVirtualMedia());
+  }
+
+  // ── iDRAC Network ──
+
+  async getIdracNetwork(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getIdracNetwork());
+  }
+
+  async setIdracNetwork(id: string, tenantId: string | null, config: Record<string, unknown>) {
+    return this.withAdapter(id, tenantId, (a) => a.setIdracNetwork(config as any));
+  }
+
+  // ── Inventory ──
+
+  async getMemory(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getMemory());
+  }
+
+  async getCpus(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getCpus());
+  }
+
+  async getPcieDevices(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getPcieDevices());
+  }
+
+  // ── Lifecycle Controller ──
+
+  async getLcJobs(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getLcJobs());
+  }
+
+  async deleteLcJob(id: string, tenantId: string | null, jobId: string) {
+    return this.withAdapter(id, tenantId, (a) => a.deleteLcJob(jobId));
+  }
+
+  async clearLcJobs(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.clearLcJobs());
+  }
+
+  // ── Certificates ──
+
+  async getCertificates(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getCertificates());
+  }
+
+  // ── Licenses ──
+
+  async getLicenses(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getLicenses());
+  }
+
+  // ── SCP ──
+
+  async exportScp(id: string, tenantId: string | null, format: 'xml' | 'json') {
+    return this.withAdapter(id, tenantId, (a) => a.exportScp(format));
+  }
+
+  // ── Identify ──
+
+  async setIdentify(id: string, tenantId: string | null, on: boolean) {
+    return this.withAdapter(id, tenantId, (a) => a.setIdentify(on));
+  }
+
+  // ── Console ──
+
+  async getConsoleUrl(id: string, tenantId: string | null) {
+    return this.withAdapter(id, tenantId, (a) => a.getConsoleUrl());
   }
 }

@@ -1,6 +1,6 @@
-/** auth.controller.ts — Auth endpoints: login, register, refresh, logout. */
-import { Controller, Post, Body, Res, HttpCode } from '@nestjs/common';
-import type { Response } from 'express';
+/** auth.controller.ts — Auth endpoints: login, register, refresh, logout, sessions. */
+import { Controller, Post, Get, Delete, Body, Param, Req, Res, HttpCode } from '@nestjs/common';
+import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { Public } from './decorators';
 
@@ -11,37 +11,55 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(200)
-  async login(@Body() body: { email: string; password: string }, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.login(body.email, body.password);
+  async login(@Body() body: { email: string; password: string }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '0.0.0.0';
+    const ua = req.headers['user-agent'] || 'unknown';
+    const result = await this.auth.login(body.email, body.password, ip, ua);
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true, secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/api/auth',
     });
-    return { accessToken: result.accessToken, user: result.user };
+    return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
   }
 
   @Public()
   @Post('register')
-  async register(@Body() body: { email: string; password: string; tenantName: string }, @Res({ passthrough: true }) res: Response) {
+  async register(@Body() body: { email: string; password: string; tenantName: string }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '0.0.0.0';
+    const ua = req.headers['user-agent'] || 'unknown';
     const result = await this.auth.register(body.email, body.password, body.tenantName);
     res.cookie('refreshToken', result.refreshToken, {
       httpOnly: true, secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000, path: '/api/auth',
     });
-    return { accessToken: result.accessToken, user: result.user };
+    return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
   }
 
   @Public()
   @Post('refresh')
   @HttpCode(200)
-  async refresh(@Body() body: { refreshToken: string }) {
-    return this.auth.refresh(body.refreshToken);
+  async refresh(@Body() body: { refreshToken: string }, @Req() req: Request) {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '0.0.0.0';
+    const ua = req.headers['user-agent'] || 'unknown';
+    const result = await this.auth.refresh(body.refreshToken, ip, ua);
+    return { accessToken: result.accessToken, expiresIn: result.expiresIn, user: result.user };
   }
 
   @Post('logout')
   @HttpCode(200)
-  async logout(@Body() body: { userId: string }) {
-    await this.auth.logout(body.userId);
+  async logout(@Req() req: any) {
+    await this.auth.logout(req.user?.sub || req.body?.userId);
     return { message: 'Logged out' };
+  }
+
+  @Get('sessions')
+  async getSessions(@Req() req: any) {
+    return this.auth.getActiveSessions(req.user?.sub);
+  }
+
+  @Delete('sessions/:id')
+  async revokeSession(@Param('id') id: string, @Req() req: any) {
+    await this.auth.revokeSession(req.user?.sub, id);
+    return { message: 'Session revoked' };
   }
 }
