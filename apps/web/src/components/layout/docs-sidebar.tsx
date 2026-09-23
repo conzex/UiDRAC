@@ -30,7 +30,8 @@ export default function DocsSidebar({
   headerOffsetPx,
 }: DocsSidebarProps) {
   const stickyStyle = {
-    ['--docs-header-offset' as string]: `${headerOffsetPx}px`,
+    top: `${headerOffsetPx}px`,
+    maxHeight: `calc(100vh - ${headerOffsetPx}px - 1.5rem)`,
   } as React.CSSProperties;
 
   return (
@@ -38,8 +39,7 @@ export default function DocsSidebar({
       <aside
         className={cn(
           'hidden lg:block w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0',
-          'lg:sticky lg:self-start lg:overflow-y-auto z-10',
-          'lg:top-[var(--docs-header-offset)] lg:max-h-[calc(100vh-var(--docs-header-offset)-2rem)]',
+          'lg:sticky lg:self-start z-10 overflow-y-auto overscroll-contain',
         )}
         style={stickyStyle}
         aria-label="Documentation sections"

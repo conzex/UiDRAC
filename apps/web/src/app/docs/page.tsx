@@ -273,7 +273,7 @@ export default function DocsPage() {
   }
 
   const docsPanel = (
-    <div className="flex flex-col lg:flex-row gap-0 bg-white border border-border-card rounded overflow-hidden min-h-[min(640px,calc(100vh-12rem))]">
+    <div className="flex flex-col lg:flex-row lg:items-start gap-0 bg-white border border-border-card rounded min-h-[min(640px,calc(100vh-12rem))]">
       <DocsSidebar
         sections={sections}
         filteredSections={filteredSections}
