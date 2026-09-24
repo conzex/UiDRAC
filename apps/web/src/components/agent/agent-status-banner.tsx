@@ -23,7 +23,9 @@ export function AgentStatusBanner({ status }: { status: AgentStatus | null }) {
           {status.lastSeenIp ? ` from ${status.lastSeenIp}` : ''}
         </span>
       )}
-      <span className="text-xs opacity-70 ml-auto font-mono">ID {status.publicId.slice(0, 8)}…</span>
+      <span className="text-xs font-mono break-all">
+        Unique agent ID: <span className="font-semibold">{status.publicId}</span>
+      </span>
     </div>
   );
 }

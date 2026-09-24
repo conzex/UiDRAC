@@ -24,6 +24,7 @@
     "docker:dev": "docker compose up -d",
     "docker:prod": "docker compose -f docker-compose.prod.yml up -d",
     "docker:build": "docker compose -f docker-compose.prod.yml build",
+    "build:edge-agent": "pnpm --filter @idrac/edge-agent build",
     "clean": "turbo clean && rm -rf node_modules",
     "version:track": "node scripts/version-track.mjs",
     "prepare": "node scripts/install-git-hooks.mjs"

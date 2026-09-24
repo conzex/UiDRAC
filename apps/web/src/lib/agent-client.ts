@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
 
+export const ORG_AGENT_HINT = 'Your org-specific agent (install before Add Server in cloud mode)';
+
 export type AgentStatus = {
   publicId: string;
   connected: boolean;
@@ -28,7 +30,12 @@ export function useAgentStatus(pollMs = 15_000) {
         setLoading(false);
       })
       .catch((err) => {
-        setError(err.response?.data?.message || 'Unable to load agent status');
+        const code = err.response?.status;
+        if (code === 404) {
+          setError('Agent API not loaded. Rebuild the API service (docker compose up -d --build api).');
+        } else {
+          setError(err.response?.data?.message || 'Unable to load agent status');
+        }
         setLoading(false);
       });
   }, []);
@@ -42,14 +49,41 @@ export function useAgentStatus(pollMs = 15_000) {
   return { status, loading, error, refresh };
 }
 
+async function readApiError(err: unknown): Promise<string> {
+  const ax = err as { response?: { status?: number; data?: Blob | { message?: string } } };
+  if (ax.response?.status === 404) {
+    return 'Agent download endpoint not found. Rebuild and restart the API: docker compose up -d --build api';
+  }
+  const data = ax.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text()) as { message?: string };
+      if (parsed.message) return parsed.message;
+    } catch {
+      /* ignore */
+    }
+  } else if (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string') {
+    return data.message;
+  }
+  return 'Agent download failed. Check that the API is running and your session is valid.';
+}
+
 export async function downloadAgentBundle(platform: 'linux' | 'win' | 'darwin') {
-  const res = await api.get('/agent/download', { params: { platform }, responseType: 'blob' });
-  saveAgentBlob(res.data, `idrac-agent-${platform}.json`);
+  try {
+    const res = await api.get('/agent/download', { params: { platform }, responseType: 'blob' });
+    saveAgentBlob(res.data, `idrac-agent-${platform}.json`);
+  } catch (err) {
+    throw new Error(await readApiError(err));
+  }
 }
 
 export async function rotateAgentCredentials() {
-  const res = await api.post('/agent/rotate', null, { responseType: 'blob' });
-  saveAgentBlob(res.data, 'idrac-agent-linux.json');
+  try {
+    const res = await api.post('/agent/rotate', null, { responseType: 'blob' });
+    saveAgentBlob(res.data, 'idrac-agent-linux.json');
+  } catch (err) {
+    throw new Error(await readApiError(err));
+  }
 }
 
 function saveAgentBlob(data: BlobPart, filename: string) {

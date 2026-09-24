@@ -1,5 +1,5 @@
 /** agent.service.ts — Per-tenant edge agent credentials and download bundles. */
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
@@ -25,12 +25,29 @@ export type AgentStatusDto = {
 };
 
 @Injectable()
-export class AgentService {
+export class AgentService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
     private bridge: AgentBridgeService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      const tenants = await this.prisma.tenant.findMany({
+        where: { edgeAgent: null },
+        select: { id: true },
+      });
+      for (const t of tenants) {
+        await this.ensureForTenant(t.id);
+      }
+      if (tenants.length > 0) {
+        console.log(`[agent] Provisioned edge agents for ${tenants.length} tenant(s)`);
+      }
+    } catch (err: any) {
+      console.error('[agent] Startup provisioning skipped:', err?.message || err);
+    }
+  }
 
   async ensureForTenant(tenantId: string) {
     const existing = await this.prisma.tenantEdgeAgent.findUnique({ where: { tenantId } });
@@ -91,6 +108,7 @@ export class AgentService {
       schema: 'idrac-edge-agent/v1',
       tenantId,
       agentId: record.publicId,
+      uniqueAgentId: record.publicId,
       agentSecret: secret,
       enrollmentSignature: record.enrollmentSig,
       enrollmentToken,

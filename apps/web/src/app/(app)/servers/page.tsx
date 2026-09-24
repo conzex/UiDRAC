@@ -5,9 +5,7 @@ import { Plus, Pencil, Trash2, X, Save, AlertTriangle, Search } from 'lucide-rea
 import api from '@/lib/api';
 import { readStoredUser } from '@/lib/auth-client';
 import { canDeleteServers, canMutateServers } from '@/lib/rbac';
-import { AgentDownloadButton } from '@/components/agent/agent-download-button';
-import { AgentStatusBanner } from '@/components/agent/agent-status-banner';
-import { useAgentStatus } from '@/lib/agent-client';
+import { AgentToolbar } from '@/components/agent/agent-toolbar';
 
 export default function ServersPage() {
   const [servers, setServers] = useState<any[]>([]);
@@ -74,23 +72,19 @@ export default function ServersPage() {
   const filtered = servers.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.ip.includes(search));
   const canEdit = canMutateServers(readStoredUser()?.role);
   const canDelete = canDeleteServers(readStoredUser()?.role);
-  const { status: agentStatus } = useAgentStatus();
 
   return (
     <>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="text-2xl font-bold">Servers</h1>
         {canEdit && (
-          <div className="flex items-center gap-2">
-            <AgentDownloadButton />
-            <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover flex items-center gap-1.5">
-              <Plus className="w-4 h-4" /> Add Server
-            </a>
-          </div>
+          <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover flex items-center gap-1.5">
+            <Plus className="w-4 h-4" /> Add Server
+          </a>
         )}
       </div>
 
-      <AgentStatusBanner status={agentStatus} />
+      {canEdit && <AgentToolbar className="mb-4" />}
 
       {actionMsg && (
         <div className="bg-blue-50 border border-blue-200 text-dell-blue text-sm p-3 rounded mb-4 flex items-center justify-between">

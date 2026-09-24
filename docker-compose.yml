@@ -57,8 +57,10 @@ services:
       - sh
       - -c
       - |
+        pnpm install --filter @idrac/api... --filter @idrac/edge-agent... --prefer-offline
         pnpm db:generate
-        pnpm exec prisma db push --schema=packages/db/prisma/schema.prisma --skip-generate
+        /app/packages/db/node_modules/.bin/prisma db push --schema=packages/db/prisma/schema.prisma --skip-generate
+        pnpm --filter @idrac/edge-agent build
         node -r @swc/register apps/api/src/main.ts
     environment:
       NODE_ENV: development
@@ -70,6 +72,7 @@ services:
     volumes:
       - ./apps/api/src:/app/apps/api/src
       - ./apps/api/tsconfig.json:/app/apps/api/tsconfig.json
+      - ./apps/edge-agent:/app/apps/edge-agent
       - ./packages/adapters/src:/app/packages/adapters/src
       - ./packages/shared/src:/app/packages/shared/src
       - ./packages/db/prisma:/app/packages/db/prisma
