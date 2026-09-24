@@ -34,7 +34,7 @@ export default function RegisterPage() {
           <div className="text-center mb-6">
             <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
             <h1 className="text-xl font-bold text-text-primary">Create Account</h1>
-            <p className="text-sm text-text-secondary mt-1">Register your organization to get started</p>
+            <p className="text-sm text-text-secondary mt-1">Register your organization — a dedicated edge agent is created for your account automatically</p>
           </div>
 
           {error && <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded mb-4">{error}</div>}
