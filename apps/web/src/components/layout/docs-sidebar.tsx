@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { buildDocsPath } from '@/lib/docs-anchors';
 
 export type DocsSection = {
   id: string;
@@ -61,10 +63,14 @@ export default function DocsSidebar({
             const num = String(i + 1).padStart(2, '0');
             const Icon = s.icon;
             return (
-              <button
+              <Link
                 key={s.id}
-                type="button"
-                onClick={() => onSectionChange(s.id)}
+                href={buildDocsPath(s.id)}
+                scroll={false}
+                onClick={(e) => {
+                  e.preventDefault();
+                  onSectionChange(s.id);
+                }}
                 className={cn(
                   'w-full text-left px-3 py-2.5 rounded flex items-center gap-3 transition-colors',
                   isActive ? 'bg-dell-blue/10 text-dell-blue' : 'text-text-secondary hover:text-text-primary hover:bg-row-hover',
@@ -84,7 +90,7 @@ export default function DocsSidebar({
                   </div>
                   <div className={cn('text-sm truncate', isActive ? 'font-semibold' : 'font-medium')}>{s.title}</div>
                 </div>
-              </button>
+              </Link>
             );
           })}
         </nav>

@@ -1,13 +1,21 @@
 /** Documentation hub — 12-section interactive guide. */
 'use client';
-import { useState, useCallback } from 'react';
-import { BookOpen, Server, Shield, Monitor, Zap, HardDrive, Wrench, Globe, Settings, FileText, ChevronRight, Package, Rocket, Copy, Check, ChevronDown } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { BookOpen, Server, Shield, Monitor, Zap, HardDrive, Wrench, Globe, Settings, FileText, ChevronRight, Package, Rocket, Copy, Check, ChevronDown, Link2 } from 'lucide-react';
 import AppShell from '@/components/layout/app-shell';
 import AuthGate from '@/components/layout/auth-gate';
 import DocsSidebar from '@/components/layout/docs-sidebar';
 import PublicChrome from '@/components/layout/public-chrome';
 import { useAuthUser } from '@/lib/auth-client';
 import { headerStickyOffsetPx } from '@/lib/navigation';
+import {
+  buildDocsPath,
+  docsBlockAnchorId,
+  findBlockIndexBySlug,
+  parseDocsHash,
+  scrollToDocAnchor,
+  slugifyDocHeading,
+} from '@/lib/docs-anchors';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -244,6 +252,8 @@ export default function DocsPage() {
   const [activeSection, setActiveSection] = useState(sections[0].id);
   const [search, setSearch] = useState('');
   const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set(sections[0].content.map((_, i) => i)));
+  const [sectionLinkCopied, setSectionLinkCopied] = useState(false);
+  const hashReady = useRef(false);
 
   const section = sections.find((s) => s.id === activeSection) || sections[0];
   const stickyTopPx = headerStickyOffsetPx(loggedIn);
@@ -252,16 +262,69 @@ export default function DocsPage() {
     ? sections.filter((s) => s.title.toLowerCase().includes(search.toLowerCase()) || s.content.some((c) => c.heading.toLowerCase().includes(search.toLowerCase()) || c.body.toLowerCase().includes(search.toLowerCase())))
     : sections;
 
+  const navigateToSection = useCallback(
+    (sectionId: string, blockSlug?: string, updateHash = true) => {
+      const sec = sections.find((s) => s.id === sectionId);
+      if (!sec) return;
+      setActiveSection(sectionId);
+      const expanded = new Set(sec.content.map((_, i) => i));
+      let blockHeading: string | undefined;
+      if (blockSlug) {
+        const idx = findBlockIndexBySlug(sec, blockSlug);
+        if (idx !== null) {
+          expanded.clear();
+          expanded.add(idx);
+          blockHeading = sec.content[idx]?.heading;
+        }
+      }
+      setExpandedCards(expanded);
+      if (updateHash) {
+        window.history.replaceState(null, '', buildDocsPath(sectionId, blockSlug));
+      }
+      requestAnimationFrame(() => {
+        if (blockHeading) {
+          scrollToDocAnchor(docsBlockAnchorId(sectionId, blockHeading), stickyTopPx);
+        } else {
+          scrollToDocAnchor(`docs-section-${sectionId}`, stickyTopPx);
+        }
+      });
+    },
+    [stickyTopPx],
+  );
+
+  useEffect(() => {
+    if (!ready) return;
+    const applyHash = () => {
+      const { sectionId, blockSlug } = parseDocsHash(window.location.hash, sections);
+      navigateToSection(sectionId, blockSlug, false);
+    };
+    applyHash();
+    hashReady.current = true;
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, [ready, navigateToSection]);
+
   const handleSectionChange = (id: string) => {
-    setActiveSection(id);
-    const sec = sections.find((s) => s.id === id);
-    if (sec) setExpandedCards(new Set(sec.content.map((_, i) => i)));
+    navigateToSection(id);
+  };
+
+  const copySectionLink = () => {
+    const url = `${window.location.origin}${buildDocsPath(activeSection)}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setSectionLinkCopied(true);
+      setTimeout(() => setSectionLinkCopied(false), 2000);
+    });
   };
 
   const toggleCard = (index: number) => {
     const next = new Set(expandedCards);
     next.has(index) ? next.delete(index) : next.add(index);
     setExpandedCards(next);
+    const block = section.content[index];
+    if (block && hashReady.current) {
+      const slug = slugifyDocHeading(block.heading);
+      window.history.replaceState(null, '', buildDocsPath(activeSection, slug));
+    }
   };
 
   if (!ready) {
@@ -286,10 +349,21 @@ export default function DocsPage() {
 
       <main className="flex-1 min-w-0 bg-bg-body">
         <div className="px-4 sm:px-6 py-6 sm:py-8">
-            <div className="flex items-center gap-3 mb-2">
-              <section.icon className="w-8 h-8 text-dell-blue" />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">{section.title}</h1>
+            <div id={`docs-section-${activeSection}`} className="flex items-start gap-3 mb-2 scroll-mt-24" style={{ scrollMarginTop: stickyTopPx + 16 }}>
+              <section.icon className="w-8 h-8 text-dell-blue shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">{section.title}</h1>
+                  <button
+                    type="button"
+                    onClick={copySectionLink}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-dell-blue border border-border-card rounded hover:bg-row-hover"
+                    title={buildDocsPath(activeSection)}
+                  >
+                    {sectionLinkCopied ? <Check className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+                    Copy link
+                  </button>
+                </div>
                 <p className="text-sm text-text-secondary">{section.subtitle}</p>
               </div>
             </div>
@@ -297,14 +371,36 @@ export default function DocsPage() {
             <div className="mt-8 space-y-3">
               {section.content.map((block, i) => {
                 const isExpanded = expandedCards.has(i);
+                const blockSlug = slugifyDocHeading(block.heading);
+                const anchorId = docsBlockAnchorId(activeSection, block.heading);
                 return (
-                  <div key={i} className="bg-white border border-border-card rounded overflow-hidden">
+                  <div
+                    key={i}
+                    id={anchorId}
+                    className="bg-white border border-border-card rounded overflow-hidden scroll-mt-24"
+                    style={{ scrollMarginTop: stickyTopPx + 16 }}
+                  >
                     <button
+                      type="button"
                       onClick={() => toggleCard(i)}
-                      className="w-full bg-card-header px-4 py-2.5 border-b border-border-card flex items-center justify-between hover:bg-gray-100 transition-colors"
+                      className="w-full bg-card-header px-4 py-2.5 border-b border-border-card flex items-center justify-between hover:bg-gray-100 transition-colors gap-2"
                     >
-                      <h2 className="text-[13px] font-bold uppercase tracking-wide text-text-primary">{block.heading}</h2>
-                      <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <h2 className="text-[13px] font-bold uppercase tracking-wide text-text-primary text-left flex items-center gap-2 min-w-0">
+                        <a
+                          href={buildDocsPath(activeSection, blockSlug)}
+                          className="text-dell-blue/70 hover:text-dell-blue shrink-0 font-mono normal-case text-xs"
+                          title="Copy/share link to this topic"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            navigateToSection(activeSection, blockSlug);
+                          }}
+                        >
+                          #
+                        </a>
+                        <span className="truncate">{block.heading}</span>
+                      </h2>
+                      <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
                     {isExpanded && (
                       <div className="p-4 prose prose-sm max-w-none text-text-secondary leading-relaxed animate-in">
