@@ -1,7 +1,7 @@
 /** servers.controller.ts — Full iDRAC server management endpoints. */
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req } from '@nestjs/common';
 import { ServersService } from './servers.service';
-import { Public, Roles } from '../auth/decorators';
+import { Roles } from '../auth/decorators';
 import { PrismaService } from '../../prisma.service';
 import { SYSTEM_TENANT_SLUG } from '../../common/rbac.constants';
 
@@ -38,9 +38,10 @@ export class ServersController {
   @Roles('ADMIN')
   async remove(@Param('id') id: string, @Req() req: any) { return this.servers.remove(id, await this.tenantId(req)); }
 
-  @Public()
   @Post('probe')
-  probe(@Body() body: { ip: string; username: string; password: string }) { return this.servers.probe(body.ip, body.username, body.password); }
+  probe(@Body() body: { ip: string; username: string; password: string }, @Req() req: any) {
+    return this.servers.probe(body.ip, body.username, body.password, req.user?.tenantId);
+  }
 
   // ── Core ──
 

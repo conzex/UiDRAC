@@ -8,9 +8,10 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { PrismaService } from '../../prisma.service';
+import { AgentModule } from '../agent/agent.module';
 
 @Module({
-  imports: [PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [PassportModule.register({ defaultStrategy: 'jwt' }), AgentModule],
   controllers: [AuthController],
   providers: [
     AuthService, JwtStrategy, PrismaService,

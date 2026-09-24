@@ -4,13 +4,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma.service';
+import { AgentService } from '../agent/agent.service';
 
 const SESSION_TTL_DAYS = 7;
 const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService) {
+  constructor(private prisma: PrismaService, private jwt: JwtService, private agentService: AgentService) {
     this.scheduleSessionCleanup();
   }
 
@@ -24,6 +25,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { tenantId: tenant.id, email, passwordHash, role: 'OWNER' },
     });
+    await this.agentService.ensureForTenant(tenant.id);
     return this.generateTokens(user, '0.0.0.0', 'api');
   }
 

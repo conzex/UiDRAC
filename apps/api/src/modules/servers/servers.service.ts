@@ -1,15 +1,17 @@
 /** servers.service.ts — Server CRUD and full iDRAC adapter integration. */
-import { Injectable, NotFoundException, BadGatewayException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadGatewayException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { getAdapter, probeGeneration } from '@idrac/adapters';
 import type { IdracGeneration, IdracAdapter } from '@idrac/shared';
+import { AgentBridgeService } from '../agent/agent-bridge.service';
+import { requireEdgeAgent } from '../../common/edge-agent.config';
 
 const GEN_MAP: Record<string, string> = { '6': 'GEN6', '7': 'GEN7', '8': 'GEN8', '9': 'GEN9' };
 const GEN_REVERSE: Record<string, IdracGeneration> = { GEN6: '6', GEN7: '7', GEN8: '8', GEN9: '9' };
 
 @Injectable()
 export class ServersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private agentBridge: AgentBridgeService) {}
 
   // ── CRUD ──
 
@@ -37,7 +39,26 @@ export class ServersService {
     return server;
   }
 
-  async probe(ip: string, username: string, password: string) {
+  async probe(ip: string, username: string, password: string, tenantId?: string) {
+    if (requireEdgeAgent()) {
+      if (!tenantId) throw new ServiceUnavailableException('Tenant context required for edge agent probe.');
+      const connected = await this.agentBridge.isConnected(tenantId);
+      if (!connected) {
+        throw new ServiceUnavailableException(
+          'Install your organization edge agent and wait until it shows Connected before probing iDRAC on your LAN.',
+        );
+      }
+      try {
+        return await this.agentBridge.probeViaAgent(tenantId, ip, username, password);
+      } catch (err: any) {
+        const msg = err?.message || 'Edge agent probe failed';
+        throw new BadGatewayException(msg);
+      }
+    }
+    return this.probeDirect(ip, username, password);
+  }
+
+  private async probeDirect(ip: string, username: string, password: string) {
     let gen: IdracGeneration;
     try {
       gen = await probeGeneration(ip, username, password);
@@ -58,7 +79,7 @@ export class ServersService {
   }
 
   async create(tenantId: string, data: { name: string; ip: string; username: string; password: string; credentialsMode: string; tags?: string[] }) {
-    const probe = await this.probe(data.ip, data.username, data.password);
+    const probe = await this.probe(data.ip, data.username, data.password, tenantId);
     const server = await this.prisma.server.create({
       data: {
         tenantId, name: data.name, ip: data.ip,

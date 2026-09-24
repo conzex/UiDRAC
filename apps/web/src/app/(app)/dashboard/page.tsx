@@ -5,6 +5,9 @@ import { PlusCircle, Search, ServerCrash, AlertTriangle, RefreshCw } from 'lucid
 import api from '@/lib/api';
 import { readStoredUser } from '@/lib/auth-client';
 import { canMutateServers } from '@/lib/rbac';
+import { AgentDownloadButton } from '@/components/agent/agent-download-button';
+import { AgentStatusBanner } from '@/components/agent/agent-status-banner';
+import { useAgentStatus } from '@/lib/agent-client';
 
 const healthColors: Record<string, string> = { HEALTHY: 'bg-green-healthy', WARNING: 'bg-amber-warning', CRITICAL: 'bg-red-critical', UNKNOWN: 'bg-gray-400' };
 const genColors: Record<string, string> = { GEN6: 'bg-gray-500', GEN7: 'bg-amber-warning', GEN8: 'bg-blue-500', GEN9: 'bg-dell-blue' };
@@ -28,17 +31,23 @@ export default function DashboardPage() {
   const filtered = servers.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.ip.includes(search));
   const stats = { total: servers.length, healthy: servers.filter((s) => s.health === 'HEALTHY').length, warning: servers.filter((s) => s.health === 'WARNING').length, critical: servers.filter((s) => s.health === 'CRITICAL').length };
   const canAdd = canMutateServers(readStoredUser()?.role);
+  const { status: agentStatus } = useAgentStatus();
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold text-text-primary">Server Fleet</h1>
         {canAdd && (
-          <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
-            <PlusCircle className="w-4 h-4" /> Add Server
-          </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            <AgentDownloadButton />
+            <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
+              <PlusCircle className="w-4 h-4" /> Add Server
+            </a>
+          </div>
         )}
       </div>
+
+      <AgentStatusBanner status={agentStatus} />
 
       {/* Error banner */}
       {error && (
@@ -86,11 +95,14 @@ export default function DashboardPage() {
           </div>
           <h2 className="text-lg font-semibold text-text-primary mb-2">No servers yet</h2>
           <p className="text-sm text-text-secondary mb-6 max-w-sm mx-auto">
-            Get started by adding your first Dell PowerEdge server. You will need the iDRAC IP address and credentials.
+            Download and install your organization edge agent, then add Dell PowerEdge servers using iDRAC on your LAN.
           </p>
-          <a href="/servers/new" className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors items-center gap-1.5">
-            <PlusCircle className="w-4 h-4" /> Add Your First Server
-          </a>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <AgentDownloadButton variant="primary" />
+            <a href="/servers/new" className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors items-center gap-1.5">
+              <PlusCircle className="w-4 h-4" /> Add Your First Server
+            </a>
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-text-secondary">

@@ -7,6 +7,9 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { AgentBridgeService } from './modules/agent/agent-bridge.service';
+import { AgentService } from './modules/agent/agent.service';
+import { attachAgentWebSocket } from './modules/agent/agent.ws';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,6 +24,8 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const port = process.env.PORT ?? 4000;
+  const server = app.getHttpServer();
+  attachAgentWebSocket(server, app.get(AgentBridgeService), app.get(AgentService));
   await app.listen(port, '0.0.0.0');
   console.log(`🚀 API running on http://localhost:${port}/api`);
 }

@@ -1,0 +1,26 @@
+{
+  "name": "@idrac/edge-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tenant-bound edge agent — secure LAN bridge for cloud-hosted Universal iDRAC Console",
+  "bin": {
+    "idrac-edge-agent": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@idrac/adapters": "workspace:*",
+    "@idrac/shared": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0"
+  }
+}

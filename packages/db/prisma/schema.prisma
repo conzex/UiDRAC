@@ -31,8 +31,33 @@ model Tenant {
   users     User[]
   servers   Server[]
   auditLogs AuditLog[]
+  edgeAgent TenantEdgeAgent?
 
   @@map("tenants")
+}
+
+// ── Tenant Edge Agent ──
+// One uniquely credentialed agent identity per tenant for LAN bridge to cloud.
+model TenantEdgeAgent {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @unique @map("tenant_id") @db.Uuid
+  publicId           String    @unique @map("public_id") @db.VarChar(64)
+  secretHash         String    @map("secret_hash") @db.VarChar(255)
+  secretEncrypted    Bytes     @map("secret_encrypted")
+  secretIv           Bytes     @map("secret_iv")
+  secretTag          Bytes     @map("secret_tag")
+  enrollmentSig      String    @map("enrollment_sig") @db.VarChar(128)
+  lastConnectedAt    DateTime? @map("last_connected_at")
+  lastSeenIp         String?   @map("last_seen_ip") @db.VarChar(45)
+  agentVersion       String?   @map("agent_version") @db.VarChar(32)
+  rotatedAt          DateTime  @default(now()) @map("rotated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([publicId])
+  @@map("tenant_edge_agents")
 }
 
 // ── User ──

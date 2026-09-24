@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ServersModule } from './modules/servers/servers.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { AgentModule } from './modules/agent/agent.module';
 import { HealthController } from './modules/health/health.controller';
 
 @Module({
@@ -24,6 +25,7 @@ import { HealthController } from './modules/health/health.controller';
     ServersModule,
     AuditModule,
     TenantModule,
+    AgentModule,
   ],
   controllers: [HealthController],
   providers: [PrismaService, RedisService],

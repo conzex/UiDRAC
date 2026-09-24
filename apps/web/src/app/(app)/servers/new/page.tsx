@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { AgentDownloadButton } from '@/components/agent/agent-download-button';
+import { AgentStatusBanner } from '@/components/agent/agent-status-banner';
+import { useAgentStatus } from '@/lib/agent-client';
 
 export default function AddServerPage() {
   const router = useRouter();
@@ -15,6 +18,7 @@ export default function AddServerPage() {
   const [credMode, setCredMode] = useState('session');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { status: agentStatus } = useAgentStatus();
 
   const doProbe = async () => {
     setLoading(true); setError('');
@@ -36,7 +40,11 @@ export default function AddServerPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold mb-6">Add Server</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h1 className="text-2xl font-bold">Add Server</h1>
+        <AgentDownloadButton />
+      </div>
+      <AgentStatusBanner status={agentStatus} />
       <div className="max-w-lg mx-auto bg-white border border-border-card rounded p-6">
         {error && <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded mb-4">{error}</div>}
         {step === 1 && (
