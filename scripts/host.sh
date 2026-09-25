@@ -6,7 +6,7 @@ cd "$ROOT"
 
 if [[ ! -f .env ]]; then
   echo "Missing .env — run: cp .env.example .env"
-  echo "Then: bash scripts/generate-keys.sh  (paste secrets into .env)"
+  echo "Then: bash scripts/generate-keys.sh --write"
   exit 1
 fi
 
