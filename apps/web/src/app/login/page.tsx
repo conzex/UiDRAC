@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { Eye, EyeOff, Lock, Shield, Clock } from 'lucide-react';
 import api from '@/lib/api';
 import { persistAuth } from '@/lib/auth-client';
+import { PRODUCT_NAME } from '@idrac/shared';
 import PublicChrome from '@/components/layout/public-chrome';
+import RedirectIfAuthenticated from '@/components/auth/redirect-if-authenticated';
 
 function LoginForm() {
   const router = useRouter();
@@ -41,9 +43,11 @@ function LoginForm() {
   return (
     <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8">
       <div className="text-center mb-6">
-        <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
+        <Link href="/" className="inline-block hover:opacity-90 transition-opacity">
+          <img src="/logo.png" alt={PRODUCT_NAME} className="h-14 mx-auto mb-4" />
+        </Link>
         <h1 className="text-xl font-bold text-text-primary">Welcome Back</h1>
-        <p className="text-sm text-text-secondary mt-1">Sign in to your iDRAC Console</p>
+        <p className="text-sm text-text-secondary mt-1">Sign in to {PRODUCT_NAME}</p>
       </div>
 
       {timedOut && !error && (
@@ -98,7 +102,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <PublicChrome mainClassName="flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20" contained={false}>
+    <PublicChrome mainClassName="flex items-center justify-center py-12 sm:py-20" contained={false}>
+      <RedirectIfAuthenticated />
       <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex justify-center">
         <Suspense fallback={
           <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8 text-center">

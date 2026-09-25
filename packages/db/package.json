@@ -1,6 +1,6 @@
 {
   "name": "@idrac/db",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -19,6 +19,7 @@
     "@idrac/shared": "workspace:*"
   },
   "devDependencies": {
+    "argon2": "^0.41.1",
     "prisma": "^5.15.0",
     "tsx": "^4.15.0",
     "typescript": "^5.5.0"

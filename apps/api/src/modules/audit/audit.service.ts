@@ -1,5 +1,6 @@
 /** audit.service.ts — Audit log service. */
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '../../../../../packages/db/generated/client';
 import { PrismaService } from '../../prisma.service';
 
 @Injectable()
@@ -25,6 +26,15 @@ export class AuditService {
   }
 
   async create(tenantId: string, userId: string, action: string, payload: Record<string, unknown> = {}, ip = '0.0.0.0', serverId?: string) {
-    return this.prisma.auditLog.create({ data: { tenantId, userId, action, payload, ip, serverId } });
+    return this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        payload: payload as Prisma.InputJsonValue,
+        ip,
+        serverId,
+      },
+    });
   }
 }

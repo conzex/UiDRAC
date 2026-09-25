@@ -1,5 +1,5 @@
 /** tenant.controller.ts — Tenant endpoints. Super admin sees all. */
-import { Controller, Get, Patch, Body, Req } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Req, Delete, Param, Post } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { PrismaService } from '../../prisma.service';
 import { Roles } from '../auth/decorators';
@@ -33,5 +33,23 @@ export class TenantController {
   async getUsers(@Req() req: any) {
     const tenantId = (await this.isSuperAdmin(req)) ? null : req.user?.tenantId;
     return this.tenantService.getUsers(tenantId);
+  }
+
+  @Delete('users/:id')
+  @Roles('ADMIN')
+  deleteUser(@Req() req: any, @Param('id') id: string) {
+    return this.tenantService.deleteUser(req.user.tenantId, id, req.user.id);
+  }
+
+  @Post('users/:id/reset-password')
+  @Roles('ADMIN')
+  resetPassword(@Req() req: any, @Param('id') id: string) {
+    return this.tenantService.resetUserPassword(req.user.tenantId, id);
+  }
+
+  @Patch('users/:id/role')
+  @Roles('ADMIN')
+  updateRole(@Req() req: any, @Param('id') id: string, @Body() body: { role: string }) {
+    return this.tenantService.updateUserRole(req.user.tenantId, id, body.role);
   }
 }

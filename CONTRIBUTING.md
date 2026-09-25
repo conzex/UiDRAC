@@ -1,7 +1,10 @@
 # Contributing to Universal iDRAC Console
 
-Thank you for your interest in contributing! This document provides guidelines
-and instructions for contributing to the Universal iDRAC Console project.
+Thank you for your interest. **This Conzex product repository is not open for public fork, build, or deploy.** Licensed delivery and engineering are handled by Conzex.
+
+**Open-source contributions** (MIT, self-hosted): use **[sumit-kumawat/uidrac](https://github.com/sumit-kumawat/uidrac)** — see that repo’s contributing guide.
+
+The sections below apply to **authorized Conzex engineering** only.
 
 ## Table of Contents
 
@@ -25,8 +28,7 @@ and instructions for contributing to the Universal iDRAC Console project.
 ### Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/sumit-kumawat/universal-idrac-console.git
+# Authorized Conzex engineering checkout (remote URL from Conzex IT)
 cd universal-idrac-console
 
 # Install dependencies
@@ -65,7 +67,7 @@ pnpm dev
 ## Project Structure
 
 ```
-universal-idrac-console/
+uidrac/
 ├── apps/
 │   ├── web/            # Next.js 15 frontend
 │   ├── api/            # NestJS backend

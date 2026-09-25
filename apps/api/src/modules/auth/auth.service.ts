@@ -86,6 +86,26 @@ export class AuthService {
     await this.prisma.session.deleteMany({ where: { userId } });
   }
 
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, tenantId: true, createdAt: true, lastLoginAt: true, tenant: { select: { name: true } } },
+    });
+    if (!user) throw new UnauthorizedException();
+    return { user };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+    const valid = await argon2.verify(user.passwordHash, currentPassword);
+    if (!valid) throw new UnauthorizedException('Current password is incorrect');
+    const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id });
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.prisma.session.deleteMany({ where: { userId } });
+    return { message: 'Password updated' };
+  }
+
   async getActiveSessions(userId: string) {
     return this.prisma.session.findMany({
       where: { userId, expiresAt: { gt: new Date() } },

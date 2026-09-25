@@ -4,11 +4,13 @@
 # TLS termination via nginx, no exposed internal ports.
 # ═══════════════════════════════════════════════════════════════
 
+name: uidrac
+
 services:
   # ── PostgreSQL 16 ──
   postgres:
     image: postgres:16-alpine
-    container_name: idrac-postgres
+    container_name: uidrac-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -27,12 +29,12 @@ services:
           cpus: "1.0"
           memory: 1G
     networks:
-      - idrac-internal
+      - uidrac-internal
 
   # ── Redis 7 ──
   redis:
     image: redis:7-alpine
-    container_name: idrac-redis
+    container_name: uidrac-redis
     restart: unless-stopped
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
@@ -48,7 +50,7 @@ services:
           cpus: "0.5"
           memory: 512M
     networks:
-      - idrac-internal
+      - uidrac-internal
 
   # ── NestJS API ──
   api:
@@ -56,7 +58,7 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
       target: production
-    container_name: idrac-api
+    container_name: uidrac-api
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -65,6 +67,18 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       REFRESH_SECRET: ${REFRESH_SECRET}
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-selfhosted}
+      REQUIRE_EDGE_AGENT: ${REQUIRE_EDGE_AGENT:-false}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL}
+      PUBLIC_API_URL: ${PUBLIC_API_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      AGENT_SIGNING_SECRET: ${AGENT_SIGNING_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,7 +96,7 @@ services:
           cpus: "1.0"
           memory: 1G
     networks:
-      - idrac-internal
+      - uidrac-internal
 
   # ── Next.js Frontend ──
   web:
@@ -90,13 +104,14 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       target: production
-    container_name: idrac-web
+    container_name: uidrac-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
       API_UPSTREAM: http://api:4000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_CONSOLE_URL: ${NEXT_PUBLIC_CONSOLE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     depends_on:
       - api
     healthcheck:
@@ -111,7 +126,7 @@ services:
           cpus: "0.5"
           memory: 512M
     networks:
-      - idrac-internal
+      - uidrac-internal
 
   # ── Console Gateway ──
   console-gw:
@@ -119,11 +134,11 @@ services:
       context: .
       dockerfile: docker/console-gw.Dockerfile
       target: production
-    container_name: idrac-console-gw
+    container_name: uidrac-console-gw
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      IDRAC_CONSOLE_IMAGE: ${IDRAC_CONSOLE_IMAGE:-universal-idrac-console:legacy}
+      IDRAC_CONSOLE_IMAGE: ${IDRAC_CONSOLE_IMAGE:-uidrac:legacy}
       CONSOLE_IDLE_TIMEOUT: ${CONSOLE_IDLE_TIMEOUT:-1800}
       CONSOLE_MAX_PER_TENANT: ${CONSOLE_MAX_PER_TENANT:-10}
     volumes:
@@ -141,12 +156,12 @@ services:
           cpus: "1.0"
           memory: 1G
     networks:
-      - idrac-internal
+      - uidrac-internal
 
   # ── Nginx Reverse Proxy ──
   nginx:
     image: nginx:1.27-alpine
-    container_name: idrac-nginx
+    container_name: uidrac-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -171,13 +186,13 @@ services:
           cpus: "0.5"
           memory: 256M
     networks:
-      - idrac-internal
+      - uidrac-internal
 
 volumes:
   postgres-data:
   redis-data:
 
 networks:
-  idrac-internal:
+  uidrac-internal:
     driver: bridge
     internal: false

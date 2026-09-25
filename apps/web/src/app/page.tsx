@@ -1,18 +1,23 @@
 /** Landing page — Hero + minimal content below the fold. */
 'use client';
-import { useEffect, useState } from 'react';
+
 import {
   Server, Shield, Monitor, Zap, BookOpen, ArrowRight, LayoutDashboard, Activity, Lock, ChevronRight,
 } from 'lucide-react';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
+import AuthenticatedChrome from '@/components/layout/authenticated-chrome';
+import PageHeroBand, { MarketingCtaBand } from '@/components/layout/page-hero-band';
 import { PAGE_CONTAINER_CLASS } from '@/components/layout/page-container';
+import { heroCtaBtnClass, heroCtaGroupClass } from '@/lib/marketing-cta';
+import { useAuthUser } from '@/lib/auth-client';
+import AppPreloader from '@/components/layout/app-preloader';
 
 const stats = [
   { value: '4', label: 'iDRAC Generations', sub: '6 · 7 · 8 · 9' },
   { value: '30+', label: 'API Endpoints', sub: 'Full coverage' },
   { value: '256-bit', label: 'AES Encryption', sub: 'Credentials at rest' },
-  { value: '< 5 min', label: 'Deployment', sub: 'Docker Compose' },
+  { value: 'Cloud', label: 'Conzex hosted', sub: 'Multi-tenant SaaS' },
 ];
 
 const highlights = [
@@ -30,53 +35,43 @@ const generations = [
 ];
 
 export default function HomePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { loggedIn, ready } = useAuthUser();
 
-  useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('accessToken'));
-  }, []);
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <PublicHeader />
-
-      {/* Hero — unchanged */}
-      <section className="relative bg-gradient-to-br from-dell-blue via-dell-blue to-dell-dark text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className={`relative ${PAGE_CONTAINER_CLASS} py-20 sm:py-28 lg:py-32`}>
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-medium mb-6 border border-white/20">
-              <Activity className="w-3 h-3" /> Open Source · Self-Hosted · Zero Client Install
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight mb-5">
-              Unified Management for<br className="hidden sm:block" />
-              <span className="text-white/90">Every Dell PowerEdge Server</span>
-            </h1>
-            <p className="text-base sm:text-lg text-white/70 max-w-2xl mx-auto mb-8 leading-relaxed">
-              A Docker-hosted web platform that brings modern management to all iDRAC generations
-              — from legacy iDRAC 6 to the latest iDRAC 9 — through a single, consistent interface.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {isLoggedIn ? (
-                <a href="/dashboard" className="px-6 py-3 bg-white text-dell-blue text-sm font-semibold rounded hover:bg-white/90 transition-colors inline-flex items-center justify-center gap-2 shadow-lg shadow-black/10">
-                  <LayoutDashboard className="w-4 h-4" /> Go to Dashboard <ArrowRight className="w-4 h-4" />
-                </a>
-              ) : (
-                <>
-                  <a href="/register" className="px-6 py-3 bg-white text-dell-blue text-sm font-semibold rounded hover:bg-white/90 transition-colors inline-flex items-center justify-center gap-2 shadow-lg shadow-black/10">
-                    Get Started Free <ArrowRight className="w-4 h-4" />
-                  </a>
-                  <a href="/login" className="px-6 py-3 bg-white/10 text-white text-sm font-semibold rounded hover:bg-white/20 transition-colors border border-white/25 inline-flex items-center justify-center gap-2 backdrop-blur-sm">
-                    <Lock className="w-4 h-4" /> Sign In
-                  </a>
-                </>
-              )}
-            </div>
+  const marketingBody = (
+    <>
+      <PageHeroBand
+        size="large"
+        badge={
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-medium mb-6 border border-white/20">
+            <Activity className="w-3 h-3" /> Every iDRAC Generation · One Console · Zero Client Install
           </div>
+        }
+        title={
+          <>
+            Unified Management for<br className="hidden sm:block" />
+            <span className="text-white/90">Every Dell PowerEdge Server</span>
+          </>
+        }
+        subtitle="A Conzex cloud platform for modern iDRAC management across generations 6–9. Install the lightweight UiDRAC agent on your network to connect Dell PowerEdge securely—no Java or plugins on operator PCs."
+      >
+        <div className={heroCtaGroupClass}>
+          {loggedIn ? (
+            <a href="/dashboard" className={`${heroCtaBtnClass} sm:col-span-2 bg-white text-dell-blue hover:bg-white/90 shadow-lg shadow-black/10`}>
+              <LayoutDashboard className="w-4 h-4" /> Go to Dashboard <ArrowRight className="w-4 h-4" />
+            </a>
+          ) : (
+            <>
+              <a href="/register" className={`${heroCtaBtnClass} bg-white text-dell-blue hover:bg-white/90 shadow-lg shadow-black/10`}>
+                Get Started Free <ArrowRight className="w-4 h-4" />
+              </a>
+              <a href="/login" className={`${heroCtaBtnClass} bg-white/10 text-white hover:bg-white/20 border border-white/25 backdrop-blur-sm`}>
+                <Lock className="w-4 h-4" /> Sign In
+              </a>
+            </>
+          )}
         </div>
-      </section>
+      </PageHeroBand>
 
-      {/* Metrics */}
       <section className="bg-white border-b border-border-card">
         <div className={PAGE_CONTAINER_CLASS}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border-card border border-border-card rounded overflow-hidden">
@@ -91,13 +86,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Highlights */}
       <section className="py-12 sm:py-14 bg-bg-body">
         <div className={PAGE_CONTAINER_CLASS}>
           <div className="max-w-xl mb-8">
             <h2 className="text-lg sm:text-xl font-bold text-text-primary">Built for real infrastructure teams</h2>
             <p className="text-sm text-text-secondary mt-2 leading-relaxed">
-              Self-hosted management that matches Dell iDRAC workflows—without Java, ActiveX, or per-generation tools.
+              Conzex cloud management that matches Dell iDRAC workflows—without Java, ActiveX, or per-generation tools on your desktop.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -122,7 +116,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Generations */}
       <section className="py-12 sm:py-14 bg-white border-t border-border-card">
         <div className={PAGE_CONTAINER_CLASS}>
           <h2 className="text-lg sm:text-xl font-bold text-text-primary mb-4">Supported iDRAC generations</h2>
@@ -149,25 +142,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative bg-gradient-to-br from-dell-blue to-dell-dark text-white overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className={`relative ${PAGE_CONTAINER_CLASS} py-14 sm:py-16 text-center`}>
-          <div className="max-w-lg mx-auto">
-            <h2 className="text-lg sm:text-xl font-bold mb-2">Ready to manage your fleet?</h2>
-            <p className="text-sm text-white/70 mb-6">Deploy with Docker Compose. Open source and self-hosted.</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a href={isLoggedIn ? '/dashboard' : '/register'} className="px-6 py-3 bg-white text-dell-blue text-sm font-semibold rounded hover:bg-white/90 transition-colors inline-flex items-center justify-center gap-2">
-                {isLoggedIn ? 'Go to Dashboard' : 'Get Started'} <ArrowRight className="w-4 h-4" />
-              </a>
-              <a href="/docs#getting-started" className="px-6 py-3 bg-white/10 text-white text-sm font-semibold rounded border border-white/25 hover:bg-white/20 transition-colors inline-flex items-center justify-center gap-2">
-                <BookOpen className="w-4 h-4" /> Documentation
-              </a>
-            </div>
-          </div>
+      <MarketingCtaBand
+        title="Ready to manage your fleet?"
+        subtitle="Enterprise iDRAC management from Conzex Global Private Limited—fully cloud-hosted with the UiDRAC agent on your LAN."
+      >
+        <div className={heroCtaGroupClass}>
+          <a href={loggedIn ? '/dashboard' : '/register'} className={`${heroCtaBtnClass} bg-white text-dell-blue hover:bg-white/90`}>
+            {loggedIn ? 'Go to Dashboard' : 'Get Started'} <ArrowRight className="w-4 h-4" />
+          </a>
+          <a href="/docs#getting-started" className={`${heroCtaBtnClass} bg-white/10 text-white border border-white/25 hover:bg-white/20`}>
+            <BookOpen className="w-4 h-4" /> Documentation
+          </a>
         </div>
-      </section>
+      </MarketingCtaBand>
+    </>
+  );
 
+  if (!ready) {
+    return <AppPreloader />;
+  }
+
+  if (loggedIn) {
+    return <AuthenticatedChrome flushMain>{marketingBody}</AuthenticatedChrome>;
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-bg-body">
+      <PublicHeader />
+      {marketingBody}
       <PublicFooter />
     </div>
   );

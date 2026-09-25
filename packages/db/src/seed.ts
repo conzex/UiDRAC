@@ -6,35 +6,20 @@
  * To run: pnpm db:seed
  */
 import { PrismaClient } from '../generated/client';
-import * as argon2 from 'argon2';
+import { ensurePlatformAdmin } from './ensure-platform-admin';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const existing = await prisma.user.findFirst({ where: { email: 'admin' } });
-  if (existing) {
+  const result = await ensurePlatformAdmin(prisma, {
+    onLog: (line) => console.log(`✅ ${line}`),
+  });
+  if (result === 'exists') {
     console.log('ℹ️  Super admin already exists. Skipping.');
     return;
   }
-
-  const passwordHash = await argon2.hash('admin', { type: argon2.argon2id });
-
-  const tenant = await prisma.tenant.create({
-    data: { name: 'System', slug: 'system' },
-  });
-
-  await prisma.user.create({
-    data: {
-      tenantId: tenant.id,
-      email: 'admin',
-      passwordHash,
-      role: 'OWNER',
-    },
-  });
-
-  console.log('✅ Default super admin created:');
   console.log('   Username: admin');
-  console.log('   Password: admin');
+  console.log('   Password: admin (or PLATFORM_ADMIN_PASSWORD)');
   console.log('   ⚠️  Change this password after first login!');
 }
 

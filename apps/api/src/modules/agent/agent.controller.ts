@@ -45,7 +45,7 @@ export class AgentController {
   installScript() {
     return `#!/usr/bin/env bash
 set -euo pipefail
-CONFIG="idrac-agent.json"
+CONFIG="uidrac-agent.json"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --config) CONFIG="$2"; shift 2 ;;
@@ -53,9 +53,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 if [[ ! -f "$CONFIG" ]]; then
-  echo "Missing $CONFIG — download it from your dashboard (Agent Download)." >&2
+  echo "Missing $CONFIG — download it from your dashboard (Agent download)." >&2
   exit 1
 fi
+export UIDRAC_AGENT_CONFIG="$CONFIG"
 export IDRAC_AGENT_CONFIG="$CONFIG"
 if command -v node >/dev/null 2>&1; then
   npx --yes @idrac/edge-agent

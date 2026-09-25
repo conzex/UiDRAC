@@ -1,43 +1,24 @@
-/** app-shell.tsx — Authenticated layout: blue header + white secondary nav. */
+/** app-shell.tsx — Authenticated layout: blue header + secondary app nav. */
 'use client';
 
-import { useSessionTimeout } from '@/lib/useSessionTimeout';
-import { useAuthUser } from '@/lib/auth-client';
-import SessionTimeoutModal from './session-timeout-modal';
-import PublicFooter from './public-footer';
-import SiteTopBar from './site-top-bar';
-import AppSecondaryNav from './app-secondary-nav';
+import AuthenticatedChrome, { AUTHENTICATED_HEADER_OFFSET_PX } from './authenticated-chrome';
 import PageContainer from './page-container';
+import { cn } from '@/lib/utils';
 
-export const APP_HEADER_OFFSET_PX = 92;
+export const APP_HEADER_OFFSET_PX = AUTHENTICATED_HEADER_OFFSET_PX;
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, ready } = useAuthUser();
-  const { showWarning, remainingSeconds, resetTimer } = useSessionTimeout();
-
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-body text-sm text-text-secondary">
-        Loading…
-      </div>
-    );
-  }
-
+export default function AppShell({
+  children,
+  lockViewport = false,
+}: {
+  children: React.ReactNode;
+  lockViewport?: boolean;
+}) {
   return (
-    <div
-      className="min-h-screen flex flex-col bg-bg-body"
-      style={{ ['--app-header-offset' as string]: `${APP_HEADER_OFFSET_PX}px` }}
-    >
-      {showWarning && <SessionTimeoutModal remainingSeconds={remainingSeconds} onStayLoggedIn={resetTimer} />}
-
-      <SiteTopBar logoHref="/dashboard" email={user?.email} role={user?.role} />
-      <AppSecondaryNav user={user} />
-
-      <main className="flex-1 py-6">
-        <PageContainer>{children}</PageContainer>
-      </main>
-
-      <PublicFooter />
-    </div>
+    <AuthenticatedChrome lockViewport={lockViewport}>
+      <PageContainer className={cn(lockViewport && 'flex flex-col flex-1 min-h-0 py-4 sm:py-6')}>
+        {children}
+      </PageContainer>
+    </AuthenticatedChrome>
   );
 }

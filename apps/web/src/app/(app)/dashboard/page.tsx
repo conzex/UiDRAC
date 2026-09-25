@@ -5,7 +5,9 @@ import { PlusCircle, Search, ServerCrash, AlertTriangle, RefreshCw } from 'lucid
 import api from '@/lib/api';
 import { readStoredUser } from '@/lib/auth-client';
 import { canMutateServers } from '@/lib/rbac';
-import { AgentToolbar } from '@/components/agent/agent-toolbar';
+import { FleetAgentHeader } from '@/components/agent/fleet-agent-header';
+import AppPageHeader from '@/components/layout/app-page-header';
+import { useAddServerModal } from '@/components/servers/add-server-modal-context';
 
 const healthColors: Record<string, string> = { HEALTHY: 'bg-green-healthy', WARNING: 'bg-amber-warning', CRITICAL: 'bg-red-critical', UNKNOWN: 'bg-gray-400' };
 const genColors: Record<string, string> = { GEN6: 'bg-gray-500', GEN7: 'bg-amber-warning', GEN8: 'bg-blue-500', GEN9: 'bg-dell-blue' };
@@ -29,21 +31,24 @@ export default function DashboardPage() {
   const filtered = servers.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.ip.includes(search));
   const stats = { total: servers.length, healthy: servers.filter((s) => s.health === 'HEALTHY').length, warning: servers.filter((s) => s.health === 'WARNING').length, critical: servers.filter((s) => s.health === 'CRITICAL').length };
   const canAdd = canMutateServers(readStoredUser()?.role);
+  const { openAddServer } = useAddServerModal();
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="text-2xl font-bold text-text-primary">Server Fleet</h1>
-        {canAdd && (
-          <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors flex items-center gap-1.5">
-            <PlusCircle className="w-4 h-4" /> Add Server
-          </a>
-        )}
-      </div>
+      {canAdd ? (
+        <FleetAgentHeader
+          title="Server fleet"
+          description="Monitor health and open any server for power, console, and configuration tasks."
+          className="mb-6"
+        />
+      ) : (
+        <AppPageHeader
+          title="Server fleet"
+          description="Monitor health and open any server for power, console, and configuration tasks."
+          className="mb-6"
+        />
+      )}
 
-      {canAdd && <AgentToolbar className="mb-6" />}
-
-      {/* Error banner */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-4 rounded mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</div>
@@ -53,7 +58,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Total Servers', value: stats.total, color: 'text-dell-blue' },
@@ -68,7 +72,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Search */}
       {servers.length > 0 && (
         <div className="mb-4 relative w-full">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
@@ -77,7 +80,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => <div key={i} className="bg-white rounded border border-border-card p-6 animate-pulse"><div className="h-4 bg-gray-200 rounded w-2/3 mb-3" /><div className="h-3 bg-gray-200 rounded w-1/2" /></div>)}
@@ -89,11 +91,17 @@ export default function DashboardPage() {
           </div>
           <h2 className="text-lg font-semibold text-text-primary mb-2">No servers yet</h2>
           <p className="text-sm text-text-secondary mb-6 max-w-sm mx-auto">
-            Download and install your organization edge agent above, then add your first server.
+            Download and install the agent above, then add your first server.
           </p>
-          <a href="/servers/new" className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors items-center gap-1.5">
-            <PlusCircle className="w-4 h-4" /> Add Your First Server
-          </a>
+          {canAdd && (
+            <button
+              type="button"
+              onClick={openAddServer}
+              className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors items-center gap-1.5"
+            >
+              <PlusCircle className="w-4 h-4" /> Add Your First Server
+            </button>
+          )}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-text-secondary">

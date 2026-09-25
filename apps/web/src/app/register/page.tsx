@@ -2,10 +2,13 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { UserPlus, Shield, Building2 } from 'lucide-react';
 import api from '@/lib/api';
 import { persistAuth } from '@/lib/auth-client';
+import { PRODUCT_NAME, UIDRAC_AGENT_NAME } from '@idrac/shared';
 import PublicChrome from '@/components/layout/public-chrome';
+import RedirectIfAuthenticated from '@/components/auth/redirect-if-authenticated';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,13 +31,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <PublicChrome mainClassName="flex items-center justify-center bg-gradient-to-b from-bg-body to-white py-12 sm:py-20" contained={false}>
+    <PublicChrome mainClassName="flex items-center justify-center py-12 sm:py-20" contained={false}>
+      <RedirectIfAuthenticated />
       <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex justify-center">
         <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8">
           <div className="text-center mb-6">
-            <img src="/logo.png" alt="iDRAC Console" className="h-14 mx-auto mb-4" />
+            <Link href="/" className="inline-block hover:opacity-90 transition-opacity">
+              <img src="/logo.png" alt={PRODUCT_NAME} className="h-14 mx-auto mb-4" />
+            </Link>
             <h1 className="text-xl font-bold text-text-primary">Create Account</h1>
-            <p className="text-sm text-text-secondary mt-1">Register your organization — a dedicated edge agent is created for your account automatically</p>
+            <p className="text-sm text-text-secondary mt-1">
+              Register your organization — a dedicated {UIDRAC_AGENT_NAME} is created for your account automatically
+            </p>
           </div>
 
           {error && <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-3 rounded mb-4">{error}</div>}

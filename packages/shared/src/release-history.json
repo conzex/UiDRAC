@@ -1,0 +1,97 @@
+{
+  "productName": "Universal iDRAC Console",
+  "publisher": "Conzex Global Private Limited",
+  "versioningPolicy": "Semantic versioning (major.minor.patch). Patch builds update the running version automatically; the public version manager lists major and minor milestones only.",
+  "releases": [
+    {
+      "version": "1.2.0",
+      "released": "2026-09-24",
+      "kind": "minor",
+      "title": "UiDRAC agent & enterprise administration",
+      "coreImplementation": [
+        "Per-tenant UiDRAC agent with secure WebSocket registration and downloadable packages",
+        "LAN-side iDRAC probing for cloud deployments with tenant isolation",
+        "Platform admin console: organizations, users, audit visibility without exposing iDRAC secrets",
+        "Profile, password management, and improved auth flows for marketing vs app surfaces",
+        "Branded Conzex product experience across marketing, docs, and contact"
+      ]
+    },
+    {
+      "version": "1.1.2",
+      "released": "2026-08-15",
+      "kind": "patch",
+      "title": "Operations stability",
+      "coreImplementation": [
+        "Virtual console gateway reliability for mixed iDRAC generations",
+        "Audit log retention and export performance",
+        "Dashboard polling and health banner accuracy"
+      ]
+    },
+    {
+      "version": "1.1.1",
+      "released": "2026-07-28",
+      "kind": "patch",
+      "title": "Maintenance release",
+      "coreImplementation": [
+        "Server inventory edit/delete flows and credential rotation UX",
+        "Modal and dropdown dismiss behavior (ESC and click-outside)",
+        "Documentation anchor navigation and copy-link improvements"
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "released": "2026-07-01",
+      "kind": "minor",
+      "title": "Fleet operations & compliance",
+      "coreImplementation": [
+        "Fleet dashboard with generation-aware health summaries",
+        "Immutable audit trail with role-scoped access",
+        "Storage, BIOS, maintenance, and iDRAC settings pages aligned to Dell workflows",
+        "HTML5 and noVNC remote console paths for iDRAC 6–9"
+      ]
+    },
+    {
+      "version": "1.0.3",
+      "released": "2026-05-20",
+      "kind": "patch",
+      "title": "Security hardening",
+      "coreImplementation": [
+        "Session timeout and refresh token rotation",
+        "AES-256 credential encryption key validation on startup",
+        "RBAC enforcement across API modules"
+      ]
+    },
+    {
+      "version": "1.0.2",
+      "released": "2026-05-08",
+      "kind": "patch",
+      "title": "Adapter & probe fixes",
+      "coreImplementation": [
+        "Redfish vs legacy auto-detection edge cases for iDRAC 7/8",
+        "Connection timeout and TLS handling for lab iDRAC endpoints"
+      ]
+    },
+    {
+      "version": "1.0.1",
+      "released": "2026-04-22",
+      "kind": "patch",
+      "title": "First maintenance release",
+      "coreImplementation": [
+        "Docker Compose health checks and Prisma migration on API boot",
+        "Registration and multi-tenant organization bootstrap fixes"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "released": "2026-04-01",
+      "kind": "major",
+      "title": "Initial product release",
+      "coreImplementation": [
+        "Unified web console for Dell iDRAC 6, 7, 8, and 9",
+        "Adapter factory with Redfish and legacy protocol routing",
+        "Multi-tenant RBAC, encrypted credential vault, NestJS API and Next.js UI",
+        "Docker-hosted deployment model with PostgreSQL and Redis"
+      ]
+    }
+  ]
+}

@@ -31,6 +31,8 @@ export const prisma =
     log: process.env.NODE_ENV === 'development' ? ['query', 'warn', 'error'] : ['warn', 'error'],
   });
 
+export { ensurePlatformAdmin, SYSTEM_TENANT_SLUG } from './ensure-platform-admin';
+
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }

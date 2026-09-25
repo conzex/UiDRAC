@@ -11,6 +11,7 @@ import {
   randomAgentSecret,
 } from '../../common/crypto.util';
 import { agentWebSocketUrl, cloudPublicUrl, requireEdgeAgent } from '../../common/edge-agent.config';
+import { APP_VERSION, UIDRAC_AGENT_BUNDLE_PREFIX } from '@idrac/shared';
 import { AgentBridgeService } from './agent-bridge.service';
 
 export type AgentStatusDto = {
@@ -20,6 +21,7 @@ export type AgentStatusDto = {
   lastConnectedAt: string | null;
   lastSeenIp: string | null;
   agentVersion: string | null;
+  releaseAgentVersion: string;
   wsUrl: string;
   cloudUrl: string;
 };
@@ -92,6 +94,7 @@ export class AgentService implements OnModuleInit {
       lastConnectedAt: record.lastConnectedAt?.toISOString() ?? null,
       lastSeenIp: record.lastSeenIp,
       agentVersion: record.agentVersion,
+      releaseAgentVersion: APP_VERSION,
       wsUrl: agentWebSocketUrl(),
       cloudUrl: cloudPublicUrl(),
     };
@@ -104,8 +107,10 @@ export class AgentService implements OnModuleInit {
       { typ: 'edge-enrollment', tenantId, agentId: record.publicId },
       { secret: process.env.AGENT_SIGNING_SECRET ?? process.env.JWT_SECRET ?? 'dev-agent-signing', expiresIn: '3650d' },
     );
+    const bundlePrefix = UIDRAC_AGENT_BUNDLE_PREFIX;
     const bundle = {
-      schema: 'idrac-edge-agent/v1',
+      schema: 'uidrac-edge-agent/v1',
+      agentVersion: APP_VERSION,
       tenantId,
       agentId: record.publicId,
       uniqueAgentId: record.publicId,
@@ -116,12 +121,16 @@ export class AgentService implements OnModuleInit {
       wsUrl: agentWebSocketUrl(),
       platform,
       install: {
-        linux: 'curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config idrac-agent.json',
-        win: 'powershell -ExecutionPolicy Bypass -File install.ps1 -Config idrac-agent.json',
-        darwin: 'curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config idrac-agent.json',
+        linux: `curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${bundlePrefix}.json`,
+        win: `powershell -ExecutionPolicy Bypass -File install.ps1 -Config ${bundlePrefix}.json`,
+        darwin: `curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${bundlePrefix}.json`,
       },
       run: {
         env: {
+          UIDRAC_AGENT_ID: record.publicId,
+          UIDRAC_AGENT_SECRET: secret,
+          UIDRAC_CLOUD_URL: cloudPublicUrl(),
+          UIDRAC_AGENT_WS_URL: agentWebSocketUrl(),
           IDRAC_AGENT_ID: record.publicId,
           IDRAC_AGENT_SECRET: secret,
           IDRAC_CLOUD_URL: cloudPublicUrl(),
@@ -130,7 +139,7 @@ export class AgentService implements OnModuleInit {
         npm: 'npx @idrac/edge-agent',
       },
     };
-    return { filename: `idrac-agent-${platform}.json`, bundle };
+    return { filename: `${bundlePrefix}-${platform}.json`, bundle };
   }
 
   async markConnected(publicId: string, ip: string, version?: string) {

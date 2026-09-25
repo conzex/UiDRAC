@@ -2,7 +2,7 @@
 import { cn } from '@/lib/utils';
 
 /** Standard app/marketing content container (1440px max). */
-export const PAGE_CONTAINER_CLASS = 'max-w-layout mx-auto w-full px-4 sm:px-6';
+export const PAGE_CONTAINER_CLASS = 'max-w-layout mx-auto w-full px-3 sm:px-5';
 
 type PageContainerProps = {
   children: React.ReactNode;

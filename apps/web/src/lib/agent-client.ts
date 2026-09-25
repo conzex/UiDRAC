@@ -2,8 +2,22 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
+import { UIDRAC_AGENT_BUNDLE_PREFIX } from '@idrac/shared';
 
-export const ORG_AGENT_HINT = 'Your org-specific agent (install before Add Server in cloud mode)';
+/** Platform icons for agent download menu (Flaticon CDN + local fallback). */
+export const AGENT_PLATFORM_LOGOS = {
+  linux: 'https://cdn-icons-png.flaticon.com/512/6124/6124995.png',
+  win: 'https://cdn-icons-png.flaticon.com/512/220/220215.png',
+  darwin: 'https://cdn-icons-png.flaticon.com/256/0/747.png',
+} as const;
+
+export const AGENT_PLATFORM_LOGOS_FALLBACK = {
+  linux: '/agent/linux.png',
+  win: '/agent/windows.png',
+  darwin: '/agent/macos.png',
+} as const;
+
+export type AgentPlatform = keyof typeof AGENT_PLATFORM_LOGOS;
 
 export type AgentStatus = {
   publicId: string;
@@ -12,6 +26,7 @@ export type AgentStatus = {
   lastConnectedAt: string | null;
   lastSeenIp: string | null;
   agentVersion: string | null;
+  releaseAgentVersion?: string;
   wsUrl: string;
   cloudUrl: string;
 };
@@ -71,7 +86,7 @@ async function readApiError(err: unknown): Promise<string> {
 export async function downloadAgentBundle(platform: 'linux' | 'win' | 'darwin') {
   try {
     const res = await api.get('/agent/download', { params: { platform }, responseType: 'blob' });
-    saveAgentBlob(res.data, `idrac-agent-${platform}.json`);
+    saveAgentBlob(res.data, `${UIDRAC_AGENT_BUNDLE_PREFIX}-${platform}.json`);
   } catch (err) {
     throw new Error(await readApiError(err));
   }
@@ -80,7 +95,7 @@ export async function downloadAgentBundle(platform: 'linux' | 'win' | 'darwin') 
 export async function rotateAgentCredentials() {
   try {
     const res = await api.post('/agent/rotate', null, { responseType: 'blob' });
-    saveAgentBlob(res.data, 'idrac-agent-linux.json');
+    saveAgentBlob(res.data, `${UIDRAC_AGENT_BUNDLE_PREFIX}-linux.json`);
   } catch (err) {
     throw new Error(await readApiError(err));
   }

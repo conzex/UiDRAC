@@ -8,7 +8,9 @@ import WebSocket from 'ws';
 import { getAdapter, probeGeneration } from '@idrac/adapters';
 import type { IdracGeneration } from '@idrac/shared';
 
-const VERSION = '1.0.0';
+import { APP_VERSION } from '@idrac/shared';
+
+const VERSION = APP_VERSION;
 
 type Config = {
   agentId: string;
@@ -17,25 +19,35 @@ type Config = {
   cloudUrl?: string;
 };
 
+function envFirst(...keys: string[]): string | undefined {
+  for (const k of keys) {
+    const v = process.env[k];
+    if (v) return v;
+  }
+  return undefined;
+}
+
 function loadConfig(): Config {
-  const configPath = process.env.IDRAC_AGENT_CONFIG;
+  const configPath = envFirst('UIDRAC_AGENT_CONFIG', 'IDRAC_AGENT_CONFIG');
   if (configPath && fs.existsSync(configPath)) {
     const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<string, string>;
     return {
-      agentId: raw.agentId || raw.IDRAC_AGENT_ID,
-      agentSecret: raw.agentSecret || raw.IDRAC_AGENT_SECRET,
-      wsUrl: raw.wsUrl || raw.IDRAC_AGENT_WS_URL,
-      cloudUrl: raw.cloudUrl || raw.IDRAC_CLOUD_URL,
+      agentId: raw.agentId || raw.UIDRAC_AGENT_ID || raw.IDRAC_AGENT_ID,
+      agentSecret: raw.agentSecret || raw.UIDRAC_AGENT_SECRET || raw.IDRAC_AGENT_SECRET,
+      wsUrl: raw.wsUrl || raw.UIDRAC_AGENT_WS_URL || raw.IDRAC_AGENT_WS_URL,
+      cloudUrl: raw.cloudUrl || raw.UIDRAC_CLOUD_URL || raw.IDRAC_CLOUD_URL,
     };
   }
-  const agentId = process.env.IDRAC_AGENT_ID;
-  const agentSecret = process.env.IDRAC_AGENT_SECRET;
+  const agentId = envFirst('UIDRAC_AGENT_ID', 'IDRAC_AGENT_ID');
+  const agentSecret = envFirst('UIDRAC_AGENT_SECRET', 'IDRAC_AGENT_SECRET');
   if (!agentId || !agentSecret) {
-    console.error('Set IDRAC_AGENT_CONFIG or IDRAC_AGENT_ID + IDRAC_AGENT_SECRET (download bundle from dashboard).');
+    console.error(
+      'Set UIDRAC_AGENT_CONFIG (or IDRAC_AGENT_CONFIG) or agent ID + secret env vars (download bundle from dashboard).',
+    );
     process.exit(1);
   }
-  let wsUrl = process.env.IDRAC_AGENT_WS_URL;
-  const cloudUrl = process.env.IDRAC_CLOUD_URL ?? 'http://localhost:4000';
+  let wsUrl = envFirst('UIDRAC_AGENT_WS_URL', 'IDRAC_AGENT_WS_URL');
+  const cloudUrl = envFirst('UIDRAC_CLOUD_URL', 'IDRAC_CLOUD_URL') ?? 'http://localhost:4000';
   if (!wsUrl) wsUrl = cloudUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/agent/ws';
   return { agentId, agentSecret, wsUrl, cloudUrl };
 }

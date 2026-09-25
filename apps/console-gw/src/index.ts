@@ -15,7 +15,8 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/console/ws' });
 const docker = new Dockerode({ socketPath: '/var/run/docker.sock' });
 
-const CONSOLE_IMAGE = process.env.IDRAC_CONSOLE_IMAGE || 'universal-idrac-console:legacy';
+/** Default legacy viewer image — keep in sync with @idrac/shared LEGACY_CONSOLE_DOCKER_IMAGE */
+const CONSOLE_IMAGE = process.env.IDRAC_CONSOLE_IMAGE || 'uidrac:legacy';
 const IDLE_TIMEOUT = parseInt(process.env.CONSOLE_IDLE_TIMEOUT || '1800', 10);
 const MAX_PER_TENANT = parseInt(process.env.CONSOLE_MAX_PER_TENANT || '10', 10);
 
@@ -31,6 +32,18 @@ interface ConsoleSession {
 const sessions = new Map<string, ConsoleSession>();
 
 app.use(express.json());
+
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'Universal iDRAC Console Gateway',
+    version: process.env.npm_package_version ?? '1.2.0',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    health: '/health',
+    websocket: '/console/ws?session=<tenantId:serverId>',
+    note: 'Legacy iDRAC 6/7 consoles are opened from the portal (Servers → Launch Console). This service is used by the API, not browsed directly.',
+  });
+});
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', activeSessions: sessions.size });

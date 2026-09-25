@@ -1,6 +1,7 @@
 /** agent-bridge.service.ts — In-process routing of LAN operations to connected tenant agents. */
 import { Injectable, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
 import type WebSocket from 'ws';
+import { UIDRAC_AGENT_NAME } from '@idrac/shared';
 import { RedisService } from '../../redis.service';
 
 const REDIS_ONLINE_PREFIX = 'edge-agent:online:';
@@ -77,14 +78,14 @@ export class AgentBridgeService {
     const ws = this.byTenant.get(tenantId);
     if (!ws || ws.readyState !== ws.OPEN) {
       throw new ServiceUnavailableException(
-        'Your edge agent is not connected. Download and install your tenant agent, then try again.',
+        `Your ${UIDRAC_AGENT_NAME} is not connected. Download and install it for your organization, then try again.`,
       );
     }
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new BadRequestException('Edge agent did not respond in time. Check the agent on your LAN.'));
+        reject(new BadRequestException(`${UIDRAC_AGENT_NAME} did not respond in time. Check the agent on your LAN.`));
       }, timeoutMs);
       this.pending.set(id, {
         resolve: resolve as (v: unknown) => void,

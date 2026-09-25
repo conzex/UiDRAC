@@ -1,0 +1,24 @@
+# Cloudflare Tunnel — example config for Universal iDRAC Console
+# Copy to /etc/cloudflared/config.yml and adjust.
+#
+# Origin: production nginx on the VM host port 443
+# (docker-compose.prod.yml maps 443:443)
+
+tunnel: uidrac-prod
+credentials-file: /etc/cloudflared/uidrac-prod.json
+
+ingress:
+  # Public hostname (must match .env PUBLIC_* and NEXT_PUBLIC_*)
+  - hostname: idrac.yourdomain.com
+    service: https://127.0.0.1:443
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 30s
+      keepAliveTimeout: 90s
+      httpHostHeader: idrac.yourdomain.com
+
+  - service: http_status:404
+
+# After editing:
+#   sudo cloudflared tunnel route dns uidrac-prod idrac.yourdomain.com
+#   sudo systemctl restart cloudflared

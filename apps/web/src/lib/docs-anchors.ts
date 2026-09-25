@@ -42,6 +42,11 @@ export function parseDocsHash(
   const match = sections.find((s) => s.id === raw);
   if (match) return { sectionId: match.id };
 
+  if (raw === 'edge-agent' || raw.startsWith('edge-agent--')) {
+    const blockSlug = raw.includes('--') ? raw.slice('edge-agent--'.length) : undefined;
+    return { sectionId: 'uidrac-agent', blockSlug: blockSlug || undefined };
+  }
+
   return { sectionId: fallback };
 }
 
@@ -54,9 +59,20 @@ export function findBlockIndexBySlug(
   return idx >= 0 ? idx : null;
 }
 
-export function scrollToDocAnchor(anchorId: string, headerOffsetPx: number) {
+export function scrollToDocAnchor(
+  anchorId: string,
+  headerOffsetPx: number,
+  scrollRoot?: HTMLElement | null,
+) {
   const el = document.getElementById(anchorId);
   if (!el) return;
+  if (scrollRoot) {
+    const rootRect = scrollRoot.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const top = scrollRoot.scrollTop + (elRect.top - rootRect.top) - 16;
+    scrollRoot.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    return;
+  }
   const top = el.getBoundingClientRect().top + window.scrollY - headerOffsetPx - 16;
   window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
 }

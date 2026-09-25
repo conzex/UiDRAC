@@ -4,11 +4,13 @@
 # All services with hot reload enabled for development.
 # ═══════════════════════════════════════════════════════════════
 
+name: uidrac
+
 services:
   # ── PostgreSQL 16 ──
   postgres:
     image: postgres:16-alpine
-    container_name: idrac-postgres
+    container_name: uidrac-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-idrac}
@@ -24,12 +26,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - idrac-net
+      - uidrac-net
 
   # ── Redis 7 ──
   redis:
     image: redis:7-alpine
-    container_name: idrac-redis
+    container_name: uidrac-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -41,7 +43,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - idrac-net
+      - uidrac-net
 
   # ── NestJS API ──
   api:
@@ -49,7 +51,7 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
       target: development
-    container_name: idrac-api
+    container_name: uidrac-api
     restart: unless-stopped
     ports:
       - "4000:4000"
@@ -69,6 +71,12 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
       REFRESH_SECRET: ${REFRESH_SECRET:-dev-refresh-secret-change-in-production}
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
     volumes:
       - ./apps/api/src:/app/apps/api/src
       - ./apps/api/tsconfig.json:/app/apps/api/tsconfig.json
@@ -83,7 +91,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - idrac-net
+      - uidrac-net
 
   # ── Next.js Frontend ──
   web:
@@ -91,7 +99,7 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       target: development
-    container_name: idrac-web
+    container_name: uidrac-web
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -102,12 +110,13 @@ services:
       NEXT_PUBLIC_CONSOLE_URL: http://localhost:6080/console
     volumes:
       - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
       - ./apps/web/next.config.js:/app/apps/web/next.config.js
       - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       - api
     networks:
-      - idrac-net
+      - uidrac-net
 
   # ── Console Gateway ──
   console-gw:
@@ -115,13 +124,13 @@ services:
       context: .
       dockerfile: docker/console-gw.Dockerfile
       target: development
-    container_name: idrac-console-gw
+    container_name: uidrac-console-gw
     restart: unless-stopped
     ports:
       - "6080:6080"
     environment:
       NODE_ENV: development
-      IDRAC_CONSOLE_IMAGE: ${IDRAC_CONSOLE_IMAGE:-universal-idrac-console:legacy}
+      IDRAC_CONSOLE_IMAGE: ${IDRAC_CONSOLE_IMAGE:-uidrac:legacy}
       CONSOLE_IDLE_TIMEOUT: ${CONSOLE_IDLE_TIMEOUT:-1800}
       CONSOLE_MAX_PER_TENANT: ${CONSOLE_MAX_PER_TENANT:-10}
     volumes:
@@ -130,12 +139,12 @@ services:
     depends_on:
       - api
     networks:
-      - idrac-net
+      - uidrac-net
 
 volumes:
   postgres-data:
   redis-data:
 
 networks:
-  idrac-net:
+  uidrac-net:
     driver: bridge

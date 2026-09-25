@@ -7,6 +7,11 @@ const apiUpstream =
 const nextConfig = {
   output: 'standalone',
   transpilePackages: ['@idrac/shared'],
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'cdn-icons-png.flaticon.com', pathname: '/**' },
+    ],
+  },
   async rewrites() {
     const base = apiUpstream.replace(/\/$/, '');
     return [{ source: '/api/:path*', destination: `${base}/api/:path*` }];

@@ -1,30 +1,39 @@
 'use client';
 
 import { useState } from 'react';
+import { APP_VERSION_LABEL } from '@idrac/shared';
 import { Download, ChevronDown, Loader2 } from 'lucide-react';
-import { downloadAgentBundle, ORG_AGENT_HINT } from '@/lib/agent-client';
+import { downloadAgentBundle, type AgentPlatform } from '@/lib/agent-client';
+import { AgentPlatformIcon } from './agent-platform-icon';
+
+const PLATFORMS: { id: AgentPlatform; label: string }[] = [
+  { id: 'linux', label: 'Linux' },
+  { id: 'darwin', label: 'macOS' },
+  { id: 'win', label: 'Windows' },
+];
 
 type Props = {
   variant?: 'primary' | 'secondary';
   className?: string;
-  publicId?: string;
 };
 
-export function AgentDownloadButton({ variant = 'secondary', className = '', publicId }: Props) {
+export function AgentDownloadButton({ variant = 'secondary', className = '' }: Props) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState<AgentPlatform | null>(null);
   const [error, setError] = useState('');
 
-  const pick = async (platform: 'linux' | 'win' | 'darwin') => {
+  const pick = async (platform: AgentPlatform, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setLoading(platform);
-    setOpen(false);
     setError('');
     try {
       await downloadAgentBundle(platform);
-    } catch (e: any) {
-      setError(e?.message || 'Download failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Download failed');
     } finally {
       setLoading(null);
+      setOpen(false);
     }
   };
 
@@ -37,39 +46,47 @@ export function AgentDownloadButton({ variant = 'secondary', className = '', pub
     <div className={`relative inline-flex flex-col items-end gap-1 ${className}`}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
         disabled={!!loading}
         className={`px-4 py-2 text-sm font-semibold rounded transition-colors flex items-center gap-1.5 ${base}`}
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        {loading ? 'Downloading…' : 'Agent Download'}
+        {loading ? 'Downloading…' : 'Agent download'}
+        <span className="text-[11px] font-normal opacity-80 tabular-nums">{APP_VERSION_LABEL}</span>
         <ChevronDown className="w-3.5 h-3.5 opacity-70" />
       </button>
       {error && <p className="text-xs text-red-critical max-w-xs text-right">{error}</p>}
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute right-0 top-full mt-1 z-50 min-w-[260px] bg-white border border-border-card rounded shadow-lg py-1 text-sm">
-            <p className="px-3 py-2 text-xs text-text-secondary border-b border-border-card leading-snug">{ORG_AGENT_HINT}</p>
-            {publicId && (
-              <p className="px-3 py-2 text-[11px] font-mono text-text-primary border-b border-border-card break-all bg-row-alt">
-                {publicId}
-              </p>
-            )}
-            {(
-              [
-                ['linux', 'Linux'],
-                ['darwin', 'macOS'],
-                ['win', 'Windows'],
-              ] as const
-            ).map(([id, label]) => (
+          <div
+            className="fixed inset-0 z-[100]"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+            }}
+            aria-hidden
+          />
+          <div
+            className="absolute right-0 top-full mt-1 z-[110] min-w-[260px] bg-white border border-border-card rounded shadow-lg py-1 text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-3 py-2 text-[11px] text-text-secondary border-b border-border-card">
+              Bundle for agent release {APP_VERSION_LABEL}
+            </div>
+            {PLATFORMS.map(({ id, label }) => (
               <button
                 key={id}
                 type="button"
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 text-text-primary"
-                onClick={() => pick(id)}
+                className="w-full text-left px-3 py-2.5 hover:bg-gray-50 text-text-primary flex items-center gap-3"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={(e) => pick(id, e)}
               >
-                {label}
+                <AgentPlatformIcon platform={id} label={label} />
+                <span>{label}</span>
               </button>
             ))}
           </div>

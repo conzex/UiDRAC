@@ -77,7 +77,6 @@ export class RedfishAdapter implements IdracAdapter {
       powerState: sys.PowerState?.toLowerCase() === 'on' ? 'on' : 'off',
       idracFirmware: mgr.FirmwareVersion ?? '',
       idracMac: mgr.EthernetInterfaces?.['@odata.id'] ? '' : '',
-      lifecycleControllerVersion: null,
     };
   }
 

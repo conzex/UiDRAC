@@ -1,8 +1,8 @@
 {
-  "name": "universal-idrac-console",
-  "version": "1.0.0",
+  "name": "uidrac",
+  "version": "1.2.0",
   "private": true,
-  "description": "Zero-client-install web platform for managing Dell PowerEdge servers across all iDRAC generations",
+  "description": "Universal iDRAC Console — Conzex Docker-hosted fleet management (iDRAC 6–9)",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
@@ -24,12 +24,14 @@
     "docker:dev": "docker compose up -d",
     "docker:prod": "docker compose -f docker-compose.prod.yml up -d",
     "docker:build": "docker compose -f docker-compose.prod.yml build",
+    "deploy:vm": "bash scripts/vm-prod.sh",
     "build:edge-agent": "pnpm --filter @idrac/edge-agent build",
     "clean": "turbo clean && rm -rf node_modules",
     "version:track": "node scripts/version-track.mjs",
     "prepare": "node scripts/install-git-hooks.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
     "@swc/core": "^1.16.2",
     "@swc/register": "^0.1.10",
     "@types/node": "^20.14.0",
@@ -39,6 +41,7 @@
     "tsx": "^4.15.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0",
+    "typescript-eslint": "^8.46.0",
     "vitest": "^1.6.0"
   }
 }

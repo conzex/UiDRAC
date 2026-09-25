@@ -26,7 +26,7 @@ export default function AppSecondaryNav({ user }: AppSecondaryNavProps) {
   return (
     <nav className="bg-white border-b border-border-card shrink-0 z-40" aria-label="Application">
       <PageContainer className="hidden md:flex h-[40px] items-center overflow-x-auto">
-        <div className="flex gap-6 text-sm min-w-0">
+        <div className="flex gap-4 text-sm min-w-0">
           {items.map((item) => {
             const active = isAppNavActive(pathname, item);
             return (

@@ -5,9 +5,12 @@ import { Plus, Pencil, Trash2, X, Save, AlertTriangle, Search } from 'lucide-rea
 import api from '@/lib/api';
 import { readStoredUser } from '@/lib/auth-client';
 import { canDeleteServers, canMutateServers } from '@/lib/rbac';
-import { AgentToolbar } from '@/components/agent/agent-toolbar';
+import { FleetAgentHeader } from '@/components/agent/fleet-agent-header';
+import AppPageHeader from '@/components/layout/app-page-header';
+import { useAddServerModal } from '@/components/servers/add-server-modal-context';
 
 export default function ServersPage() {
+  const { openAddServer } = useAddServerModal();
   const [servers, setServers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -17,11 +20,23 @@ export default function ServersPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteName, setDeleteName] = useState('');
   const [actionMsg, setActionMsg] = useState('');
+  const [fetchError, setFetchError] = useState('');
   const modalRef = useRef<HTMLDivElement>(null);
 
   const fetchServers = () => {
     setLoading(true);
-    api.get('/servers').then((r) => { setServers(r.data?.data || []); setLoading(false); }).catch(() => setLoading(false));
+    setFetchError('');
+    api
+      .get('/servers')
+      .then((r) => {
+        setServers(r.data?.data || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setServers([]);
+        setFetchError('Could not load servers. Check your connection or try again.');
+        setLoading(false);
+      });
   };
 
   useEffect(() => { fetchServers(); }, []);
@@ -75,16 +90,11 @@ export default function ServersPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">Servers</h1>
-        {canEdit && (
-          <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover flex items-center gap-1.5">
-            <Plus className="w-4 h-4" /> Add Server
-          </a>
-        )}
-      </div>
-
-      {canEdit && <AgentToolbar className="mb-4" />}
+      {canEdit ? (
+        <FleetAgentHeader title="Servers" description="Manage iDRAC endpoints in your organization." className="mb-4" />
+      ) : (
+        <AppPageHeader title="Servers" description="View servers in your organization." className="mb-4" />
+      )}
 
       {actionMsg && (
         <div className="bg-blue-50 border border-blue-200 text-dell-blue text-sm p-3 rounded mb-4 flex items-center justify-between">
@@ -100,16 +110,31 @@ export default function ServersPage() {
         </div>
       )}
 
+      {fetchError && (
+        <div className="mb-4 px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded flex items-center justify-between gap-3">
+          <span>{fetchError}</span>
+          <button type="button" onClick={fetchServers} className="text-dell-blue font-semibold hover:underline shrink-0">
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="bg-white border border-border-card rounded">
         {loading ? (
           <div className="p-8 text-center text-text-secondary">Loading servers...</div>
+        ) : fetchError ? (
+          <div className="p-12 text-center text-text-secondary">Server list unavailable.</div>
         ) : servers.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-text-secondary mb-4">No servers added yet.</p>
             {canEdit && (
-              <a href="/servers/new" className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={openAddServer}
+                className="px-4 py-2 bg-dell-blue text-white text-sm rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5"
+              >
                 <Plus className="w-4 h-4" /> Add Your First Server
-              </a>
+              </button>
             )}
           </div>
         ) : (

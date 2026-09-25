@@ -1,5 +1,5 @@
 /** auth.controller.ts — Auth endpoints: login, register, refresh, logout, sessions. */
-import { Controller, Post, Get, Delete, Body, Param, Req, Res, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, Req, Res, HttpCode, Patch } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { Public } from './decorators';
@@ -48,18 +48,28 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: any) {
-    await this.auth.logout(req.user?.sub || req.body?.userId);
+    await this.auth.logout(req.user?.id);
     return { message: 'Logged out' };
+  }
+
+  @Get('me')
+  me(@Req() req: any) {
+    return this.auth.getProfile(req.user.id);
+  }
+
+  @Patch('password')
+  changePassword(@Req() req: any, @Body() body: { currentPassword: string; newPassword: string }) {
+    return this.auth.changePassword(req.user.id, body.currentPassword, body.newPassword);
   }
 
   @Get('sessions')
   async getSessions(@Req() req: any) {
-    return this.auth.getActiveSessions(req.user?.sub);
+    return this.auth.getActiveSessions(req.user?.id);
   }
 
   @Delete('sessions/:id')
   async revokeSession(@Param('id') id: string, @Req() req: any) {
-    await this.auth.revokeSession(req.user?.sub, id);
+    await this.auth.revokeSession(req.user?.id, id);
     return { message: 'Session revoked' };
   }
 }

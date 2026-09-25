@@ -129,7 +129,7 @@ jobs:
           context: .
           file: docker/web.Dockerfile
           push: false
-          tags: universal-idrac-console/web:latest
+          tags: uidrac/web:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -139,7 +139,7 @@ jobs:
           context: .
           file: docker/api.Dockerfile
           push: false
-          tags: universal-idrac-console/api:latest
+          tags: uidrac/api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -149,7 +149,7 @@ jobs:
           context: .
           file: docker/console-gw.Dockerfile
           push: false
-          tags: universal-idrac-console/console-gw:latest
+          tags: uidrac/console-gw:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -159,6 +159,6 @@ jobs:
           context: .
           file: docker/idrac-legacy.Dockerfile
           push: false
-          tags: universal-idrac-console:legacy
+          tags: uidrac:legacy
           cache-from: type=gha
           cache-to: type=gha,mode=max

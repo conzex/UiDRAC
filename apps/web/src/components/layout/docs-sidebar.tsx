@@ -20,6 +20,8 @@ type DocsSidebarProps = {
   onSectionChange: (id: string) => void;
   /** 52px public header, 92px authenticated app shell */
   headerOffsetPx: number;
+  /** Fixed docs layout: sidebar fills column height, no window sticky */
+  docked?: boolean;
 };
 
 export default function DocsSidebar({
@@ -30,18 +32,18 @@ export default function DocsSidebar({
   onSearchChange,
   onSectionChange,
   headerOffsetPx,
+  docked = false,
 }: DocsSidebarProps) {
-  const stickyStyle = {
-    top: `${headerOffsetPx}px`,
-    maxHeight: `calc(100vh - ${headerOffsetPx}px - 1.5rem)`,
-  } as React.CSSProperties;
+  const stickyStyle = docked ? undefined : ({ top: `${headerOffsetPx}px` } as React.CSSProperties);
 
   return (
     <>
       <aside
         className={cn(
           'hidden lg:block w-full lg:w-64 xl:w-72 bg-white border-b lg:border-b-0 lg:border-r border-border-card shrink-0',
-          'lg:sticky lg:self-start z-10 overflow-y-auto overscroll-contain',
+          docked
+            ? 'lg:h-full lg:min-h-0 lg:flex lg:flex-col lg:overflow-hidden'
+            : 'lg:sticky lg:self-start z-10 overflow-visible',
         )}
         style={stickyStyle}
         aria-label="Documentation sections"
@@ -57,7 +59,7 @@ export default function DocsSidebar({
             />
           </div>
         </div>
-        <nav className="p-2 space-y-0.5">
+        <nav className={cn('p-2 space-y-0.5', docked && 'flex-1 min-h-0 overflow-y-auto overscroll-contain')}>
           {filteredSections.map((s, i) => {
             const isActive = activeSection === s.id;
             const num = String(i + 1).padStart(2, '0');
@@ -72,13 +74,13 @@ export default function DocsSidebar({
                   onSectionChange(s.id);
                 }}
                 className={cn(
-                  'w-full text-left px-3 py-2.5 rounded flex items-center gap-3 transition-colors',
+                  'w-full text-left px-3 py-2 rounded flex items-center gap-2.5 transition-colors',
                   isActive ? 'bg-dell-blue/10 text-dell-blue' : 'text-text-secondary hover:text-text-primary hover:bg-row-hover',
                 )}
               >
                 <div
                   className={cn(
-                    'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
+                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
                     isActive ? 'bg-dell-blue text-white' : 'bg-gray-100 text-text-secondary',
                   )}
                 >

@@ -3,6 +3,7 @@ import { Injectable, NotFoundException, BadGatewayException, ServiceUnavailableE
 import { PrismaService } from '../../prisma.service';
 import { getAdapter, probeGeneration } from '@idrac/adapters';
 import type { IdracGeneration, IdracAdapter } from '@idrac/shared';
+import { UIDRAC_AGENT_NAME } from '@idrac/shared';
 import { AgentBridgeService } from '../agent/agent-bridge.service';
 import { requireEdgeAgent } from '../../common/edge-agent.config';
 
@@ -41,17 +42,17 @@ export class ServersService {
 
   async probe(ip: string, username: string, password: string, tenantId?: string) {
     if (requireEdgeAgent()) {
-      if (!tenantId) throw new ServiceUnavailableException('Tenant context required for edge agent probe.');
+      if (!tenantId) throw new ServiceUnavailableException(`Tenant context required for ${UIDRAC_AGENT_NAME} probe.`);
       const connected = await this.agentBridge.isConnected(tenantId);
       if (!connected) {
         throw new ServiceUnavailableException(
-          'Install your organization edge agent and wait until it shows Connected before probing iDRAC on your LAN.',
+          `Install your organization ${UIDRAC_AGENT_NAME} and wait until it shows Connected before probing iDRAC on your LAN.`,
         );
       }
       try {
         return await this.agentBridge.probeViaAgent(tenantId, ip, username, password);
       } catch (err: any) {
-        const msg = err?.message || 'Edge agent probe failed';
+        const msg = err?.message || `${UIDRAC_AGENT_NAME} probe failed`;
         throw new BadGatewayException(msg);
       }
     }

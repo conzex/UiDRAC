@@ -2,7 +2,7 @@
   "name": "@idrac/edge-agent",
   "version": "1.0.0",
   "private": true,
-  "description": "Tenant-bound edge agent — secure LAN bridge for cloud-hosted Universal iDRAC Console",
+  "description": "UiDRAC agent — secure LAN bridge for Conzex cloud Universal iDRAC Console",
   "bin": {
     "idrac-edge-agent": "./dist/index.js"
   },

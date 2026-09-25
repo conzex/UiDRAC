@@ -42,7 +42,7 @@ export function canManageOrg(userRole: string | undefined | null): boolean {
 }
 
 export function canAccessAdminPanel(userRole: string | undefined | null): boolean {
-  return hasMinRole(userRole, 'OWNER');
+  return hasMinRole(userRole, 'ADMIN');
 }
 
 export function canViewAudit(userRole: string | undefined | null): boolean {
