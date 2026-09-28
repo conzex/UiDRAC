@@ -1,16 +1,21 @@
 'use client';
 
-import { PlusCircle } from 'lucide-react';
-import { AgentDownloadButton } from './agent-download-button';
+import Link from 'next/link';
+import { PlusCircle, Download } from 'lucide-react';
 import { useAddServerModalOptional } from '@/components/servers/add-server-modal-context';
 
-/** Primary fleet actions — agent download always before add server. */
+/** Primary fleet actions — agent download before add server. */
 export function FleetActionButtons({ className = '' }: { className?: string }) {
   const addServer = useAddServerModalOptional();
 
   return (
     <div className={`flex items-center gap-2 flex-wrap ${className}`}>
-      <AgentDownloadButton />
+      <Link
+        href="/agents"
+        className="px-4 py-2 bg-white text-dell-blue border border-dell-blue text-sm font-semibold rounded hover:bg-dell-blue/5 transition-colors flex items-center gap-1.5"
+      >
+        <Download className="w-4 h-4" /> Download Agent
+      </Link>
       <button
         type="button"
         onClick={() => addServer?.openAddServer()}

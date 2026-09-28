@@ -24,7 +24,7 @@ COPY packages/adapters/package.json ./packages/adapters/
 COPY packages/db/package.json ./packages/db/
 COPY packages/ui/package.json ./packages/ui/
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # ── Stage 2: Development (hot reload) ──
 FROM node:20-alpine AS development

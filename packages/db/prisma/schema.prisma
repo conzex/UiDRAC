@@ -31,31 +31,43 @@ model Tenant {
   users     User[]
   servers   Server[]
   auditLogs AuditLog[]
-  edgeAgent TenantEdgeAgent?
+  edgeAgents EdgeAgent[]
 
   @@map("tenants")
 }
 
-// ── Tenant Edge Agent ──
-// One uniquely credentialed agent identity per tenant for LAN bridge to cloud.
-model TenantEdgeAgent {
+// ── Edge Agent (UiDRAC LAN connector) ──
+// Unique publicId per install; multiple agents allowed per tenant (sites / hosts).
+model EdgeAgent {
   id                 String    @id @default(uuid()) @db.Uuid
-  tenantId           String    @unique @map("tenant_id") @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  name               String    @default("Site agent") @db.VarChar(120)
   publicId           String    @unique @map("public_id") @db.VarChar(64)
   secretHash         String    @map("secret_hash") @db.VarChar(255)
   secretEncrypted    Bytes     @map("secret_encrypted")
   secretIv           Bytes     @map("secret_iv")
   secretTag          Bytes     @map("secret_tag")
   enrollmentSig      String    @map("enrollment_sig") @db.VarChar(128)
+  isPrimary          Boolean   @default(true) @map("is_primary")
+  hostname           String?   @db.VarChar(255)
+  os                 String?   @db.VarChar(32)
+  arch               String?   @db.VarChar(32)
   lastConnectedAt    DateTime? @map("last_connected_at")
+  lastHeartbeatAt    DateTime? @map("last_heartbeat_at")
   lastSeenIp         String?   @map("last_seen_ip") @db.VarChar(45)
   agentVersion       String?   @map("agent_version") @db.VarChar(32)
+  installState       String    @default("pending") @map("install_state") @db.VarChar(32)
+  updateState        String    @default("idle") @map("update_state") @db.VarChar(32)
+  firstRegisteredAt  DateTime? @map("first_registered_at")
+  revokedAt          DateTime? @map("revoked_at")
+  disabledAt         DateTime? @map("disabled_at")
   rotatedAt          DateTime  @default(now()) @map("rotated_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
   @@index([publicId])
   @@map("tenant_edge_agents")
 }

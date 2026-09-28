@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Conzex UiDRAC Agent — Windows MSI (WiX Toolset v4)
+  Copyright (c) 2026 Conzex Global Private Limited. All rights reserved.
+
+  Build: pwsh scripts/build-edge-agent-installer.ps1
+  Install: msiexec /i uidrac-agent-setup.msi
+  Then: powershell -File "%ProgramFiles%\Conzex\UiDRAC Agent\install.ps1" -Config uidrac-agent-win.json
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Name="Conzex UiDRAC Agent"
+    Manufacturer="Conzex Global Private Limited"
+    Version="1.2.0.0"
+    UpgradeCode="a8f3c2e1-9b4d-4f6a-bc12-0a1b2c3d4e5f"
+    Scope="perMachine"
+    ShortNames="yes">
+    <SummaryInformation
+      Keywords="Conzex,UiDRAC,iDRAC,Universal iDRAC Console"
+      Description="Conzex UiDRAC Agent — authorized LAN bridge to Universal iDRAC Console cloud"
+      Manufacturer="Conzex Global Private Limited" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer UiDRAC Agent is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPURLINFOABOUT" Value="https://uidrac.cloud.conzex.com" />
+    <Property Id="ARPHELPLINK" Value="https://www.conzex.com" />
+    <Property Id="ARPCONTACT" Value="info@conzex.com" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <Feature Id="MainFeature" Title="UiDRAC Agent" Level="1" Description="Conzex authorized cloud connector for on-premises iDRAC">
+      <ComponentGroupRef Id="AgentFiles" />
+      <ComponentRef Id="LegalFiles" />
+      <ComponentRef Id="DataFolder" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="ConzexDir" Name="Conzex">
+        <Directory Id="INSTALLDIR" Name="UiDRAC Agent" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="ConzexDataDir" Name="Conzex">
+        <Directory Id="UIDRACDATA" Name="UiDRAC" />
+      </Directory>
+    </StandardDirectory>
+
+    <ComponentGroup Id="AgentFiles" Directory="INSTALLDIR">
+      <Component Id="AgentBundle" Guid="b1c2d3e4-f5a6-7890-abcd-ef1234567890">
+        <File Source="..\windows\agent-bundle.cjs" KeyPath="yes" />
+      </Component>
+      <Component Id="AgentRunCmd" Guid="b0c1d2e3-f4a5-6789-abcd-ef0123456789">
+        <File Source="..\windows\run-uidrac-agent.cmd" />
+      </Component>
+      <Component Id="NssmExe" Guid="c2d3e4f5-a6b7-8901-bcde-f12345678901">
+        <File Source="..\windows\nssm.exe" />
+      </Component>
+      <Component Id="InstallPs1" Guid="d3e4f5a6-b7c8-9012-cdef-123456789012">
+        <File Source="..\windows\install.ps1" />
+      </Component>
+      <Component Id="UninstallPs1" Guid="e4f5a6b7-c8d9-0123-def0-234567890123">
+        <File Source="..\windows\uninstall.ps1" />
+      </Component>
+    </ComponentGroup>
+
+    <Component Id="LegalFiles" Directory="INSTALLDIR" Guid="a1b2c3d4-e5f6-7890-abcd-111122223333">
+      <File Source="legal\CONZEX-EULA.txt" KeyPath="yes" />
+      <File Source="legal\COPYRIGHT.txt" />
+    </Component>
+
+    <Component Id="DataFolder" Directory="UIDRACDATA" Guid="f5a6b7c8-d9e0-1234-ef01-345678901234">
+      <CreateFolder />
+    </Component>
+
+    <ui:WixUI Id="WixUI_Minimal" />
+  </Package>
+</Wix>

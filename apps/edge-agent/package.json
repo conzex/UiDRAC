@@ -8,6 +8,9 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:win-exe": "pnpm build && pnpm exec pkg dist/index.js --targets node20-win-x64 --output windows/uidrac-agent.exe",
+    "build:mac-exe": "pnpm build && node scripts/bundle-agent.mjs && chmod +x macos/uidrac-agent",
+    "build:win-bundle": "pnpm build && node scripts/bundle-agent.mjs",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js"
@@ -20,6 +23,8 @@
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/ws": "^8.5.12",
+    "@yao-pkg/pkg": "6",
+    "esbuild": "^0.25.0",
     "tsx": "^4.15.0",
     "typescript": "^5.5.0"
   }

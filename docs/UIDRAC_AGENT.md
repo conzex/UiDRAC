@@ -20,7 +20,24 @@ Agents accept either:
 
 Bundles include `wsUrl` (e.g. `wss://console.example.com/api/agent/ws`) and are valid for **one tenant only**.
 
-## Linux / macOS helper
+## macOS (LaunchDaemon)
+
+1. Download **`uidrac-agent-darwin.json`** from Settings.
+2. Install **`UidracAgent.pkg`** from `{PUBLIC_API_URL}/api/agent/download/macos` (Conzex EULA in installer), **or** build locally: `./scripts/build-edge-agent-macos.sh`
+3. Register the system daemon (requires **Node.js 20+** on the Mac):
+
+```bash
+sudo "/Library/Application Support/Conzex/UiDRAC Agent/install.sh" \
+  --config "$HOME/Downloads/uidrac-agent-darwin.json"
+```
+
+Logs: `/Library/Logs/Conzex/uidrac-agent.log` · Label: `com.conzex.uidrac.agent`
+
+**Local console (all platforms):** While the agent runs, open **http://127.0.0.1:9742** in a browser — Conzex logo, streaming log, cloud status, and **iDRAC activity table** (each probe from the cloud portal in realtime).
+
+Uninstall: `sudo "/Library/Application Support/Conzex/UiDRAC Agent/uninstall.sh"`
+
+## Linux / macOS helper (foreground)
 
 ```bash
 curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config uidrac-agent-linux.json
@@ -28,9 +45,34 @@ curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config uidrac-agent-
 
 Requires Node.js 20+ and `npx @idrac/edge-agent` (npm package name; product name is **UiDRAC agent**).
 
-## Windows
+## Windows (service — like Cloudflare Tunnel)
 
-Set `UIDRAC_AGENT_CONFIG` or explicit env vars, then run `npx @idrac/edge-agent` under a persistent service account.
+**Recommended:** download **`UidracAgentSetup.exe`** from `{PUBLIC_API_URL}/api/agent/download/setup`. The wizard shows the **Conzex EULA** and **copyright notice**, installs files under `C:\Program Files\Conzex\UiDRAC Agent`, and runs `install.ps1` with your JSON.
+
+**Alternative MSI:** `{PUBLIC_API_URL}/api/agent/download/msi` — WiX installer with legal RTF; after install, run `install.ps1 -Config uidrac-agent-win.json` as Administrator.
+
+Build both on a Windows build machine:
+
+```powershell
+pwsh -File scripts/build-edge-agent-installer.ps1
+```
+
+Legal text: `apps/edge-agent/installer/legal/CONZEX-EULA.txt`, `COPYRIGHT.txt`, `License.rtf`.
+
+1. Download **`uidrac-agent-win.json`** from Settings.
+2. Run **`UidracAgentSetup.exe`** as Administrator (or MSI + script path below).
+3. **Verify Connected** in Settings.
+
+Script-only install:
+
+```powershell
+Invoke-WebRequest -Uri "https://uidrac.cloud.conzex.com/api/agent/install.ps1" -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File install.ps1 -Config .\uidrac-agent-win.json
+```
+
+This registers the **`Conzex UiDRAC Agent`** Windows service (`UiDRACAgent`), copies config to `%ProgramData%\Conzex\UiDRAC\agent.json`, and starts the LAN bridge to **`wss://…/api/agent/ws`**.
+
+Uninstall: `uninstall.ps1` under `C:\Program Files\Conzex\UiDRAC Agent\`.
 
 ## API / deployment variables (Conzex operations)
 

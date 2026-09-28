@@ -8,7 +8,9 @@ import {
   Shield,
   BookOpen,
   Mail,
+  Radio,
 } from 'lucide-react';
+import { CLOUD_SAAS_PRODUCT } from '@idrac/shared';
 import type { PlatformRole } from './rbac';
 import { canAccessAdminPanel, canViewAudit, hasMinRole } from './rbac';
 import type { StoredUser } from './auth-client';
@@ -33,6 +35,13 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     minRole: 'VIEWER',
     activePrefixes: ['/servers'],
   },
+  {
+    href: '/agents',
+    label: 'Agents',
+    Icon: Radio,
+    minRole: 'VIEWER',
+    activePrefixes: ['/agents'],
+  },
   { href: '/audit', label: 'Audit Log', Icon: FileText, minRole: 'VIEWER' },
   { href: '/settings', label: 'Settings', Icon: Settings, minRole: 'VIEWER' },
   { href: '/admin', label: 'Admin', Icon: Shield, minRole: 'ADMIN', exact: true },
@@ -44,6 +53,11 @@ export type PublicNavLink = {
   Icon: LucideIcon;
   variant?: 'button' | 'link';
 };
+
+export function docsNavLabel(role?: string | null): string {
+  if (CLOUD_SAAS_PRODUCT && hasMinRole(role, 'ADMIN')) return 'Admin Docs';
+  return 'Docs';
+}
 
 export const PUBLIC_LOGGED_OUT_LINKS: PublicNavLink[] = [
   { href: '/docs', label: 'Docs', Icon: BookOpen },

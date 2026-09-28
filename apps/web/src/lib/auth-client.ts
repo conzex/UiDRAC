@@ -46,6 +46,26 @@ export function clearAuthStorage(): void {
   notifyAuthChange();
 }
 
+/** Clear auth + session scratch data before returning to the public home page. */
+export function clearAllClientSessionData(): void {
+  clearAuthStorage();
+  try {
+    sessionStorage.clear();
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * End client session and land on `/` with a fresh document load.
+ * Uses `location.replace` so browser Forward does not return to login/register with stale state.
+ */
+export function goHomeAndResetSession(): void {
+  if (typeof window === 'undefined') return;
+  clearAllClientSessionData();
+  window.location.replace('/');
+}
+
 export function persistAuth(accessToken: string, user: StoredUser): void {
   localStorage.setItem('accessToken', accessToken);
   localStorage.setItem('user', JSON.stringify(user));

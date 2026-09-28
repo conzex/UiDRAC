@@ -26,7 +26,15 @@ export function attachAgentWebSocket(server: Server, bridge: AgentBridgeService,
       const text = data.toString();
       if (!authed) {
         try {
-          const msg = JSON.parse(text) as { type?: string; agentId?: string; secret?: string; version?: string };
+          const msg = JSON.parse(text) as {
+            type?: string;
+            agentId?: string;
+            secret?: string;
+            version?: string;
+            hostname?: string;
+            os?: string;
+            arch?: string;
+          };
           if (msg.type !== 'auth' || !msg.agentId || !msg.secret) {
             ws.send(JSON.stringify({ type: 'auth.fail', reason: 'expected_auth' }));
             ws.close(4001, 'auth_required');
@@ -40,12 +48,32 @@ export function attachAgentWebSocket(server: Server, bridge: AgentBridgeService,
           }
           authed = true;
           bridge.registerConnection(record.tenantId, record.publicId, ws);
-          await agentService.markConnected(record.publicId, clientIp, msg.version);
-          ws.send(JSON.stringify({ type: 'auth.ok', tenantId: record.tenantId }));
+          await agentService.markConnected(record.publicId, clientIp, {
+            version: msg.version,
+            hostname: msg.hostname,
+            os: msg.os,
+            arch: msg.arch,
+          });
+          ws.send(
+            JSON.stringify({
+              type: 'auth.ok',
+              tenantId: record.tenantId,
+              agentId: record.publicId,
+              cloudUrl: agentService.getPublicConfig().cloudUrl,
+            }),
+          );
         } catch {
           ws.close(4002, 'auth_error');
         }
         return;
+      }
+      try {
+        const parsed = JSON.parse(text) as { type?: string };
+        if ((parsed.type === 'ping' || parsed.type === 'heartbeat') && ws.publicId) {
+          await agentService.markHeartbeat(ws.publicId);
+        }
+      } catch {
+        /* ignore */
       }
       bridge.handleAgentMessage(text, ws);
     });

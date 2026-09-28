@@ -1,0 +1,43 @@
+CONZEX GLOBAL PRIVATE LIMITED
+UNIVERSAL iDRAC CONSOLE — UiDRAC AGENT
+END-USER LICENSE AND AUTHORIZATION AGREEMENT
+
+Copyright (c) 2026 Conzex Global Private Limited. All rights reserved.
+
+PRODUCT: UiDRAC Agent (also referred to as "Conzex UiDRAC Agent" or "edge agent")
+SERVICE: Universal iDRAC Console cloud connectivity (https://uidrac.cloud.conzex.com)
+PUBLISHER: Conzex Global Private Limited ("Conzex")
+WEB: https://www.conzex.com
+CONTACT: info@conzex.com
+
+1. GRANT OF LICENSE
+   Conzex grants you a limited, non-exclusive, non-transferable license to install
+   and run one copy of the UiDRAC Agent on a Windows host within your organization,
+   solely to connect your on-premises iDRAC management network to your authorized
+   Universal iDRAC Console tenant on Conzex cloud.
+
+2. AUTHORIZATION
+   Use is permitted only with valid tenant credentials issued through the Universal
+   iDRAC Console portal (agent JSON bundle or rotated credentials). You must not
+   share agent secrets across tenants or organizations.
+
+3. RESTRICTIONS
+   You may not reverse engineer, decompile, or redistribute the installer or agent
+   except as expressly allowed by Conzex in writing. You may not use the agent to
+   access systems or networks for which you lack authority.
+
+4. THIRD-PARTY COMPONENTS
+   This installer may include NSSM (public domain) and open-source runtime components
+   bundled in uidrac-agent.exe. Their respective licenses apply to those portions.
+
+5. DISCLAIMER
+   THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. CONZEX DISCLAIMS
+   ALL WARRANTIES TO THE MAXIMUM EXTENT PERMITTED BY LAW.
+
+6. TERMINATION
+   This license ends if you violate these terms or if your Conzex service agreement
+   ends. Uninstall via Windows Settings or uninstall.ps1.
+
+By installing, copying, or using this software, you agree to this agreement.
+
+Conzex Global Private Limited — Universal iDRAC Console

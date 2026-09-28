@@ -1,0 +1,13 @@
+UiDRAC Agent for Windows
+Copyright (c) 2026 Conzex Global Private Limited. All rights reserved.
+
+Universal iDRAC Console is a product of Conzex Global Private Limited.
+Authorized use only with a valid Conzex cloud tenant.
+
+Publisher:  Conzex Global Private Limited
+Website:    https://www.conzex.com
+Product:    https://uidrac.cloud.conzex.com
+Support:    info@conzex.com
+
+Trademarks: Dell, iDRAC, and related marks are property of Dell Technologies.
+Conzex and Universal iDRAC Console are used to identify the Conzex product.

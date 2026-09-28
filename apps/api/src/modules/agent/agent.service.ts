@@ -1,5 +1,5 @@
-/** agent.service.ts — Per-tenant edge agent credentials and download bundles. */
-import { Injectable, OnModuleInit } from '@nestjs/common';
+/** agent.service.ts — Per-tenant edge agents: credentials, registry, downloads. */
+import { ForbiddenException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
@@ -11,12 +11,55 @@ import {
   randomAgentSecret,
 } from '../../common/crypto.util';
 import { agentWebSocketUrl, cloudPublicUrl, requireEdgeAgent } from '../../common/edge-agent.config';
-import { APP_VERSION, UIDRAC_AGENT_BUNDLE_PREFIX } from '@idrac/shared';
+import {
+  APP_VERSION,
+  type AgentConnectionState,
+  UIDRAC_AGENT_BUNDLE_PREFIX,
+  UIDRAC_AGENT_BUNDLE_SCHEMA,
+} from '@idrac/shared';
 import { AgentBridgeService } from './agent-bridge.service';
+import { AgentConsoleStore } from './agent-console.store';
+import { buildAgentInstallerZip } from './agent-installer.service';
+import { aggregateTenantConnectionState, computeAgentConnectionState } from './agent-connection.util';
+
+export type AgentDto = {
+  id: string;
+  publicId: string;
+  name: string;
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  lockedToTenant: true;
+  isPrimary: boolean;
+  status: AgentConnectionState;
+  connected: boolean;
+  os: string | null;
+  arch: string | null;
+  hostname: string | null;
+  agentVersion: string | null;
+  releaseAgentVersion: string;
+  installState: string;
+  updateState: string;
+  lastConnectedAt: string | null;
+  lastHeartbeatAt: string | null;
+  firstRegisteredAt: string | null;
+  lastSeenIp: string | null;
+  credentialsRotatedAt: string | null;
+  revokedAt: string | null;
+  disabledAt: string | null;
+  wsUrl: string;
+  cloudUrl: string;
+};
 
 export type AgentStatusDto = {
   publicId: string;
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  lockedToTenant: true;
+  credentialsRotatedAt: string | null;
   connected: boolean;
+  status: AgentConnectionState;
   requireEdgeAgent: boolean;
   lastConnectedAt: string | null;
   lastSeenIp: string | null;
@@ -24,6 +67,7 @@ export type AgentStatusDto = {
   releaseAgentVersion: string;
   wsUrl: string;
   cloudUrl: string;
+  agentCount: number;
 };
 
 @Injectable()
@@ -32,40 +76,59 @@ export class AgentService implements OnModuleInit {
     private prisma: PrismaService,
     private jwt: JwtService,
     private bridge: AgentBridgeService,
+    private consoleStore: AgentConsoleStore,
   ) {}
 
   async onModuleInit() {
     try {
       const tenants = await this.prisma.tenant.findMany({
-        where: { edgeAgent: null },
+        where: { edgeAgents: { none: {} } },
         select: { id: true },
       });
       for (const t of tenants) {
-        await this.ensureForTenant(t.id);
+        await this.ensurePrimaryForTenant(t.id);
       }
       if (tenants.length > 0) {
         console.log(`[agent] Provisioned edge agents for ${tenants.length} tenant(s)`);
       }
-    } catch (err: any) {
-      console.error('[agent] Startup provisioning skipped:', err?.message || err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[agent] Startup provisioning skipped:', msg);
     }
   }
 
-  async ensureForTenant(tenantId: string) {
-    const existing = await this.prisma.tenantEdgeAgent.findUnique({ where: { tenantId } });
+  async ensurePrimaryForTenant(tenantId: string) {
+    const existing = await this.prisma.edgeAgent.findFirst({
+      where: { tenantId, isPrimary: true },
+    });
     if (existing) return existing;
-    return this.createAgentRecord(tenantId);
+    return this.createAgentRecord(tenantId, { name: 'Primary site agent', isPrimary: true });
   }
 
-  private async createAgentRecord(tenantId: string) {
+  async createAgent(
+    tenantId: string,
+    opts?: { name?: string; isPrimary?: boolean },
+  ) {
+    return this.createAgentRecord(tenantId, {
+      name: opts?.name ?? `Agent ${crypto.randomBytes(3).toString('hex')}`,
+      isPrimary: opts?.isPrimary ?? false,
+    });
+  }
+
+  private async createAgentRecord(
+    tenantId: string,
+    opts: { name: string; isPrimary: boolean },
+  ) {
     const publicId = crypto.randomUUID();
     const secret = randomAgentSecret();
     const secretHash = await argon2.hash(secret, { type: argon2.argon2id });
     const { encrypted, iv, tag } = encryptSecret(secret);
     const enrollmentSig = enrollmentSignature(tenantId, publicId);
-    return this.prisma.tenantEdgeAgent.create({
+    return this.prisma.edgeAgent.create({
       data: {
         tenantId,
+        name: opts.name,
+        isPrimary: opts.isPrimary,
         publicId,
         secretHash,
         secretEncrypted: encrypted,
@@ -76,95 +139,255 @@ export class AgentService implements OnModuleInit {
     });
   }
 
+  async assertAgentOwned(tenantId: string, agentId: string) {
+    const row = await this.prisma.edgeAgent.findFirst({
+      where: { id: agentId, tenantId },
+    });
+    if (!row) throw new NotFoundException('Agent not found');
+    return row;
+  }
+
+  async assertPublicIdOwned(tenantId: string, publicId: string) {
+    const row = await this.prisma.edgeAgent.findFirst({
+      where: { publicId, tenantId },
+    });
+    if (!row) throw new NotFoundException('Agent not found');
+    return row;
+  }
+
   async verifyAgentCredentials(publicId: string, secret: string) {
-    const record = await this.prisma.tenantEdgeAgent.findUnique({ where: { publicId } });
+    const record = await this.prisma.edgeAgent.findUnique({ where: { publicId } });
     if (!record) return null;
+    if (record.revokedAt || record.disabledAt) return null;
     const ok = await argon2.verify(record.secretHash, secret);
     if (!ok) return null;
     return record;
   }
 
-  async getStatus(tenantId: string): Promise<AgentStatusDto> {
-    const record = await this.ensureForTenant(tenantId);
-    const connected = await this.bridge.isConnected(tenantId);
+  private async toAgentDto(record: Awaited<ReturnType<typeof this.assertAgentOwned>>): Promise<AgentDto> {
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: record.tenantId },
+      select: { id: true, name: true, slug: true },
+    });
+    const socketOpen = this.bridge.isAgentSocketOpen(record.publicId);
+    const status = computeAgentConnectionState(record, { socketOpen });
     return {
+      id: record.id,
       publicId: record.publicId,
-      connected,
-      requireEdgeAgent: requireEdgeAgent(),
-      lastConnectedAt: record.lastConnectedAt?.toISOString() ?? null,
-      lastSeenIp: record.lastSeenIp,
+      name: record.name,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      tenantSlug: tenant.slug,
+      lockedToTenant: true,
+      isPrimary: record.isPrimary,
+      status,
+      connected: status === 'connected',
+      os: record.os,
+      arch: record.arch,
+      hostname: record.hostname,
       agentVersion: record.agentVersion,
       releaseAgentVersion: APP_VERSION,
+      installState: record.installState,
+      updateState: record.updateState,
+      lastConnectedAt: record.lastConnectedAt?.toISOString() ?? null,
+      lastHeartbeatAt: record.lastHeartbeatAt?.toISOString() ?? null,
+      firstRegisteredAt: record.firstRegisteredAt?.toISOString() ?? null,
+      lastSeenIp: record.lastSeenIp,
+      credentialsRotatedAt: record.rotatedAt?.toISOString() ?? null,
+      revokedAt: record.revokedAt?.toISOString() ?? null,
+      disabledAt: record.disabledAt?.toISOString() ?? null,
       wsUrl: agentWebSocketUrl(),
       cloudUrl: cloudPublicUrl(),
     };
   }
 
-  async buildDownloadBundle(tenantId: string, platform: 'linux' | 'win' | 'darwin') {
-    const record = await this.ensureForTenant(tenantId);
+  async listAgents(tenantId: string): Promise<AgentDto[]> {
+    await this.ensurePrimaryForTenant(tenantId);
+    const rows = await this.prisma.edgeAgent.findMany({
+      where: { tenantId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+    return Promise.all(rows.map((r) => this.toAgentDto(r)));
+  }
+
+  async getAgent(tenantId: string, agentId: string): Promise<AgentDto> {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    return this.toAgentDto(row);
+  }
+
+  async getStatus(tenantId: string): Promise<AgentStatusDto> {
+    const agents = await this.listAgents(tenantId);
+    const primary = agents.find((a) => a.isPrimary) ?? agents[0];
+    const states = agents.map((a) => a.status);
+    const status = aggregateTenantConnectionState(states);
+    return {
+      publicId: primary?.publicId ?? '',
+      tenantId: primary?.tenantId ?? tenantId,
+      tenantName: primary?.tenantName ?? '',
+      tenantSlug: primary?.tenantSlug ?? '',
+      lockedToTenant: true,
+      credentialsRotatedAt: primary?.credentialsRotatedAt ?? null,
+      connected: status === 'connected',
+      status,
+      requireEdgeAgent: requireEdgeAgent(),
+      lastConnectedAt: primary?.lastConnectedAt ?? null,
+      lastSeenIp: primary?.lastSeenIp ?? null,
+      agentVersion: primary?.agentVersion ?? null,
+      releaseAgentVersion: APP_VERSION,
+      wsUrl: agentWebSocketUrl(),
+      cloudUrl: cloudPublicUrl(),
+      agentCount: agents.length,
+    };
+  }
+
+  async resolveAgentForDownload(tenantId: string, agentId?: string) {
+    if (agentId) return this.assertAgentOwned(tenantId, agentId);
+    return this.ensurePrimaryForTenant(tenantId);
+  }
+
+  async buildDownloadBundle(
+    tenantId: string,
+    platform: 'linux' | 'win' | 'darwin',
+    agentRow?: Awaited<ReturnType<typeof this.resolveAgentForDownload>>,
+  ) {
+    const record = agentRow ?? (await this.ensurePrimaryForTenant(tenantId));
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { id: true, name: true, slug: true },
+    });
     const secret = decryptSecret(record.secretEncrypted, record.secretIv, record.secretTag);
+    const issuedAt = new Date().toISOString();
     const enrollmentToken = this.jwt.sign(
       { typ: 'edge-enrollment', tenantId, agentId: record.publicId },
-      { secret: process.env.AGENT_SIGNING_SECRET ?? process.env.JWT_SECRET ?? 'dev-agent-signing', expiresIn: '3650d' },
+      {
+        secret: process.env.AGENT_SIGNING_SECRET ?? process.env.JWT_SECRET ?? 'dev-agent-signing',
+        expiresIn: '3650d',
+      },
     );
+    const cloud = cloudPublicUrl();
     const bundlePrefix = UIDRAC_AGENT_BUNDLE_PREFIX;
     const bundle = {
-      schema: 'uidrac-edge-agent/v1',
+      schema: UIDRAC_AGENT_BUNDLE_SCHEMA,
       agentVersion: APP_VERSION,
-      tenantId,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      tenantSlug: tenant.slug,
+      lockedToTenant: true as const,
+      issuedAt,
       agentId: record.publicId,
       uniqueAgentId: record.publicId,
       agentSecret: secret,
       enrollmentSignature: record.enrollmentSig,
       enrollmentToken,
-      cloudUrl: cloudPublicUrl(),
+      cloudUrl: cloud,
       wsUrl: agentWebSocketUrl(),
       platform,
       install: {
-        linux: `curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${bundlePrefix}.json`,
-        win: `powershell -ExecutionPolicy Bypass -File install.ps1 -Config ${bundlePrefix}.json`,
-        darwin: `curl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${bundlePrefix}.json`,
+        linux: `curl -fsSL "${cloud}/api/agent/install.sh" | bash -s -- --config credentials.json`,
+        win: `Download installer from ${cloud}/agents then run Install-UiDRAC-Agent.ps1 with credentials.json`,
+        darwin: `sudo installer -pkg UidracAgent.pkg -target / && sudo ./install.sh --config credentials.json`,
       },
       run: {
         env: {
           UIDRAC_AGENT_ID: record.publicId,
           UIDRAC_AGENT_SECRET: secret,
-          UIDRAC_CLOUD_URL: cloudPublicUrl(),
+          UIDRAC_CLOUD_URL: cloud,
           UIDRAC_AGENT_WS_URL: agentWebSocketUrl(),
-          IDRAC_AGENT_ID: record.publicId,
-          IDRAC_AGENT_SECRET: secret,
-          IDRAC_CLOUD_URL: cloudPublicUrl(),
-          IDRAC_AGENT_WS_URL: agentWebSocketUrl(),
         },
         npm: 'npx @idrac/edge-agent',
       },
     };
-    return { filename: `${bundlePrefix}-${platform}.json`, bundle };
+    return { filename: `${bundlePrefix}-${platform}.json`, bundle, record };
   }
 
-  async markConnected(publicId: string, ip: string, version?: string) {
-    await this.prisma.tenantEdgeAgent.update({
+  async buildInstallerPackage(
+    tenantId: string,
+    platform: 'linux' | 'win' | 'darwin',
+    agentId?: string,
+  ) {
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { slug: true },
+    });
+    const record = await this.resolveAgentForDownload(tenantId, agentId);
+    const { bundle } = await this.buildDownloadBundle(tenantId, platform, record);
+    const credentialsJson = JSON.stringify(bundle, null, 2);
+    return buildAgentInstallerZip(platform, credentialsJson, tenant.slug, record.publicId);
+  }
+
+  async getConsoleView(tenantId: string) {
+    const status = await this.getStatus(tenantId);
+    const remote = await this.consoleStore.getConsoleData(tenantId);
+    return { status, agents: await this.listAgents(tenantId), ...remote, localConsoleUrl: 'http://127.0.0.1:9742' };
+  }
+
+  async markConnected(
+    publicId: string,
+    ip: string,
+    meta?: { version?: string; hostname?: string; os?: string; arch?: string },
+  ) {
+    const now = new Date();
+    const existing = await this.prisma.edgeAgent.findUnique({ where: { publicId } });
+    if (!existing) return;
+    await this.prisma.edgeAgent.update({
       where: { publicId },
       data: {
-        lastConnectedAt: new Date(),
+        lastConnectedAt: now,
+        lastHeartbeatAt: now,
         lastSeenIp: ip.slice(0, 45),
-        agentVersion: version?.slice(0, 32),
+        agentVersion: meta?.version?.slice(0, 32) ?? existing.agentVersion,
+        hostname: meta?.hostname?.slice(0, 255) ?? existing.hostname,
+        os: meta?.os?.slice(0, 32) ?? existing.os,
+        arch: meta?.arch?.slice(0, 32) ?? existing.arch,
+        firstRegisteredAt: existing.firstRegisteredAt ?? now,
+        installState: 'registered',
       },
     });
   }
 
-  async rotateCredentials(tenantId: string) {
+  async markHeartbeat(publicId: string) {
+    await this.prisma.edgeAgent.update({
+      where: { publicId },
+      data: { lastHeartbeatAt: new Date() },
+    });
+  }
+
+  async renameAgent(tenantId: string, agentId: string, name: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    if (row.revokedAt) throw new ForbiddenException('Revoked agents cannot be renamed');
+    await this.prisma.edgeAgent.update({ where: { id: agentId }, data: { name: name.slice(0, 120) } });
+    return this.getAgent(tenantId, agentId);
+  }
+
+  async disableAgent(tenantId: string, agentId: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    await this.prisma.edgeAgent.update({
+      where: { id: agentId },
+      data: { disabledAt: new Date() },
+    });
+    this.bridge.disconnectAgent(row.publicId);
+    return this.getAgent(tenantId, agentId);
+  }
+
+  async revokeAgent(tenantId: string, agentId: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    await this.prisma.edgeAgent.update({
+      where: { id: agentId },
+      data: { revokedAt: new Date(), disabledAt: new Date() },
+    });
+    this.bridge.disconnectAgent(row.publicId);
+    return this.getAgent(tenantId, agentId);
+  }
+
+  async rotateCredentials(tenantId: string, agentId: string, platform: 'linux' | 'win' | 'darwin' = 'linux') {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    if (row.revokedAt) throw new ForbiddenException('Cannot rotate a revoked agent');
     const secret = randomAgentSecret();
     const secretHash = await argon2.hash(secret, { type: argon2.argon2id });
     const { encrypted, iv, tag } = encryptSecret(secret);
-    const record = await this.prisma.tenantEdgeAgent.findUnique({ where: { tenantId } });
-    if (!record) {
-      await this.createAgentRecord(tenantId);
-      return this.buildDownloadBundle(tenantId, 'linux');
-    }
-    const enrollmentSig = enrollmentSignature(tenantId, record.publicId);
-    await this.prisma.tenantEdgeAgent.update({
-      where: { tenantId },
+    const enrollmentSig = enrollmentSignature(tenantId, row.publicId);
+    await this.prisma.edgeAgent.update({
+      where: { id: agentId },
       data: {
         secretHash,
         secretEncrypted: encrypted,
@@ -172,9 +395,15 @@ export class AgentService implements OnModuleInit {
         secretTag: tag,
         enrollmentSig,
         rotatedAt: new Date(),
+        installState: 'pending',
       },
     });
-    return this.buildDownloadBundle(tenantId, 'linux');
+    this.bridge.disconnectAgent(row.publicId);
+    return this.buildDownloadBundle(tenantId, platform, row);
+  }
+
+  async registerNewAgent(tenantId: string, name?: string) {
+    return this.createAgent(tenantId, { name: name ?? 'New site agent', isPrimary: false });
   }
 
   getPublicConfig() {

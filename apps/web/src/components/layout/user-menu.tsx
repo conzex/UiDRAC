@@ -2,8 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react';
 import { User, LogOut, KeyRound, UserCircle } from 'lucide-react';
-import { clearAuthStorage } from '@/lib/auth-client';
-import { useRouter } from 'next/navigation';
+import { clearAllClientSessionData } from '@/lib/auth-client';
 import { AccountModals } from '@/components/profile/account-modals';
 import { CLOUD_SAAS_PRODUCT } from '@idrac/shared';
 
@@ -14,7 +13,6 @@ type UserMenuProps = {
 };
 
 export default function UserMenu({ email, role, tone = 'on-blue' }: UserMenuProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -36,8 +34,8 @@ export default function UserMenu({ email, role, tone = 'on-blue' }: UserMenuProp
   }, []);
 
   const logout = () => {
-    clearAuthStorage();
-    router.push('/login');
+    clearAllClientSessionData();
+    window.location.replace('/login');
   };
 
   const triggerClass =

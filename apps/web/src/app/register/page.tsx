@@ -9,6 +9,7 @@ import { persistAuth } from '@/lib/auth-client';
 import { PRODUCT_NAME, UIDRAC_AGENT_NAME } from '@idrac/shared';
 import PublicChrome from '@/components/layout/public-chrome';
 import RedirectIfAuthenticated from '@/components/auth/redirect-if-authenticated';
+import { BackToHomeButton } from '@/components/auth/back-to-home-button';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -33,7 +34,10 @@ export default function RegisterPage() {
   return (
     <PublicChrome mainClassName="flex items-center justify-center py-12 sm:py-20" contained={false}>
       <RedirectIfAuthenticated />
-      <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex justify-center">
+      <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex flex-col items-center gap-4">
+        <div className="w-full max-w-md flex justify-start">
+          <BackToHomeButton />
+        </div>
         <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8">
           <div className="text-center mb-6">
             <Link href="/" className="inline-block hover:opacity-90 transition-opacity">

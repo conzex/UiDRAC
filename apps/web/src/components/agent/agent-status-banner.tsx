@@ -1,15 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Wifi, WifiOff, Copy, Check } from 'lucide-react';
 import { UIDRAC_AGENT_NAME } from '@idrac/shared';
 import type { AgentStatus } from '@/lib/agent-client';
+import { STATUS_LABEL, statusBadgeClass } from '@/lib/agents-client';
 
 export function AgentStatusBanner({ status }: { status: AgentStatus | null }) {
   const [copied, setCopied] = useState(false);
 
   if (!status) return null;
-  const connected = status.connected;
+  const state = status.status ?? (status.connected ? 'connected' : 'disconnected');
+  const connected = state === 'connected';
 
   const copyId = async () => {
     await navigator.clipboard.writeText(status.publicId);
@@ -26,9 +29,12 @@ export function AgentStatusBanner({ status }: { status: AgentStatus | null }) {
       <div className="flex items-center gap-2 min-w-0">
         {connected ? <Wifi className="w-4 h-4 shrink-0" /> : <WifiOff className="w-4 h-4 shrink-0" />}
         <span className="font-medium shrink-0">
-          {UIDRAC_AGENT_NAME}: {connected ? 'Connected' : 'Not connected'}
-          {status.requireEdgeAgent && !connected && ' — required before adding servers'}
+          {UIDRAC_AGENT_NAME}: {STATUS_LABEL[state] ?? state}
+          {status.requireEdgeAgent && !connected && ' — install from Agents → Download Agent'}
         </span>
+        <Link href="/agents" className="text-xs font-semibold underline shrink-0">
+          Manage
+        </Link>
       </div>
       {status.lastConnectedAt && (
         <span className="text-xs opacity-80">
@@ -37,8 +43,10 @@ export function AgentStatusBanner({ status }: { status: AgentStatus | null }) {
         </span>
       )}
       <div className="flex flex-wrap items-center gap-2 sm:ml-auto min-w-0">
+        <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadgeClass(state)}`}>{STATUS_LABEL[state]}</span>
         <span className="text-xs font-mono break-all">
-          Unique agent ID: <span className="font-semibold">{status.publicId}</span>
+          {status.agentCount && status.agentCount > 1 ? `${status.agentCount} agents · ` : ''}
+          ID: <span className="font-semibold">{status.publicId.slice(0, 8)}…</span>
         </span>
         <button
           type="button"

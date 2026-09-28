@@ -6,6 +6,7 @@ import { BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import UserMenu from './user-menu';
 import { PAGE_CONTAINER_CLASS } from './page-container';
+import { docsNavLabel } from '@/lib/navigation';
 import api from '@/lib/api';
 import { persistAuth, readAccessToken, useAuthUser } from '@/lib/auth-client';
 
@@ -62,7 +63,7 @@ export default function SiteTopBar({
               href="/docs"
               className="pr-2.5 text-white/70 hover:text-white text-sm flex items-center gap-1 transition-colors whitespace-nowrap"
             >
-              <BookOpen className="w-3.5 h-3.5" /> Docs
+              <BookOpen className="w-3.5 h-3.5" /> {docsNavLabel(role)}
             </Link>
           )}
           {email !== undefined && (

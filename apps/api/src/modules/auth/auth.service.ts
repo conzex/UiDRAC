@@ -25,7 +25,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { tenantId: tenant.id, email, passwordHash, role: 'OWNER' },
     });
-    await this.agentService.ensureForTenant(tenant.id);
+    await this.agentService.ensurePrimaryForTenant(tenant.id);
     return this.generateTokens(user, '0.0.0.0', 'api');
   }
 

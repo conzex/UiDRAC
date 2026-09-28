@@ -1,0 +1,8 @@
+#!/bin/bash
+# Copyright (c) 2026 Conzex Global Private Limited
+set -e
+LOG="/Library/Logs/Conzex/uidrac-agent-install.log"
+mkdir -p "$(dirname "$LOG")"
+echo "$(date): UiDRAC Agent files installed." >>"$LOG"
+echo "Run: sudo \"/Library/Application Support/Conzex/UiDRAC Agent/install.sh\" --config /path/to/uidrac-agent-darwin.json" >>"$LOG"
+exit 0

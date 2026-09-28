@@ -9,3 +9,5 @@ export * from './constants';
 export * from './version';
 export * from './release-history';
 export * from './product';
+export * from './agent-bundle';
+export * from './agent-status';

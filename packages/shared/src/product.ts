@@ -28,6 +28,10 @@ export const UIDRAC_AGENT_BUNDLE_PREFIX = 'uidrac-agent';
 /** Preferred env var for agent JSON bundle path (IDRAC_AGENT_CONFIG still supported). */
 export const UIDRAC_AGENT_CONFIG_ENV = 'UIDRAC_AGENT_CONFIG';
 
+/** JSON bundle schema (current + legacy alias accepted by agents). */
+export const UIDRAC_AGENT_BUNDLE_SCHEMA = 'uidrac-edge-agent/v1';
+export const UIDRAC_AGENT_BUNDLE_SCHEMA_LEGACY = 'idrac-edge-agent/v1';
+
 /** Conzex Global Private Limited — product vendor. */
 export const CONZEX_WEB_URL = 'https://www.conzex.com';
 export const CONZEX_CONTACT_EMAIL = 'info@conzex.com';

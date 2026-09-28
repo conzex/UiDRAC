@@ -2,7 +2,7 @@
 import { CLOUD_SAAS_PRODUCT, OPEN_SOURCE_EDITION } from '@idrac/shared';
 import { hasMinRole } from '@/lib/rbac';
 
-export type DocsAudience = 'public' | 'admin-internal' | 'onprem-customer' | 'onprem-admin';
+export type DocsAudience = 'public' | 'customer' | 'admin-internal' | 'onprem-customer' | 'onprem-admin';
 
 export type DocSectionLike = {
   id: string;
@@ -22,6 +22,8 @@ export function filterDocSections<T extends DocSectionLike>(
     switch (audience) {
       case 'public':
         return true;
+      case 'customer':
+        return cloudSaas && opts.loggedIn;
       case 'admin-internal':
         return cloudSaas && isAdmin;
       case 'onprem-customer':

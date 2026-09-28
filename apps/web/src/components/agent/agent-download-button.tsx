@@ -75,7 +75,9 @@ export function AgentDownloadButton({ variant = 'secondary', className = '' }: P
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-3 py-2 text-[11px] text-text-secondary border-b border-border-card">
-              Bundle for agent release {APP_VERSION_LABEL}
+              Downloads a <strong>ZIP installer</strong> with your tenant-locked credentials + platform files
+              <br />
+              (not a standalone JSON file)
             </div>
             {PLATFORMS.map(({ id, label }) => (
               <button
@@ -86,9 +88,13 @@ export function AgentDownloadButton({ variant = 'secondary', className = '' }: P
                 onClick={(e) => pick(id, e)}
               >
                 <AgentPlatformIcon platform={id} label={label} />
-                <span>{label}</span>
+                <span>{label} installer (.zip)</span>
               </button>
             ))}
+            <div className="border-t border-border-card px-3 py-2 text-[10px] text-text-secondary">
+              JSON-only: use API{' '}
+              <code className="text-[10px]">/agent/download?platform=darwin&amp;format=json</code>
+            </div>
           </div>
         </>
       )}

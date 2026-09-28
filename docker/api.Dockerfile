@@ -68,11 +68,12 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nestjs
 RUN adduser --system --uid 1001 nestjs
 
-# Copy built application
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/node_modules ./node_modules
 COPY --from=builder /app/packages/db/generated ./node_modules/@idrac/db/generated
 COPY --from=builder /app/apps/api/package.json ./package.json
+COPY --from=builder /app/apps/edge-agent/windows ./agent-windows
+COPY --from=builder /app/apps/edge-agent/macos ./agent-macos
 
 USER nestjs
 

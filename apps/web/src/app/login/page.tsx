@@ -9,6 +9,7 @@ import { persistAuth } from '@/lib/auth-client';
 import { PRODUCT_NAME } from '@idrac/shared';
 import PublicChrome from '@/components/layout/public-chrome';
 import RedirectIfAuthenticated from '@/components/auth/redirect-if-authenticated';
+import { BackToHomeButton } from '@/components/auth/back-to-home-button';
 
 function LoginForm() {
   const router = useRouter();
@@ -104,7 +105,10 @@ export default function LoginPage() {
   return (
     <PublicChrome mainClassName="flex items-center justify-center py-12 sm:py-20" contained={false}>
       <RedirectIfAuthenticated />
-      <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex justify-center">
+      <div className="w-full max-w-layout mx-auto px-4 sm:px-6 flex flex-col items-center gap-4">
+        <div className="w-full max-w-md flex justify-start">
+          <BackToHomeButton />
+        </div>
         <Suspense fallback={
           <div className="bg-white border border-border-card rounded shadow-xl w-full max-w-md p-8 text-center">
             <div className="animate-spin w-8 h-8 border-4 border-dell-blue border-t-transparent rounded-full mx-auto" />

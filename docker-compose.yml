@@ -71,6 +71,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
       REFRESH_SECRET: ${REFRESH_SECRET:-dev-refresh-secret-change-in-production}
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      AGENT_SIGNING_SECRET: ${AGENT_SIGNING_SECRET:-${JWT_SECRET:-dev-agent-signing}}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

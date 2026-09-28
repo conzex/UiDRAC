@@ -1,0 +1,53 @@
+# Build Conzex UiDRAC Agent Windows installers (MSI + setup.exe)
+# Copyright (c) 2026 Conzex Global Private Limited
+name: Build UiDRAC Agent (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/edge-agent/**'
+      - 'scripts/build-edge-agent-installer.ps1'
+      - 'version.txt'
+
+jobs:
+  installers:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install WiX Toolset v4
+        run: dotnet tool install --global wix
+
+      - name: Install Inno Setup 6
+        run: choco install innosetup -y --no-progress
+
+      - name: Build MSI and UidracAgentSetup.exe
+        run: pwsh -File scripts/build-edge-agent-installer.ps1
+
+      - name: Stage for API Docker image
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path agent-windows | Out-Null
+          Copy-Item apps/edge-agent/installer/out/uidrac-agent-setup.msi agent-windows/ -ErrorAction SilentlyContinue
+          Copy-Item apps/edge-agent/installer/out/UidracAgentSetup.exe agent-windows/ -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uidrac-agent-windows-installers
+          path: |
+            apps/edge-agent/installer/out/**
+            agent-windows/**
