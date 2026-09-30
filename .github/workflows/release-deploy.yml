@@ -1,0 +1,189 @@
+# ═══════════════════════════════════════════════════════════════
+# Release — Universal iDRAC Console
+# On push to main or manual trigger:
+#   1. Bumps the project version (patch)
+#   2. Commits version bump to the repository
+#   3. Revokes all active sessions (forces re-login)
+#   4. Rebuilds and restarts Docker containers
+# ═══════════════════════════════════════════════════════════════
+
+name: Release & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/build-uidrac-agent-windows.yml'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: release-deploy
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  version-bump:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      new_version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+
+      - name: Bump version
+        id: bump
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump || 'patch' }}"
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "$BUMP_TYPE" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Bumping $CURRENT → $NEW_VERSION ($BUMP_TYPE)"
+
+          # Update all package.json files
+          for PKG in \
+            package.json \
+            apps/web/package.json \
+            apps/api/package.json \
+            apps/console-gw/package.json \
+            packages/shared/package.json \
+            packages/db/package.json \
+            packages/adapters/package.json \
+            packages/ui/package.json; do
+            if [ -f "$PKG" ]; then
+              node -e "
+                const fs = require('fs');
+                const pkg = JSON.parse(fs.readFileSync('$PKG', 'utf8'));
+                pkg.version = '$NEW_VERSION';
+                fs.writeFileSync('$PKG', JSON.stringify(pkg, null, 2) + '\n');
+              "
+            fi
+          done
+
+          # Update version.ts
+          cat > packages/shared/src/version.ts << EOF
+          /**
+           * Central application version — updated by release workflow (do not edit by hand).
+           */
+          export const APP_VERSION = '${NEW_VERSION}';
+
+          export const APP_VERSION_LABEL = \`v\${APP_VERSION}\`;
+          EOF
+          # Fix indentation
+          sed -i 's/^          //' packages/shared/src/version.ts
+
+          # Update version state
+          node -e "
+            const fs = require('fs');
+            const state = JSON.parse(fs.readFileSync('.idrac-version-state.json', 'utf8'));
+            state.version = '$NEW_VERSION';
+            state.changeCount = 0;
+            fs.writeFileSync('.idrac-version-state.json', JSON.stringify(state, null, 2) + '\n');
+          "
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore: bump version to v${{ steps.bump.outputs.version }}"
+          git push
+
+      - name: Create git tag
+        run: |
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push origin "v${{ steps.bump.outputs.version }}"
+
+  deploy:
+    name: Deploy & Revoke Sessions
+    needs: version-bump
+    runs-on: self-hosted
+    if: always() && needs.version-bump.result == 'success'
+    env:
+      NEW_VERSION: ${{ needs.version-bump.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest code
+        run: git pull origin main
+
+      - name: Rebuild and restart containers
+        run: |
+          docker compose -f docker-compose.prod.yml build
+          docker compose -f docker-compose.prod.yml up -d
+
+      - name: Wait for API health
+        run: |
+          echo "Waiting for API to become healthy..."
+          for i in $(seq 1 30); do
+            STATUS=$(curl -sf http://localhost:4000/api/health 2>/dev/null | grep -o '"status":"ok"' || true)
+            if [ -n "$STATUS" ]; then
+              echo "API is healthy"
+              break
+            fi
+            echo "Attempt $i/30 — waiting..."
+            sleep 5
+          done
+
+      - name: Revoke all active sessions
+        run: |
+          echo "Revoking all active sessions to force re-login on v${NEW_VERSION}..."
+          docker compose -f docker-compose.prod.yml exec -T u-api \
+            node -e "
+              const { PrismaClient } = require('./packages/db/generated/client');
+              const prisma = new PrismaClient();
+              prisma.session.deleteMany({}).then(r => {
+                console.log('Revoked ' + r.count + ' sessions');
+                process.exit(0);
+              }).catch(e => {
+                console.error('Session revocation failed:', e.message);
+                process.exit(1);
+              });
+            " || echo "Fallback: sessions will expire naturally"
+
+      - name: Deployment summary
+        run: |
+          echo "═══════════════════════════════════════════════"
+          echo " Deployed v${NEW_VERSION}"
+          echo " All active sessions revoked — users must re-login"
+          echo "═══════════════════════════════════════════════"

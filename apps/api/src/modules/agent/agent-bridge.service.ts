@@ -169,4 +169,18 @@ export class AgentBridgeService {
       health?: string;
     }>(tenantId, 'probe', { ip, username, password });
   }
+
+  async invokeAdapter<T>(
+    tenantId: string,
+    payload: {
+      generation: string;
+      ip: string;
+      username: string;
+      password: string;
+      method: string;
+      args?: unknown[];
+    },
+  ): Promise<T> {
+    return this.request<T>(tenantId, 'adapter.invoke', payload);
+  }
 }

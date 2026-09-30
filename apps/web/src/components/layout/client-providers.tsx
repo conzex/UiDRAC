@@ -2,14 +2,11 @@
 
 import { Suspense } from 'react';
 import RouteLoadProvider from '@/components/layout/route-load-provider';
-
-function RouteLoadFallback() {
-  return null;
-}
+import AppPreloader from '@/components/layout/app-preloader';
 
 export default function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<RouteLoadFallback />}>
+    <Suspense fallback={<AppPreloader label="Loading page" />}>
       <RouteLoadProvider>{children}</RouteLoadProvider>
     </Suspense>
   );

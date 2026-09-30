@@ -3,16 +3,16 @@
 #   Set CLOUDFLARE_TUNNEL_TOKEN in .env (from Zero Trust → Tunnels → Install connector)
 #   docker compose -f docker-compose.prod.yml -f docker-compose.cloudflare.yml up -d
 #
-# Requires production stack already binding host ports 80/443 (nginx service).
+# Requires production stack already binding host ports 80/443 (u-nginx service).
 
 services:
-  cloudflared:
+  u-cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: uidrac-cloudflared
+    container_name: u-cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
     network_mode: host
     depends_on:
-      - nginx
+      - u-nginx

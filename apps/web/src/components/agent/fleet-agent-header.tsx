@@ -17,7 +17,7 @@ export function FleetAgentHeader({
   showActions?: boolean;
   description?: string;
 }) {
-  const { status, error } = useAgentStatus();
+  const { status, loading, error } = useAgentStatus();
 
   return (
     <div className={className}>
@@ -26,10 +26,7 @@ export function FleetAgentHeader({
         description={description}
         actions={showActions ? <FleetActionButtons /> : undefined}
       />
-      {error && (
-        <p className="text-sm text-red-critical bg-red-50 border border-red-200 rounded px-3 py-2 mb-3">{error}</p>
-      )}
-      <AgentStatusBanner status={status} />
+      <AgentStatusBanner status={status} loading={loading} error={error} />
     </div>
   );
 }

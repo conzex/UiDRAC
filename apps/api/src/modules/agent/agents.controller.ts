@@ -13,13 +13,24 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AgentService } from './agent.service';
+import { AuditService } from '../audit/audit.service';
 import { Roles } from '../auth/decorators';
 import { createHash } from 'crypto';
 import { APP_VERSION } from '@idrac/shared';
 
 @Controller('agents')
 export class AgentsController {
-  constructor(private agent: AgentService) {}
+  constructor(private agent: AgentService, private audit: AuditService) {}
+
+  private ip(req: any): string {
+    return (
+      (req.headers?.['cf-connecting-ip'] as string)?.trim() ||
+      (req.headers?.['true-client-ip'] as string)?.trim() ||
+      (req.headers?.['x-real-ip'] as string)?.trim() ||
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.ip || '0.0.0.0'
+    );
+  }
 
   @Get()
   @Roles('VIEWER')
@@ -27,13 +38,22 @@ export class AgentsController {
     return this.agent.listAgents(req.user.tenantId);
   }
 
+  @Get('live')
+  @Roles('VIEWER')
+  async live(@Req() req: { user: { tenantId: string } }) {
+    const agents = await this.agent.listAgents(req.user.tenantId);
+    const status = await this.agent.getStatus(req.user.tenantId);
+    return { at: new Date().toISOString(), status, agents };
+  }
+
   @Get('download/meta')
   @Roles('VIEWER')
   downloadMeta() {
+    const cfg = this.agent.getPublicConfig();
     return {
       latestVersion: APP_VERSION,
-      productionCloudUrl: this.agent.getPublicConfig().cloudUrl,
-      wsUrl: this.agent.getPublicConfig().wsUrl,
+      productionCloudUrl: cfg.cloudUrl,
+      wsUrl: cfg.wsUrl,
       platforms: [
         { id: 'win', label: 'Windows', architectures: ['x64'] },
         { id: 'linux', label: 'Linux', architectures: ['x64', 'arm64'] },
@@ -49,9 +69,13 @@ export class AgentsController {
 
   @Post('register')
   @Roles('OPERATOR')
-  async register(@Req() req: { user: { tenantId: string } }, @Body() body: { name?: string }) {
+  async register(@Req() req: any, @Body() body: { name?: string }) {
     const row = await this.agent.registerNewAgent(req.user.tenantId, body?.name);
-    return this.agent.getAgent(req.user.tenantId, row.id);
+    const result = await this.agent.getAgent(req.user.tenantId, row.id);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.register', { agentId: result.publicId, name: result.name }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Get(':id')
@@ -62,30 +86,58 @@ export class AgentsController {
 
   @Patch(':id')
   @Roles('OPERATOR')
-  rename(
-    @Req() req: { user: { tenantId: string } },
-    @Param('id') id: string,
-    @Body() body: { name?: string },
-  ) {
-    return this.agent.renameAgent(req.user.tenantId, id, body?.name?.trim() || 'Site agent');
+  async rename(@Req() req: any, @Param('id') id: string, @Body() body: { name?: string }) {
+    const result = await this.agent.renameAgent(req.user.tenantId, id, body?.name?.trim() || 'Site agent');
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.rename', { agentId: id, name: body?.name }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
+  }
+
+  @Post(':id/enable')
+  @Roles('OPERATOR')
+  async enable(@Req() req: any, @Param('id') id: string) {
+    const result = await this.agent.enableAgent(req.user.tenantId, id);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.enable', { agentId: id }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
+  }
+
+  @Post(':id/reactivate')
+  @Roles('ADMIN')
+  async reactivate(@Req() req: any, @Param('id') id: string) {
+    const result = await this.agent.reactivateAgent(req.user.tenantId, id);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.reactivate', { agentId: id }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Post(':id/disable')
   @Roles('ADMIN')
-  disable(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
-    return this.agent.disableAgent(req.user.tenantId, id);
+  async disable(@Req() req: any, @Param('id') id: string) {
+    const result = await this.agent.disableAgent(req.user.tenantId, id);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.disable', { agentId: id }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Post(':id/revoke')
   @Roles('ADMIN')
-  revoke(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
-    return this.agent.revokeAgent(req.user.tenantId, id);
+  async revoke(@Req() req: any, @Param('id') id: string) {
+    const result = await this.agent.revokeAgent(req.user.tenantId, id);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.revoke', { agentId: id }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Post(':id/rotate')
   @Roles('ADMIN')
   async rotate(
-    @Req() req: { user: { tenantId: string } },
+    @Req() req: any,
     @Param('id') id: string,
     @Query('platform') platform: string,
     @Query('format') format: string,
@@ -93,6 +145,9 @@ export class AgentsController {
   ) {
     const plat = platform === 'win' || platform === 'darwin' ? platform : 'linux';
     await this.agent.rotateCredentials(req.user.tenantId, id, plat);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.rotate_credentials', { agentId: id, platform: plat }, this.ip(req));
+    } catch { /* non-critical */ }
     if (format === 'json') {
       const record = await this.agent.resolveAgentForDownload(req.user.tenantId, id);
       const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, record);
@@ -114,7 +169,7 @@ export class AgentsController {
   @Get(':id/download')
   @Roles('OPERATOR')
   async download(
-    @Req() req: { user: { tenantId: string } },
+    @Req() req: any,
     @Param('id') id: string,
     @Query('platform') platform: string,
     @Query('format') format: string,
@@ -122,6 +177,9 @@ export class AgentsController {
     @Res() res: Response,
   ) {
     const plat = platform === 'win' || platform === 'darwin' ? platform : 'linux';
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.download', { agentId: id, platform: plat }, this.ip(req));
+    } catch { /* non-critical */ }
     if (format === 'json') {
       const record = await this.agent.resolveAgentForDownload(req.user.tenantId, id);
       const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, record);
@@ -142,7 +200,11 @@ export class AgentsController {
 
   @Delete(':id')
   @Roles('ADMIN')
-  async remove(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
-    return this.agent.revokeAgent(req.user.tenantId, id);
+  async remove(@Req() req: any, @Param('id') id: string) {
+    const result = await this.agent.deleteAgentRecord(req.user.tenantId, id);
+    try {
+      await this.audit.create(req.user.tenantId, req.user.id, 'agent.delete', { agentId: id, publicId: result.publicId }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
   }
 }

@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma.service';
 import { getAdapter, probeGeneration } from '@idrac/adapters';
 import type { IdracGeneration, IdracAdapter } from '@idrac/shared';
 import { UIDRAC_AGENT_NAME } from '@idrac/shared';
+import { encryptSecret, decryptSecret } from '../../common/crypto.util';
 import { AgentBridgeService } from '../agent/agent-bridge.service';
 import { requireEdgeAgent } from '../../common/edge-agent.config';
 
@@ -81,12 +82,17 @@ export class ServersService {
 
   async create(tenantId: string, data: { name: string; ip: string; username: string; password: string; credentialsMode: string; tags?: string[] }) {
     const probe = await this.probe(data.ip, data.username, data.password, tenantId);
+    const isSaved = data.credentialsMode === 'saved';
+    const creds = isSaved ? encryptSecret(JSON.stringify({ username: data.username, password: data.password })) : null;
     const server = await this.prisma.server.create({
       data: {
         tenantId, name: data.name, ip: data.ip,
         generation: (GEN_MAP[probe.generation] ?? 'GEN9') as any,
         model: probe.model, serviceTag: probe.serviceTag, firmwareVersion: probe.firmwareVersion,
-        credentialsMode: data.credentialsMode === 'saved' ? 'SAVED' : 'SESSION',
+        credentialsMode: isSaved ? 'SAVED' : 'SESSION',
+        credentialsEncrypted: creds?.encrypted ?? null,
+        credentialsIv: creds?.iv ?? null,
+        credentialsTag: creds?.tag ?? null,
         tags: data.tags ?? [], health: (probe.health?.toUpperCase() ?? 'UNKNOWN') as any,
         lastSeenAt: new Date(),
       },
@@ -106,29 +112,105 @@ export class ServersService {
 
   // ── Adapter Helpers ──
 
-  private getAdapterForServer(server: { ip: string; generation: string }, username = 'root', password = 'calvin'): IdracAdapter {
-    const gen = GEN_REVERSE[server.generation] ?? '9';
-    return getAdapter(gen, { ip: server.ip, username, password });
+  private resolveServerCredentials(
+    server: { credentialsEncrypted?: Buffer | null; credentialsIv?: Buffer | null; credentialsTag?: Buffer | null },
+    username?: string,
+    password?: string,
+  ): { user: string; pass: string } {
+    let user = username ?? 'root';
+    let pass = password ?? 'calvin';
+    if (!username && server.credentialsEncrypted && server.credentialsIv && server.credentialsTag) {
+      try {
+        const decrypted = JSON.parse(decryptSecret(
+          Buffer.from(server.credentialsEncrypted),
+          Buffer.from(server.credentialsIv),
+          Buffer.from(server.credentialsTag),
+        ));
+        user = decrypted.username || user;
+        pass = decrypted.password || pass;
+      } catch { /* fallback to defaults */ }
+    }
+    return { user, pass };
   }
 
-  private async withAdapter<T>(id: string, tenantId: string | null, fn: (adapter: IdracAdapter) => Promise<T>): Promise<T> {
+  private getAdapterForServer(server: { ip: string; generation: string; credentialsEncrypted?: Buffer | null; credentialsIv?: Buffer | null; credentialsTag?: Buffer | null }, username?: string, password?: string): IdracAdapter {
+    const gen = GEN_REVERSE[server.generation] ?? '9';
+    const { user, pass } = this.resolveServerCredentials(server, username, password);
+    return getAdapter(gen, { ip: server.ip, username: user, password: pass });
+  }
+
+  private mapAdapterError(serverIp: string, err: any): string {
+    const message = err?.message || '';
+    if (err?.code === 'ECONNREFUSED') return `iDRAC at ${serverIp} refused the connection. Verify the iDRAC is powered on and accessible.`;
+    if (err?.code === 'ETIMEDOUT' || err?.code === 'ECONNABORTED' || message.includes('timeout')) {
+      return `Connection to iDRAC at ${serverIp} timed out. Check network connectivity.`;
+    }
+    if (err?.code === 'ENOTFOUND') return `Cannot resolve hostname ${serverIp}. Check the address.`;
+    if (err?.response?.status === 401 || message.toLowerCase().includes('auth')) {
+      return `Authentication failed for iDRAC at ${serverIp}. Check credentials.`;
+    }
+    if (message.includes('Session only') || message.includes('credentials')) return message;
+    return `Unable to connect to iDRAC at ${serverIp}: ${message || 'Unknown error'}`;
+  }
+
+  private async withAdapter<T>(
+    id: string,
+    tenantId: string | null,
+    method: string,
+    args: unknown[] = [],
+    credentials?: { username: string; password: string },
+  ): Promise<T> {
     const server = await this.findOne(id, tenantId);
-    const adapter = this.getAdapterForServer(server);
+    const gen = GEN_REVERSE[server.generation] ?? '9';
+    const { user, pass } = this.resolveServerCredentials(server, credentials?.username, credentials?.password);
+
+    if (server.credentialsMode === 'SESSION' && !credentials?.username) {
+      throw new BadGatewayException(
+        `iDRAC credentials for ${server.ip} were stored as session-only and have expired. Remove and re-add the server with "Save encrypted" credentials.`,
+      );
+    }
+
+    if (requireEdgeAgent()) {
+      if (!tenantId) {
+        throw new ServiceUnavailableException(`Tenant context required for ${UIDRAC_AGENT_NAME} operations.`);
+      }
+      const connected = await this.agentBridge.isConnected(tenantId);
+      if (!connected) {
+        throw new ServiceUnavailableException(
+          `Your ${UIDRAC_AGENT_NAME} is not connected. Install and start an agent from Agents → Download Agent.`,
+        );
+      }
+      try {
+        return await this.agentBridge.invokeAdapter<T>(tenantId, {
+          generation: gen,
+          ip: server.ip,
+          username: user,
+          password: pass,
+          method,
+          args,
+        });
+      } catch (err: any) {
+        if (err instanceof NotFoundException || err instanceof ServiceUnavailableException) throw err;
+        throw new BadGatewayException(this.mapAdapterError(server.ip, err));
+      }
+    }
+
+    const adapter = this.getAdapterForServer(server, credentials?.username, credentials?.password);
     try {
       await adapter.connect();
     } catch (err: any) {
-      const msg = err?.code === 'ECONNREFUSED' ? `iDRAC at ${server.ip} refused the connection. Verify the iDRAC is powered on and accessible.`
-        : err?.code === 'ETIMEDOUT' || err?.code === 'ECONNABORTED' || err?.message?.includes('timeout') ? `Connection to iDRAC at ${server.ip} timed out. Check network connectivity.`
-        : err?.code === 'ENOTFOUND' ? `Cannot resolve hostname ${server.ip}. Check the address.`
-        : err?.response?.status === 401 ? `Authentication failed for iDRAC at ${server.ip}. Check credentials.`
-        : `Unable to connect to iDRAC at ${server.ip}: ${err?.message || 'Unknown error'}`;
-      throw new BadGatewayException(msg);
+      throw new BadGatewayException(this.mapAdapterError(server.ip, err));
     }
     try {
-      return await fn(adapter);
+      const target = (adapter as Record<string, unknown>)[method];
+      if (typeof target !== 'function') {
+        throw new BadGatewayException(`Unknown adapter method: ${method}`);
+      }
+      return await (target as (...a: unknown[]) => Promise<T>).apply(adapter, args);
     } catch (err: any) {
       if (err instanceof NotFoundException || err instanceof BadGatewayException) throw err;
-      const msg = err?.message?.includes('timeout') ? `iDRAC at ${server.ip} timed out while fetching data.`
+      const msg = err?.message?.includes('timeout')
+        ? `iDRAC at ${server.ip} timed out while fetching data.`
         : `Error communicating with iDRAC at ${server.ip}: ${err?.message || 'Unknown error'}`;
       throw new BadGatewayException(msg);
     } finally {
@@ -139,166 +221,166 @@ export class ServersService {
   // ── Core Features ──
 
   async getHealth(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getHealth());
+    return this.withAdapter(id, tenantId, 'getHealth');
   }
 
   async getSystemInfo(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getSystemInfo());
+    return this.withAdapter(id, tenantId, 'getSystemInfo');
   }
 
   async getStorage(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getStorage());
+    return this.withAdapter(id, tenantId, 'getStorage');
   }
 
   async getNetwork(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getNetwork());
+    return this.withAdapter(id, tenantId, 'getNetwork');
   }
 
   async getFirmware(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getFirmware());
+    return this.withAdapter(id, tenantId, 'getFirmware');
   }
 
   async getSensors(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getSensors());
+    return this.withAdapter(id, tenantId, 'getSensors');
   }
 
   async getSel(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getSel());
+    return this.withAdapter(id, tenantId, 'getSel');
   }
 
   async getLogs(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getLogs({ limit: 50 }));
+    return this.withAdapter(id, tenantId, 'getLogs', [{ limit: 50 }]);
   }
 
   async powerAction(id: string, tenantId: string | null, action: string) {
-    return this.withAdapter(id, tenantId, (a) => a.powerAction(action as any));
+    return this.withAdapter(id, tenantId, 'powerAction', [action]);
   }
 
   // ── Power & Thermal ──
 
   async getPowerReadings(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getPowerReadings());
+    return this.withAdapter(id, tenantId, 'getPowerReadings');
   }
 
   async getThermal(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getThermal());
+    return this.withAdapter(id, tenantId, 'getThermal');
   }
 
   async setPowerCap(id: string, tenantId: string | null, watts: number | null) {
-    return this.withAdapter(id, tenantId, (a) => a.setPowerCap(watts));
+    return this.withAdapter(id, tenantId, 'setPowerCap', [watts]);
   }
 
   // ── BIOS ──
 
   async getBiosConfig(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getBiosConfig());
+    return this.withAdapter(id, tenantId, 'getBiosConfig');
   }
 
   async setBiosAttributes(id: string, tenantId: string | null, attrs: Record<string, string>) {
-    return this.withAdapter(id, tenantId, (a) => a.setBiosAttributes(attrs));
+    return this.withAdapter(id, tenantId, 'setBiosAttributes', [attrs]);
   }
 
   async setBootOrder(id: string, tenantId: string | null, order: string[]) {
-    return this.withAdapter(id, tenantId, (a) => a.setBootOrder(order));
+    return this.withAdapter(id, tenantId, 'setBootOrder', [order]);
   }
 
   // ── iDRAC Users ──
 
   async getIdracUsers(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getUsers());
+    return this.withAdapter(id, tenantId, 'getUsers');
   }
 
   async createIdracUser(id: string, tenantId: string | null, name: string, password: string, privilege: string) {
-    return this.withAdapter(id, tenantId, (a) => a.createUser(name, password, privilege));
+    return this.withAdapter(id, tenantId, 'createUser', [name, password, privilege]);
   }
 
   async deleteIdracUser(id: string, tenantId: string | null, userId: number) {
-    return this.withAdapter(id, tenantId, (a) => a.deleteUser(userId));
+    return this.withAdapter(id, tenantId, 'deleteUser', [userId]);
   }
 
   async updateIdracUserPassword(id: string, tenantId: string | null, userId: number, password: string) {
-    return this.withAdapter(id, tenantId, (a) => a.updateUserPassword(userId, password));
+    return this.withAdapter(id, tenantId, 'updateUserPassword', [userId, password]);
   }
 
   // ── Virtual Media ──
 
   async getVirtualMedia(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getVirtualMedia());
+    return this.withAdapter(id, tenantId, 'getVirtualMedia');
   }
 
   async mountVirtualMedia(id: string, tenantId: string | null, iso: string) {
-    return this.withAdapter(id, tenantId, (a) => a.mountVirtualMedia(iso));
+    return this.withAdapter(id, tenantId, 'mountVirtualMedia', [iso]);
   }
 
   async ejectVirtualMedia(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.ejectVirtualMedia());
+    return this.withAdapter(id, tenantId, 'ejectVirtualMedia');
   }
 
   // ── iDRAC Network ──
 
   async getIdracNetwork(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getIdracNetwork());
+    return this.withAdapter(id, tenantId, 'getIdracNetwork');
   }
 
   async setIdracNetwork(id: string, tenantId: string | null, config: Record<string, unknown>) {
-    return this.withAdapter(id, tenantId, (a) => a.setIdracNetwork(config as any));
+    return this.withAdapter(id, tenantId, 'setIdracNetwork', [config]);
   }
 
   // ── Inventory ──
 
   async getMemory(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getMemory());
+    return this.withAdapter(id, tenantId, 'getMemory');
   }
 
   async getCpus(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getCpus());
+    return this.withAdapter(id, tenantId, 'getCpus');
   }
 
   async getPcieDevices(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getPcieDevices());
+    return this.withAdapter(id, tenantId, 'getPcieDevices');
   }
 
   // ── Lifecycle Controller ──
 
   async getLcJobs(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getLcJobs());
+    return this.withAdapter(id, tenantId, 'getLcJobs');
   }
 
   async deleteLcJob(id: string, tenantId: string | null, jobId: string) {
-    return this.withAdapter(id, tenantId, (a) => a.deleteLcJob(jobId));
+    return this.withAdapter(id, tenantId, 'deleteLcJob', [jobId]);
   }
 
   async clearLcJobs(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.clearLcJobs());
+    return this.withAdapter(id, tenantId, 'clearLcJobs');
   }
 
   // ── Certificates ──
 
   async getCertificates(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getCertificates());
+    return this.withAdapter(id, tenantId, 'getCertificates');
   }
 
   // ── Licenses ──
 
   async getLicenses(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getLicenses());
+    return this.withAdapter(id, tenantId, 'getLicenses');
   }
 
   // ── SCP ──
 
   async exportScp(id: string, tenantId: string | null, format: 'xml' | 'json') {
-    return this.withAdapter(id, tenantId, (a) => a.exportScp(format));
+    return this.withAdapter(id, tenantId, 'exportScp', [format]);
   }
 
   // ── Identify ──
 
   async setIdentify(id: string, tenantId: string | null, on: boolean) {
-    return this.withAdapter(id, tenantId, (a) => a.setIdentify(on));
+    return this.withAdapter(id, tenantId, 'setIdentify', [on]);
   }
 
   // ── Console ──
 
   async getConsoleUrl(id: string, tenantId: string | null) {
-    return this.withAdapter(id, tenantId, (a) => a.getConsoleUrl());
+    return this.withAdapter(id, tenantId, 'getConsoleUrl');
   }
 }

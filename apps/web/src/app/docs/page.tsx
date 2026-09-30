@@ -80,6 +80,31 @@ const sections: Array<{
   content: { heading: string; body: string }[];
 }> = [
   {
+    id: 'admin-operations',
+    audience: 'admin-internal',
+    icon: Shield,
+    title: 'Administrator guide',
+    subtitle: 'Conzex cloud — administrators only (signed in)',
+    content: [
+      {
+        heading: 'Admin panel',
+        body: `Users with the **Admin** role (or higher) see **Admin** in the application menu. The panel covers organization users, sessions, and— for Conzex platform operators— cross-tenant inventory.\n\nPublic and external users without an Admin role do not see this menu or this documentation section.`,
+      },
+      {
+        heading: 'Password reset',
+        body: `When an administrator resets a user password, the system emails a **temporary password** only to the **email address stored on that user account**. Reset details are not shown in the browser and cannot be sent to any other address.\n\nConfigure **SMTP_** variables on the Conzex cloud API so delivery works in production (${CONZEX_CLOUD_PRODUCTION_URL}).`,
+      },
+      {
+        heading: 'Primary platform account',
+        body: 'The seeded **primary platform administrator** (`admin` on the system organization) **cannot be deleted**. Protect this account and change its password after first login.',
+      },
+      {
+        heading: 'Agent quota management',
+        body: `Admins can configure agent and server quotas per tenant from the Admin panel:\n\n- **Max agents per user** — Default is 1 for standard users (admins have unlimited)\n- **Max servers per site** — Default is 3 on the Starter plan\n- **Override limits** — Admins can grant specific users higher quotas\n\nWhen a non-admin user attempts to register an agent beyond their quota, they see an upgrade request dialog with plan pricing. The request is logged and forwarded to the support team.`,
+      },
+    ],
+  },
+  {
     id: 'getting-started', icon: BookOpen, title: 'Getting Started', subtitle: 'How to use this product',
     content: [
       {
@@ -100,7 +125,7 @@ const sections: Array<{
       },
       {
         heading: 'How Conzex cloud works',
-        body: `The web application and API run on **Conzex-managed cloud infrastructure**. Your operators sign in over HTTPS; no application servers are installed in your data center.\n\nBecause iDRAC addresses live on your **private LAN**, each tenant runs a lightweight **${AGENT}** on a host inside your network. The agent registers to your organization over a secure WebSocket and carries iDRAC probe and management traffic on your behalf.\n\nInstall and verify the agent under **Settings → ${AGENT}** before adding servers at that site. Full steps for **Windows, Linux, and macOS** are in the **${AGENT}** section of this guide.\n\nDo not share iDRAC credentials outside approved credential-storage modes. Contact Conzex if agent status is disconnected or probes fail consistently.`,
+        body: `The web application and API run on **Conzex-managed cloud infrastructure**. Your operators sign in over HTTPS; no application servers are installed in your data center.\n\nBecause iDRAC addresses live on your **private LAN**, each tenant runs a lightweight **${AGENT}** on a host inside your network. The agent registers to your organization over a secure WebSocket and carries iDRAC probe and management traffic on your behalf.\n\nInstall and verify the agent under **Agents** before adding servers at that site. Full steps for **Windows, Linux, and macOS** are in the **${AGENT}** section of this guide.\n\nDo not share iDRAC credentials outside approved credential-storage modes. Contact Conzex if agent status is disconnected or probes fail consistently.`,
       },
       {
         heading: 'Support, releases, and trust',
@@ -120,7 +145,7 @@ const sections: Array<{
       },
       {
         heading: 'Download your configuration (all platforms)',
-        body: `1. Sign in and open [**Settings**](/settings).\n2. Review the **${AGENT}** status banner (Connected / Disconnected).\n3. Choose **Agent download** and select your OS:\n   - **Linux** → \`${BUNDLE}-linux.json\`\n   - **macOS** → \`${BUNDLE}-darwin.json\`\n   - **Windows** → \`${BUNDLE}-win.json\`\n\nEach file is a **tenant-bound JSON bundle** (unique \`agentId\` and \`agentSecret\`). Treat it like a password—store only on the agent host. Contact Conzex if you need credential rotation after a leak.`,
+        body: `1. Sign in and open [**Agents**](/agents).\n2. Review the fleet status banner (Connected / Offline).\n3. Select an agent, platform, and **Download ZIP** (tenant-locked \`credentials.json\`).\n\nTreat each bundle like a password—store only on the agent host. Contact Conzex if you need credential rotation after a leak.`,
       },
       {
         heading: 'Configuration file contents',
@@ -128,23 +153,23 @@ const sections: Array<{
       },
       {
         heading: 'Linux',
-        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS** to your Conzex URL, LAN access to iDRAC.\n\n**Option A — install helper (recommended)**\n\n\`\`\`bash\nexport CLOUD_URL="https://your-console.example.com"\ncurl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${BUNDLE}-linux.json\n\`\`\`\n\n**Option B — manual run**\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG=/secure/path/${BUNDLE}-linux.json\nnpx @idrac/edge-agent\n\`\`\`\n\n(\`IDRAC_AGENT_CONFIG\` is still accepted for compatibility.)\n\nRun under **systemd**, **supervisor**, or your standard service manager so the agent restarts after reboot. Confirm **Connected** in **Settings** before adding servers.`,
+        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS** to your Conzex URL, LAN access to iDRAC.\n\n**Option A — install helper (recommended)**\n\n\`\`\`bash\nexport CLOUD_URL="https://your-console.example.com"\ncurl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${BUNDLE}-linux.json\n\`\`\`\n\n**Option B — manual run**\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG=/secure/path/${BUNDLE}-linux.json\nnpx @idrac/edge-agent\n\`\`\`\n\n(\`IDRAC_AGENT_CONFIG\` is still accepted for compatibility.)\n\nRun under **systemd**, **supervisor**, or your standard service manager so the agent restarts after reboot. Confirm **Connected** on **Agents** before adding servers.`,
       },
       {
         heading: 'macOS',
-        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS**, LAN access to iDRAC.\n\n**Recommended:** install **UidracAgent.pkg** (or Windows setup), then open the **local agent console** at [http://127.0.0.1:9742](http://127.0.0.1:9742) — Conzex logo, live logs, cloud connection status, and an **iDRAC activity table** (probes in realtime).\n\nForeground dev:\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG="$HOME/secure/${BUNDLE}-darwin.json"\ncd universal-idrac-console/apps/edge-agent && pnpm start\n# Browser opens http://127.0.0.1:9742\n\`\`\`\n\nVerify **Connected** in Settings.`,
+        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS**, LAN access to iDRAC.\n\n**Recommended:** install **UidracAgent.pkg** (or Windows setup), then open the **local agent console** at [http://127.0.0.1:9742](http://127.0.0.1:9742) — Conzex logo, live logs, cloud connection status, and an **iDRAC activity table** (probes in realtime).\n\nForeground dev:\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG="$HOME/secure/${BUNDLE}-darwin.json"\ncd universal-idrac-console/apps/edge-agent && pnpm start\n# Browser opens http://127.0.0.1:9742\n\`\`\`\n\nVerify **Connected** on **Agents**.`,
       },
       {
         heading: 'Windows',
-        body: `**Requirements:** Node.js **20+** LTS, outbound **HTTPS/WSS** through corporate proxy if applicable, LAN access to iDRAC.\n\n1. Save your downloaded \`${BUNDLE}-win.json\` to a protected folder (e.g. \`C:\\ProgramData\\Conzex\\uidrac-agent\\\`).\n2. Set environment variables from the bundle (System or service account):\n   - \`UIDRAC_AGENT_CONFIG\` → full path to the JSON file, **or**\n   - \`UIDRAC_AGENT_ID\`, \`UIDRAC_AGENT_SECRET\`, \`UIDRAC_CLOUD_URL\`, \`UIDRAC_AGENT_WS_URL\` (legacy \`IDRAC_*\` names also work)\n3. Start the agent:\n\n\`\`\`powershell\nnpx @idrac/edge-agent\n\`\`\`\n\nRegister as a **Windows Service** (NSSM, WinSW, or your IT standard) under a dedicated service account. After reboot, confirm **Connected** in **Settings**.`,
+        body: `**Requirements:** Node.js **20+** LTS, outbound **HTTPS/WSS** through corporate proxy if applicable, LAN access to iDRAC.\n\n1. Save your downloaded \`${BUNDLE}-win.json\` to a protected folder (e.g. \`C:\\ProgramData\\Conzex\\uidrac-agent\\\`).\n2. Set environment variables from the bundle (System or service account):\n   - \`UIDRAC_AGENT_CONFIG\` → full path to the JSON file, **or**\n   - \`UIDRAC_AGENT_ID\`, \`UIDRAC_AGENT_SECRET\`, \`UIDRAC_CLOUD_URL\`, \`UIDRAC_AGENT_WS_URL\` (legacy \`IDRAC_*\` names also work)\n3. Start the agent:\n\n\`\`\`powershell\nnpx @idrac/edge-agent\n\`\`\`\n\nRegister as a **Windows Service** (NSSM, WinSW, or your IT standard) under a dedicated service account. After reboot, confirm **Connected** on **Agents**.`,
       },
       {
         heading: 'Verify, probe, and troubleshoot',
-        body: `**Success criteria**\n- **Settings → ${AGENT}** shows **Connected** with a recent timestamp.\n- **Dashboard → Add Server → Probe Server** succeeds for an iDRAC on the same LAN as the agent.\n\n**Common issues**\n- **Disconnected** — wrong secret, firewall blocking WSS, or agent process stopped. Re-download the bundle after credential rotation.\n- **Probe fails** — agent host cannot reach iDRAC:443; check routing, ACLs, and iDRAC enablement.\n- **Wrong tenant** — each bundle works for **one organization only**; do not reuse another customer's file.\n\nInclude agent status and version in support requests to Conzex ([contact page](/contact)).`,
+        body: `**Success criteria**\n- **Agents** shows **Connected** with a recent timestamp.\n- **Dashboard → Add Server → Probe Server** succeeds for an iDRAC on the same LAN as the agent.\n\n**Common issues**\n- **Disconnected** — wrong secret, firewall blocking WSS, or agent process stopped. Re-download the bundle after credential rotation.\n- **Probe fails** — agent host cannot reach iDRAC:443; check routing, ACLs, and iDRAC enablement.\n- **Wrong tenant** — each bundle works for **one organization only**; do not reuse another customer's file.\n\nInclude agent status and version in support requests to Conzex ([contact page](/contact)).`,
       },
       {
         heading: 'Rotate credentials',
-        body: `Conzex can **rotate credentials** for your **${AGENT}** from **Settings** when a bundle may have been exposed. This invalidates the current secret immediately.\n\nAfter rotation:\n1. Download a fresh bundle for each OS still in use.\n2. Update the agent host configuration and restart the service.\n3. Confirm **Connected** before decommissioning old configs.\n\nPlan rotation during a maintenance window—existing connections drop when the secret changes.`,
+        body: `Organization **Owners** and **Admins** can **revoke, reactivate, or rotate** agents from [**Agents**](/agents) when a bundle may have been exposed. Revoking invalidates the current secret immediately.\n\nAfter rotation or reactivation:\n1. Download a fresh ZIP for each host still in use.\n2. Update the agent host configuration and restart the service.\n3. Confirm **Connected** before decommissioning old configs.\n\nPlan changes during a maintenance window—existing connections drop when credentials change.`,
       },
       {
         heading: 'Platform settings (Conzex operations)',
@@ -244,23 +269,26 @@ const sections: Array<{
     ],
   },
   {
-    id: 'admin-operations',
-    audience: 'admin-internal',
-    icon: Shield,
-    title: 'Administrator guide',
-    subtitle: 'Conzex cloud — administrators only (signed in)',
+    id: 'plans-pricing',
+    icon: Tags,
+    title: 'Plans & pricing',
+    subtitle: 'Agent, site, and server limits — recurring monthly pricing',
     content: [
       {
-        heading: 'Admin panel',
-        body: `Users with the **Admin** role (or higher) see **Admin** in the application menu. The panel covers organization users, sessions, and— for Conzex platform operators— cross-tenant inventory.\n\nPublic and external users without an Admin role do not see this menu or this documentation section.`,
+        heading: 'Default plan limits',
+        body: `Every new organization starts on the **Starter** plan:\n\n- **1 site** (1 ${AGENT})\n- **3 servers** per site\n- All core features included (dashboard, health monitoring, virtual console, BIOS/storage management)\n\nAdministrators can manage agent and server limits from the **Admin** panel. Non-admin users see their current usage on the **Agents** page.`,
       },
       {
-        heading: 'Password reset',
-        body: `When an administrator resets a user password, the system emails a **temporary password** only to the **email address stored on that user account**. Reset details are not shown in the browser and cannot be sent to any other address.\n\nConfigure **SMTP_** variables on the Conzex cloud API so delivery works in production (${CONZEX_CLOUD_PRODUCTION_URL}).`,
+        heading: 'Monthly pricing tiers',
+        body: `| Plan | Sites | Servers | Monthly price |\n|------|-------|---------|---------------|\n| **Starter** | 1 | 3 | Free |\n| **Pro** | 2 | 10 | $4.99/mo |\n| **Business** | 5 | 25 | $12.99/mo |\n| **Enterprise** | Unlimited | Unlimited | Contact sales |\n\nAll plans include full iDRAC 6–9 support, encrypted credential storage, and audit logging. Higher tiers add priority support and extended retention.`,
       },
       {
-        heading: 'Primary platform account',
-        body: 'The seeded **primary platform administrator** (`admin` on the system organization) **cannot be deleted**. Protect this account and change its password after first login.',
+        heading: 'Additional agents',
+        body: `Need more agents beyond your plan allocation? Each additional agent/site costs **$1.99 per month** (recurring). To request additional agents:\n\n1. Open [**Agents**](/agents) and click **Register agent**.\n2. If you have reached your plan limit, an upgrade dialog appears with pricing details.\n3. Submit your request — the support team will process it within 24 hours.\n\nAdministrators can add agents without limits. Contact [Conzex support](${CONZEX_WEB_URL}) for volume pricing.`,
+      },
+      {
+        heading: 'Server limits and overages',
+        body: `The default plan allows **3 servers** per site. Adding a server beyond your limit will prompt an upgrade.\n\nTo manage server limits:\n- **Admins** can adjust quotas per tenant in the Admin panel.\n- **Operators** can add servers up to the configured limit.\n- **Viewers** have read-only access and cannot add servers.\n\nIf you need more servers immediately, upgrade your plan or contact your organization administrator.`,
       },
     ],
   },
@@ -502,6 +530,9 @@ export default function DocsPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">{section.title}</h1>
+                  {section.audience === 'admin-internal' && (
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-dell-blue text-white">Admin only</span>
+                  )}
                   <button
                     type="button"
                     onClick={copySectionLink}

@@ -7,8 +7,10 @@ import { AgentBridgeService } from './agent-bridge.service';
 import { AgentConsoleStore } from './agent-console.store';
 import { PrismaService } from '../../prisma.service';
 import { RedisService } from '../../redis.service';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
+  imports: [AuditModule],
   controllers: [AgentController, AgentsController],
   providers: [AgentService, AgentBridgeService, AgentConsoleStore, PrismaService, RedisService],
   exports: [AgentService, AgentBridgeService],

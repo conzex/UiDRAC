@@ -24,6 +24,8 @@ import { maybeOpenBrowser, startLocalConsole } from './local-console';
 const VERSION = APP_VERSION;
 const UI_PORT = parseInt(process.env.UIDRAC_AGENT_UI_PORT ?? '9742', 10);
 
+type Endpoint = { cloudUrl: string; wsUrl: string; label: string };
+
 type Config = {
   agentId: string;
   agentSecret: string;
@@ -31,6 +33,7 @@ type Config = {
   tenantName?: string;
   wsUrl?: string;
   cloudUrl?: string;
+  endpoints: Endpoint[];
 };
 
 const VALID_SCHEMAS = new Set([UIDRAC_AGENT_BUNDLE_SCHEMA, UIDRAC_AGENT_BUNDLE_SCHEMA_LEGACY, 'uidrac-edge-agent/v1']);
@@ -43,42 +46,85 @@ function envFirst(...keys: string[]): string | undefined {
   return undefined;
 }
 
+function deriveWsUrl(cloudUrl: string): string {
+  return cloudUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/agent/ws';
+}
+
 function loadConfig(): Config {
   const configPath = envFirst('UIDRAC_AGENT_CONFIG', 'IDRAC_AGENT_CONFIG');
+  let agentId = '';
+  let agentSecret = '';
+  let tenantId: string | undefined;
+  let tenantName: string | undefined;
+  let primaryCloudUrl: string | undefined;
+  let primaryWsUrl: string | undefined;
+  let localUrl: string | undefined;
+  let localWsUrl: string | undefined;
+
   if (configPath && fs.existsSync(configPath)) {
-    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<string, string>;
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<string, any>;
     const schema = raw.schema as string | undefined;
     if (schema && !VALID_SCHEMAS.has(schema)) {
       console.error(`Unsupported agent bundle schema: ${schema}. Download a fresh bundle from Settings → Agent download.`);
       process.exit(1);
     }
-    const agentId = raw.agentId || raw.UIDRAC_AGENT_ID || raw.IDRAC_AGENT_ID;
+    agentId = raw.agentId || raw.UIDRAC_AGENT_ID || raw.IDRAC_AGENT_ID;
     const uniqueAgentId = raw.uniqueAgentId || agentId;
     if (agentId && uniqueAgentId && agentId !== uniqueAgentId) {
       console.error('Invalid bundle: agentId and uniqueAgentId must match (tenant-locked credential).');
       process.exit(1);
     }
-    return {
-      agentId,
-      agentSecret: raw.agentSecret || raw.UIDRAC_AGENT_SECRET || raw.IDRAC_AGENT_SECRET,
-      tenantId: raw.tenantId,
-      tenantName: raw.tenantName,
-      wsUrl: raw.wsUrl || raw.UIDRAC_AGENT_WS_URL || raw.IDRAC_AGENT_WS_URL,
-      cloudUrl: raw.cloudUrl || raw.UIDRAC_CLOUD_URL || raw.IDRAC_CLOUD_URL,
-    };
+    agentSecret = raw.agentSecret || raw.UIDRAC_AGENT_SECRET || raw.IDRAC_AGENT_SECRET;
+    tenantId = raw.tenantId;
+    tenantName = raw.tenantName;
+    primaryCloudUrl = raw.cloudUrl || raw.UIDRAC_CLOUD_URL || raw.IDRAC_CLOUD_URL;
+    primaryWsUrl = raw.wsUrl || raw.UIDRAC_AGENT_WS_URL || raw.IDRAC_AGENT_WS_URL;
+    localUrl = raw.localUrl;
+    localWsUrl = raw.localWsUrl;
+  } else {
+    agentId = envFirst('UIDRAC_AGENT_ID', 'IDRAC_AGENT_ID') ?? '';
+    agentSecret = envFirst('UIDRAC_AGENT_SECRET', 'IDRAC_AGENT_SECRET') ?? '';
+    if (!agentId || !agentSecret) {
+      console.error(
+        'Set UIDRAC_AGENT_CONFIG (or IDRAC_AGENT_CONFIG) or agent ID + secret env vars (download bundle from dashboard).',
+      );
+      process.exit(1);
+    }
+    primaryCloudUrl = envFirst('UIDRAC_CLOUD_URL', 'IDRAC_CLOUD_URL');
+    primaryWsUrl = envFirst('UIDRAC_AGENT_WS_URL', 'IDRAC_AGENT_WS_URL');
   }
-  const agentId = envFirst('UIDRAC_AGENT_ID', 'IDRAC_AGENT_ID');
-  const agentSecret = envFirst('UIDRAC_AGENT_SECRET', 'IDRAC_AGENT_SECRET');
-  if (!agentId || !agentSecret) {
-    console.error(
-      'Set UIDRAC_AGENT_CONFIG (or IDRAC_AGENT_CONFIG) or agent ID + secret env vars (download bundle from dashboard).',
-    );
-    process.exit(1);
+
+  // Env-var overrides for local endpoint
+  localUrl = envFirst('UIDRAC_LOCAL_URL') ?? localUrl;
+  localWsUrl = envFirst('UIDRAC_LOCAL_WS_URL') ?? localWsUrl;
+
+  // Build ordered endpoint list: local first (fast fail), then cloud
+  const endpoints: Endpoint[] = [];
+
+  if (localUrl) {
+    endpoints.push({
+      cloudUrl: localUrl,
+      wsUrl: localWsUrl || deriveWsUrl(localUrl),
+      label: 'local',
+    });
   }
-  let wsUrl = envFirst('UIDRAC_AGENT_WS_URL', 'IDRAC_AGENT_WS_URL');
-  const cloudUrl = envFirst('UIDRAC_CLOUD_URL', 'IDRAC_CLOUD_URL') ?? 'http://localhost:4000';
-  if (!wsUrl) wsUrl = cloudUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/agent/ws';
-  return { agentId, agentSecret, wsUrl, cloudUrl };
+
+  const cloud = primaryCloudUrl ?? 'http://localhost:4000';
+  endpoints.push({
+    cloudUrl: cloud,
+    wsUrl: primaryWsUrl || deriveWsUrl(cloud),
+    label: 'cloud',
+  });
+
+  return {
+    agentId,
+    agentSecret,
+    tenantId,
+    tenantName,
+    cloudUrl: primaryCloudUrl,
+    wsUrl: primaryWsUrl,
+    endpoints,
+  };
 }
 
 async function runProbe(ip: string, username: string, password: string) {
@@ -105,8 +151,11 @@ async function runProbe(ip: string, username: string, password: string) {
   }
 }
 
+let currentEndpointIdx = 0;
+
 function connect(cfg: Config) {
-  const wsUrl = cfg.wsUrl!;
+  const ep = cfg.endpoints[currentEndpointIdx];
+  const wsUrl = ep.wsUrl;
   let relayBound = false;
   const bindRelay = (ws: WebSocket) => {
     if (relayBound) return;
@@ -117,7 +166,7 @@ function connect(cfg: Config) {
       }
     });
   };
-  pushLog('info', `Connecting to ${wsUrl} (${UIDRAC_AGENT_NAME} v${VERSION})`);
+  pushLog('info', `Connecting to ${wsUrl} [${ep.label}] (${UIDRAC_AGENT_NAME} v${VERSION})`);
   setCloudConnected(false);
   setAuthenticated(false);
 
@@ -129,7 +178,7 @@ function connect(cfg: Config) {
     generation: '—',
     health: '—',
     result: 'pending',
-    detail: `Opening WebSocket to cloud`,
+    detail: `Opening WebSocket to ${ep.label} (${ep.cloudUrl})`,
   });
 
   const ws = new WebSocket(wsUrl);
@@ -203,6 +252,51 @@ function connect(cfg: Config) {
       return;
     }
     if (msg.type === 'pong') return;
+    if (msg.type === 'adapter.invoke' && msg.id && msg.payload) {
+      const payload = msg.payload as {
+        generation?: string;
+        ip?: string;
+        username?: string;
+        password?: string;
+        method?: string;
+        args?: unknown[];
+      };
+      const { ip, username, password, method, args } = payload;
+      const generation = (payload.generation ?? '9') as IdracGeneration;
+      if (!ip || !username || !password || !method) {
+        ws.send(JSON.stringify({ id: msg.id, type: 'adapter.invoke.result', ok: false, error: 'invalid_invoke_payload' }));
+        return;
+      }
+      const rowId = pushActivity({
+        event: 'invoke',
+        ip,
+        serviceTag: '…',
+        model: method,
+        generation: String(generation),
+        health: '…',
+        result: 'pending',
+        detail: `Adapter ${method}`,
+      }).id;
+      const adapter = getAdapter(generation, { ip, username, password });
+      try {
+        await adapter.connect();
+        const target = (adapter as Record<string, unknown>)[method];
+        if (typeof target !== 'function') {
+          throw new Error(`Unknown adapter method: ${method}`);
+        }
+        const data = await (target as (...a: unknown[]) => Promise<unknown>).apply(adapter, args ?? []);
+        updateActivity(rowId, { result: 'ok', detail: `${method} OK` });
+        ws.send(JSON.stringify({ id: msg.id, type: 'adapter.invoke.result', ok: true, data }));
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : 'adapter invoke failed';
+        updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
+        pushLog('error', `Invoke ${method} failed ${ip}: ${errMsg}`);
+        ws.send(JSON.stringify({ id: msg.id, type: 'adapter.invoke.result', ok: false, error: errMsg }));
+      } finally {
+        await adapter.disconnect().catch(() => {});
+      }
+      return;
+    }
     if (msg.type === 'probe' && msg.id && msg.payload?.ip) {
       const { ip, username, password } = msg.payload;
       const rowId = pushActivity({
@@ -240,7 +334,11 @@ function connect(cfg: Config) {
   ws.on('close', (code) => {
     setCloudEventRelay(null);
     setCloudConnected(false);
-    pushLog('warn', `Disconnected (${code}), reconnecting in 5s…`);
+    // Cycle to next endpoint on disconnect
+    const nextIdx = (currentEndpointIdx + 1) % cfg.endpoints.length;
+    const nextEp = cfg.endpoints[nextIdx];
+    currentEndpointIdx = nextIdx;
+    pushLog('warn', `Disconnected (${code}), trying ${nextEp.label} (${nextEp.cloudUrl}) in 5s…`);
     pushActivity({
       event: 'disconnect',
       ip: '—',
@@ -249,13 +347,13 @@ function connect(cfg: Config) {
       generation: '—',
       health: '—',
       result: 'fail',
-      detail: `WebSocket closed (${code})`,
+      detail: `WebSocket closed (${code}) — switching to ${nextEp.label}`,
     });
     setTimeout(() => connect(cfg), 5000);
   });
 
   ws.on('error', (err) => {
-    pushLog('error', `Socket error: ${err.message}`);
+    pushLog('error', `Socket error [${ep.label}]: ${err.message}`);
     setCloudConnected(false);
   });
 
@@ -271,8 +369,8 @@ const uiUrl = `http://127.0.0.1:${UI_PORT}`;
 
 initAgentState({
   version: VERSION,
-  cloudUrl: cfg.cloudUrl ?? '',
-  wsUrl: cfg.wsUrl ?? '',
+  cloudUrl: cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(' | '),
+  wsUrl: cfg.endpoints.map((e) => `${e.wsUrl} [${e.label}]`).join(' | '),
   agentId: cfg.agentId,
   tenantId: cfg.tenantId ?? '',
   tenantName: cfg.tenantName ?? '',
@@ -288,5 +386,6 @@ if (process.env.UIDRAC_AGENT_UI !== '0') {
   console.log('[edge-agent] Local console disabled (UIDRAC_AGENT_UI=0). Set UIDRAC_AGENT_UI=1 to enable http://127.0.0.1:9742');
 }
 
-pushLog('info', `${UIDRAC_AGENT_NAME} started — open ${uiUrl} for live logs and iDRAC activity`);
+pushLog('info', `${UIDRAC_AGENT_NAME} started — endpoints: ${cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(', ')}`);
+pushLog('info', `Local console: ${uiUrl}`);
 connect(cfg);

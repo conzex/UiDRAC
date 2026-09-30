@@ -1,19 +1,47 @@
 /** Deployment / public URL helpers for cloud and self-hosted installs. */
-import { CONZEX_CLOUD_PRODUCTION_URL } from '@idrac/shared';
+import { CLOUD_SAAS_PRODUCT, CONZEX_CLOUD_PRODUCTION_URL } from '@idrac/shared';
 
 export type DeploymentMode = 'cloud' | 'local';
 
 export function deploymentMode(): DeploymentMode {
+  if (CLOUD_SAAS_PRODUCT) return 'cloud';
   if (process.env.DEPLOYMENT_MODE === 'cloud') return 'cloud';
   if (process.env.REQUIRE_EDGE_AGENT === 'true') return 'cloud';
   return 'local';
 }
 
+/** Normalize env URL to API origin (no /api suffix). */
+function normalizeApiOrigin(raw: string): string {
+  return raw.replace(/\/api\/?$/, '').replace(/\/$/, '').replace(/:3000$/, ':4000');
+}
+
+/** Customer-facing cloud base URL (Conzex SaaS always uses production FQDN). */
+export function cloudPublicUrl(): string {
+  if (process.env.PUBLIC_API_URL) {
+    return normalizeApiOrigin(process.env.PUBLIC_API_URL);
+  }
+  if (process.env.PUBLIC_APP_URL) {
+    return normalizeApiOrigin(process.env.PUBLIC_APP_URL);
+  }
+  if (CLOUD_SAAS_PRODUCT && process.env.NODE_ENV === 'production') return CONZEX_CLOUD_PRODUCTION_URL;
+  if (deploymentMode() === 'cloud' && process.env.NODE_ENV === 'production') return CONZEX_CLOUD_PRODUCTION_URL;
+  if (process.env.PUBLIC_API_URL) {
+    return process.env.PUBLIC_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  }
+  const raw =
+    process.env.PUBLIC_APP_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    'http://localhost:3000';
+  return raw.replace(/\/api\/?$/, '').replace(/\/$/, '').replace(/:3000$/, ':4000');
+}
+
 /** Canonical public site URL (no trailing slash). */
 export function publicAppUrl(): string {
-  if (deploymentMode() === 'cloud') {
-    return CONZEX_CLOUD_PRODUCTION_URL;
+  if (process.env.PUBLIC_APP_URL) {
+    return normalizeApiOrigin(process.env.PUBLIC_APP_URL).replace(/:4000$/, ':3000');
   }
+  if (CLOUD_SAAS_PRODUCT && process.env.NODE_ENV === 'production') return CONZEX_CLOUD_PRODUCTION_URL;
+  if (deploymentMode() === 'cloud' && process.env.NODE_ENV === 'production') return CONZEX_CLOUD_PRODUCTION_URL;
   const raw =
     process.env.PUBLIC_APP_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -21,17 +49,6 @@ export function publicAppUrl(): string {
     process.env.CLOUD_API_URL ??
     'http://localhost:3000';
   return raw.replace(/\/api\/?$/, '').replace(/\/$/, '');
-}
-
-export function cloudPublicUrl(): string {
-  if (deploymentMode() === 'cloud') {
-    return CONZEX_CLOUD_PRODUCTION_URL;
-  }
-  if (process.env.PUBLIC_API_URL) {
-    return process.env.PUBLIC_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
-  }
-  const app = publicAppUrl();
-  return app.replace(/:3000$/, ':4000');
 }
 
 export function agentWebSocketUrl(): string {

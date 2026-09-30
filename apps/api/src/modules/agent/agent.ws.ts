@@ -18,6 +18,9 @@ export function attachAgentWebSocket(server: Server, bridge: AgentBridgeService,
   wss.on('connection', (ws: AgentSocket, req) => {
     let authed = false;
     const clientIp =
+      (req.headers['cf-connecting-ip'] as string)?.trim() ||
+      (req.headers['true-client-ip'] as string)?.trim() ||
+      (req.headers['x-real-ip'] as string)?.trim() ||
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.socket.remoteAddress ||
       '0.0.0.0';

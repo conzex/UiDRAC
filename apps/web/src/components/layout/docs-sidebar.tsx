@@ -9,6 +9,7 @@ export type DocsSection = {
   id: string;
   title: string;
   icon: React.ComponentType<{ className?: string }>;
+  audience?: string;
 };
 
 type DocsSidebarProps = {
@@ -90,7 +91,12 @@ export default function DocsSidebar({
                   <div className={cn('text-[10px] uppercase tracking-wider', isActive ? 'text-dell-blue/60' : 'text-text-secondary/50')}>
                     {num}
                   </div>
-                  <div className={cn('text-sm truncate', isActive ? 'font-semibold' : 'font-medium')}>{s.title}</div>
+                  <div className={cn('text-sm truncate', isActive ? 'font-semibold' : 'font-medium')}>
+                    {s.title}
+                    {s.audience === 'admin-internal' && (
+                      <span className="ml-1.5 text-[8px] font-bold uppercase px-1 py-px rounded bg-dell-blue/10 text-dell-blue">Admin</span>
+                    )}
+                  </div>
                 </div>
               </Link>
             );

@@ -8,13 +8,15 @@ import { JwtStrategy } from './jwt.strategy';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard } from './roles.guard';
 import { PrismaService } from '../../prisma.service';
+import { RedisService } from '../../redis.service';
 import { AgentModule } from '../agent/agent.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [PassportModule.register({ defaultStrategy: 'jwt' }), AgentModule],
+  imports: [PassportModule.register({ defaultStrategy: 'jwt' }), AgentModule, AuditModule],
   controllers: [AuthController],
   providers: [
-    AuthService, JwtStrategy, PrismaService,
+    AuthService, JwtStrategy, PrismaService, RedisService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

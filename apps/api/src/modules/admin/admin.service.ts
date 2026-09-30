@@ -138,4 +138,35 @@ export class AdminService {
     await this.prisma.auditLog.delete({ where: { id } });
     return { deleted: true };
   }
+
+  /** Total edge agents provisioned platform-wide (super admin). */
+  async agentProvisioningStats(actor: { sub: string; tenantId: string; role: string }) {
+    await this.assertSuperAdmin(actor);
+    const [total, revoked] = await Promise.all([
+      this.prisma.edgeAgent.count(),
+      this.prisma.edgeAgent.count({ where: { revokedAt: { not: null } } }),
+    ]);
+    return { total, active: total - revoked, revoked };
+  }
+
+  /** Revoke all active sessions (force re-login for every user). Used on release deployments. */
+  async revokeAllSessions(actor: { sub: string; tenantId: string; role: string }) {
+    await this.assertSuperAdmin(actor);
+    const { count } = await this.prisma.session.deleteMany({});
+    console.log(`[admin] All ${count} sessions revoked by ${actor.sub}`);
+    return { revoked: true, count };
+  }
+
+  /** Verify SMTP credentials and optionally send a test email. */
+  async testSmtp(config: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user?: string;
+    pass?: string;
+    from: string;
+    testRecipient?: string;
+  }) {
+    return this.mail.testSmtp(config);
+  }
 }

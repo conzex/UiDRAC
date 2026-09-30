@@ -7,19 +7,18 @@ import { publicAppUrl } from './edge-agent.config';
 export class MailService {
   private readonly log = new Logger(MailService.name);
 
-  private transporter() {
-    const host = process.env.SMTP_HOST;
+  private transporter(overrides?: { host: string; port: number; secure: boolean; user?: string; pass?: string }) {
+    const host = overrides?.host ?? process.env.SMTP_HOST;
     if (!host) return null;
-    const port = parseInt(process.env.SMTP_PORT ?? '587', 10);
-    const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+    const port = overrides?.port ?? parseInt(process.env.SMTP_PORT ?? '587', 10);
+    const secure = overrides?.secure ?? (process.env.SMTP_SECURE === 'true' || port === 465);
+    const user = overrides?.user ?? process.env.SMTP_USER;
+    const pass = overrides?.pass ?? process.env.SMTP_PASS;
     return nodemailer.createTransport({
       host,
       port,
       secure,
-      auth:
-        process.env.SMTP_USER && process.env.SMTP_PASS
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
+      auth: user && pass ? { user, pass } : undefined,
     });
   }
 
@@ -67,5 +66,52 @@ export class MailService {
       this.log.error(`SMTP send failed for ${to}`, err instanceof Error ? err.stack : String(err));
       throw new ServiceUnavailableException('Could not send password reset email. Try again or check SMTP settings.');
     }
+  }
+
+  /** Verify SMTP credentials and optionally send a test email. Returns true on success. */
+  async testSmtp(config: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user?: string;
+    pass?: string;
+    from: string;
+    testRecipient?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    const transport = this.transporter({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.user,
+      pass: config.pass,
+    });
+
+    if (!transport) {
+      return { success: false, message: 'SMTP host is required.' };
+    }
+
+    try {
+      await transport.verify();
+    } catch (err) {
+      this.log.error('SMTP verify failed', err instanceof Error ? err.stack : String(err));
+      return { success: false, message: `Authentication failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
+
+    if (config.testRecipient) {
+      try {
+        await transport.sendMail({
+          from: config.from,
+          to: config.testRecipient,
+          subject: 'UiDRAC Console — SMTP Test',
+          text: 'This is a test email from the UiDRAC Console SMTP configuration. If you received this, your mail settings are working correctly.',
+        });
+        return { success: true, message: `SMTP authenticated and test email sent to ${config.testRecipient}.` };
+      } catch (err) {
+        this.log.error('SMTP test send failed', err instanceof Error ? err.stack : String(err));
+        return { success: false, message: `Authenticated but send failed: ${err instanceof Error ? err.message : String(err)}` };
+      }
+    }
+
+    return { success: true, message: 'SMTP authentication successful.' };
   }
 }

@@ -1,23 +1,21 @@
 # ═══════════════════════════════════════════════════════════════
 # docker-compose.yml — Development environment for Universal iDRAC Console
 # Usage: docker compose up -d
-# All services with hot reload enabled for development.
+# Conzex product — uidrac.cloud.conzex.com (includes edge agent)
 # ═══════════════════════════════════════════════════════════════
 
 name: uidrac
 
 services:
   # ── PostgreSQL 16 ──
-  postgres:
+  u-postgres:
     image: postgres:16-alpine
-    container_name: uidrac-postgres
+    container_name: u-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-idrac}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
       POSTGRES_DB: ${POSTGRES_DB:-idrac}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -26,15 +24,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - uidrac-net
+      - u-net
 
   # ── Redis 7 ──
-  redis:
+  u-redis:
     image: redis:7-alpine
-    container_name: uidrac-redis
+    container_name: u-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -43,36 +39,37 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - uidrac-net
+      - u-net
 
-  # ── NestJS API ──
-  api:
-    build:
-      context: .
-      dockerfile: docker/api.Dockerfile
-      target: development
-    container_name: uidrac-api
+  # ── NestJS API (with edge-agent support) ──
+  u-api:
+    image: node:20-alpine
+    container_name: u-api
     restart: unless-stopped
+    working_dir: /app
     ports:
       - "4000:4000"
     command:
       - sh
       - -c
       - |
-        pnpm install --filter @idrac/api... --filter @idrac/edge-agent... --prefer-offline
-        pnpm db:generate
-        /app/packages/db/node_modules/.bin/prisma db push --schema=packages/db/prisma/schema.prisma --skip-generate
-        pnpm --filter @idrac/edge-agent build
-        node -r @swc/register apps/api/src/main.ts
+        export COREPACK_HOME=/corepack-cache
+        cd /app
+        /app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js generate --schema=packages/db/prisma/schema.prisma 2>/dev/null || true
+        /app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js db push --schema=packages/db/prisma/schema.prisma --skip-generate --accept-data-loss 2>/dev/null || true
+        node -r /app/node_modules/.pnpm/@swc+register@0.1.10_@swc+core@1.16.2/node_modules/@swc/register/lib/index.js apps/api/src/main.ts
     environment:
       NODE_ENV: development
-      POSTGRES_URL: postgresql://${POSTGRES_USER:-idrac}:${POSTGRES_PASSWORD:-devpassword}@postgres:5432/${POSTGRES_DB:-idrac}
-      REDIS_URL: redis://redis:6379
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/packages/db/generated/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
+      POSTGRES_URL: postgresql://${POSTGRES_USER:-idrac}:${POSTGRES_PASSWORD:-devpassword}@u-postgres:5432/${POSTGRES_DB:-idrac}
+      REDIS_URL: redis://u-redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production}
       REFRESH_SECRET: ${REFRESH_SECRET:-dev-refresh-secret-change-in-production}
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-cloud}
+      REQUIRE_EDGE_AGENT: ${REQUIRE_EDGE_AGENT:-true}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:4000}
       AGENT_SIGNING_SECRET: ${AGENT_SIGNING_SECRET:-${JWT_SECRET:-dev-agent-signing}}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -81,73 +78,73 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
     volumes:
-      - ./apps/api/src:/app/apps/api/src
-      - ./apps/api/tsconfig.json:/app/apps/api/tsconfig.json
-      - ./apps/edge-agent:/app/apps/edge-agent
-      - ./packages/adapters/src:/app/packages/adapters/src
-      - ./packages/shared/src:/app/packages/shared/src
-      - ./packages/db/prisma:/app/packages/db/prisma
-      - ./packages/db/src:/app/packages/db/src
+      - .:/app
+      - ~/.cache/node/corepack:/corepack-cache:ro
     depends_on:
-      postgres:
+      u-postgres:
         condition: service_healthy
-      redis:
+      u-redis:
         condition: service_healthy
     networks:
-      - uidrac-net
+      - u-net
 
   # ── Next.js Frontend ──
-  web:
-    build:
-      context: .
-      dockerfile: docker/web.Dockerfile
-      target: development
-    container_name: uidrac-web
+  u-web:
+    image: node:20-alpine
+    container_name: u-web
     restart: unless-stopped
+    working_dir: /app
     ports:
       - "3000:3000"
+    command:
+      - sh
+      - -c
+      - |
+        cd /app/apps/web && node ../../node_modules/.pnpm/next@14.2.35_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/bin/next dev -p 3000 -H 0.0.0.0
     environment:
       NODE_ENV: development
-      API_UPSTREAM: http://api:4000
+      API_UPSTREAM: http://u-api:4000
       NEXT_PUBLIC_API_URL: http://localhost:4000/api
       NEXT_PUBLIC_CONSOLE_URL: http://localhost:6080/console
     volumes:
-      - ./apps/web/src:/app/apps/web/src
-      - ./apps/web/public:/app/apps/web/public
-      - ./apps/web/next.config.js:/app/apps/web/next.config.js
-      - ./packages/shared/src:/app/packages/shared/src
+      - .:/app
     depends_on:
-      - api
+      - u-api
     networks:
-      - uidrac-net
+      - u-net
 
   # ── Console Gateway ──
-  console-gw:
-    build:
-      context: .
-      dockerfile: docker/console-gw.Dockerfile
-      target: development
-    container_name: uidrac-console-gw
+  u-console-gw:
+    image: node:20-alpine
+    container_name: u-console-gw
     restart: unless-stopped
+    working_dir: /app
     ports:
       - "6080:6080"
+    command:
+      - sh
+      - -c
+      - |
+        export COREPACK_HOME=/corepack-cache
+        cd /app && node -r /app/node_modules/.pnpm/@swc+register@0.1.10_@swc+core@1.16.2/node_modules/@swc/register/lib/index.js apps/console-gw/src/index.ts
     environment:
       NODE_ENV: development
       IDRAC_CONSOLE_IMAGE: ${IDRAC_CONSOLE_IMAGE:-uidrac:legacy}
       CONSOLE_IDLE_TIMEOUT: ${CONSOLE_IDLE_TIMEOUT:-1800}
       CONSOLE_MAX_PER_TENANT: ${CONSOLE_MAX_PER_TENANT:-10}
     volumes:
+      - .:/app
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./apps/console-gw/src:/app/apps/console-gw/src
+      - ~/.cache/node/corepack:/corepack-cache:ro
     depends_on:
-      - api
+      - u-api
     networks:
-      - uidrac-net
+      - u-net
 
 volumes:
   postgres-data:
   redis-data:
 
 networks:
-  uidrac-net:
+  u-net:
     driver: bridge

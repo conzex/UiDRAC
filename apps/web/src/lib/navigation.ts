@@ -20,6 +20,8 @@ export type AppNavItem = {
   label: string;
   Icon: LucideIcon;
   minRole: PlatformRole;
+  /** Hide from users at or above this role level. */
+  maxRole?: PlatformRole;
   /** Exact match only (e.g. dashboard). */
   exact?: boolean;
   /** Also active for these path prefixes (without trailing slash). */
@@ -43,7 +45,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     activePrefixes: ['/agents'],
   },
   { href: '/audit', label: 'Audit Log', Icon: FileText, minRole: 'VIEWER' },
-  { href: '/settings', label: 'Settings', Icon: Settings, minRole: 'VIEWER' },
+  { href: '/settings', label: 'Settings', Icon: Settings, minRole: 'VIEWER', maxRole: 'OPERATOR' },
   { href: '/admin', label: 'Admin', Icon: Shield, minRole: 'ADMIN', exact: true },
 ];
 
@@ -55,7 +57,6 @@ export type PublicNavLink = {
 };
 
 export function docsNavLabel(role?: string | null): string {
-  if (CLOUD_SAAS_PRODUCT && hasMinRole(role, 'ADMIN')) return 'Admin Docs';
   return 'Docs';
 }
 
@@ -69,7 +70,9 @@ export function visibleAppNavItems(user: StoredUser | null): AppNavItem[] {
   return APP_NAV_ITEMS.filter((item) => {
     if (item.href === '/admin') return canAccessAdminPanel(role);
     if (item.href === '/audit') return canViewAudit(role);
-    return hasMinRole(role, item.minRole);
+    if (!hasMinRole(role, item.minRole)) return false;
+    if (item.maxRole && hasMinRole(role, 'ADMIN')) return false;
+    return true;
   });
 }
 

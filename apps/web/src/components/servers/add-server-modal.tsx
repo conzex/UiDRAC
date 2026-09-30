@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppModal from '@/components/ui/app-modal';
 import api from '@/lib/api';
+import { CLOUD_SAAS_PRODUCT } from '@idrac/shared';
 import { useAddServerModal } from './add-server-modal-context';
 
 export function AddServerModal() {
@@ -15,7 +16,7 @@ export function AddServerModal() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [probe, setProbe] = useState<any>(null);
-  const [credMode, setCredMode] = useState('session');
+  const [credMode, setCredMode] = useState(CLOUD_SAAS_PRODUCT ? 'saved' : 'session');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,7 +27,7 @@ export function AddServerModal() {
     setPassword('');
     setName('');
     setProbe(null);
-    setCredMode('session');
+    setCredMode(CLOUD_SAAS_PRODUCT ? 'saved' : 'session');
     setError('');
     setLoading(false);
   };

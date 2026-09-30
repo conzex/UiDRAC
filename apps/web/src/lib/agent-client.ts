@@ -40,7 +40,7 @@ export type AgentStatus = {
   cloudUrl: string;
 };
 
-export function useAgentStatus(pollMs = 15_000) {
+export function useAgentStatus(pollMs = 5_000) {
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

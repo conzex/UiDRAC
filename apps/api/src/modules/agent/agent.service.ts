@@ -1,5 +1,5 @@
 /** agent.service.ts — Per-tenant edge agents: credentials, registry, downloads. */
-import { ForbiddenException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, OnModuleInit, BadRequestException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { JwtService } from '@nestjs/jwt';
@@ -102,7 +102,7 @@ export class AgentService implements OnModuleInit {
       where: { tenantId, isPrimary: true },
     });
     if (existing) return existing;
-    return this.createAgentRecord(tenantId, { name: 'Primary site agent', isPrimary: true });
+    return this.createAgentRecord(tenantId, { name: 'Master-Agent (Default)', isPrimary: true });
   }
 
   async createAgent(
@@ -145,6 +145,14 @@ export class AgentService implements OnModuleInit {
     });
     if (!row) throw new NotFoundException('Agent not found');
     return row;
+  }
+
+  private ensureAgentActiveForDownload(row: { revokedAt: Date | null; name: string }) {
+    if (row.revokedAt) {
+      throw new BadRequestException(
+        `Agent "${row.name}" is revoked. Use Reactivate on the agent page, download a new package, and reinstall.`,
+      );
+    }
   }
 
   async assertPublicIdOwned(tenantId: string, publicId: string) {
@@ -241,8 +249,9 @@ export class AgentService implements OnModuleInit {
   }
 
   async resolveAgentForDownload(tenantId: string, agentId?: string) {
-    if (agentId) return this.assertAgentOwned(tenantId, agentId);
-    return this.ensurePrimaryForTenant(tenantId);
+    const row = agentId ? await this.assertAgentOwned(tenantId, agentId) : await this.ensurePrimaryForTenant(tenantId);
+    this.ensureAgentActiveForDownload(row);
+    return row;
   }
 
   async buildDownloadBundle(
@@ -266,7 +275,7 @@ export class AgentService implements OnModuleInit {
     );
     const cloud = cloudPublicUrl();
     const bundlePrefix = UIDRAC_AGENT_BUNDLE_PREFIX;
-    const bundle = {
+    const bundle: Record<string, unknown> = {
       schema: UIDRAC_AGENT_BUNDLE_SCHEMA,
       agentVersion: APP_VERSION,
       tenantId: tenant.id,
@@ -297,6 +306,10 @@ export class AgentService implements OnModuleInit {
         npm: 'npx @idrac/edge-agent',
       },
     };
+    if (process.env.NODE_ENV !== 'production') {
+      bundle.localUrl = process.env.AGENT_LOCAL_URL ?? 'http://127.0.0.1:4000';
+      bundle.localWsUrl = process.env.AGENT_LOCAL_WS_URL ?? 'ws://127.0.0.1:4000/api/agent/ws';
+    }
     return { filename: `${bundlePrefix}-${platform}.json`, bundle, record };
   }
 
@@ -355,12 +368,14 @@ export class AgentService implements OnModuleInit {
   async renameAgent(tenantId: string, agentId: string, name: string) {
     const row = await this.assertAgentOwned(tenantId, agentId);
     if (row.revokedAt) throw new ForbiddenException('Revoked agents cannot be renamed');
+    if (row.isPrimary) throw new ForbiddenException('The default master agent cannot be renamed');
     await this.prisma.edgeAgent.update({ where: { id: agentId }, data: { name: name.slice(0, 120) } });
     return this.getAgent(tenantId, agentId);
   }
 
   async disableAgent(tenantId: string, agentId: string) {
     const row = await this.assertAgentOwned(tenantId, agentId);
+    if (row.revokedAt) throw new BadRequestException('Revoked agents cannot be disabled. Delete or reactivate instead.');
     await this.prisma.edgeAgent.update({
       where: { id: agentId },
       data: { disabledAt: new Date() },
@@ -369,14 +384,67 @@ export class AgentService implements OnModuleInit {
     return this.getAgent(tenantId, agentId);
   }
 
+  async enableAgent(tenantId: string, agentId: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    if (row.revokedAt) {
+      throw new BadRequestException('Revoked agents must be reactivated with a new installer package.');
+    }
+    await this.prisma.edgeAgent.update({
+      where: { id: agentId },
+      data: { disabledAt: null },
+    });
+    return this.getAgent(tenantId, agentId);
+  }
+
   async revokeAgent(tenantId: string, agentId: string) {
     const row = await this.assertAgentOwned(tenantId, agentId);
     await this.prisma.edgeAgent.update({
       where: { id: agentId },
-      data: { revokedAt: new Date(), disabledAt: new Date() },
+      data: { revokedAt: new Date(), disabledAt: new Date(), installState: 'revoked' },
     });
     this.bridge.disconnectAgent(row.publicId);
     return this.getAgent(tenantId, agentId);
+  }
+
+  /** Clear revoked/disabled state and issue new credentials (same Agent ID). */
+  async reactivateAgent(tenantId: string, agentId: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    if (!row.revokedAt && !row.disabledAt) {
+      throw new BadRequestException('Agent is already active.');
+    }
+    const secret = randomAgentSecret();
+    const secretHash = await argon2.hash(secret, { type: argon2.argon2id });
+    const { encrypted, iv, tag } = encryptSecret(secret);
+    const enrollmentSig = enrollmentSignature(tenantId, row.publicId);
+    await this.prisma.edgeAgent.update({
+      where: { id: agentId },
+      data: {
+        revokedAt: null,
+        disabledAt: null,
+        secretHash,
+        secretEncrypted: encrypted,
+        secretIv: iv,
+        secretTag: tag,
+        enrollmentSig,
+        rotatedAt: new Date(),
+        installState: 'pending',
+        updateState: 'idle',
+      },
+    });
+    this.bridge.disconnectAgent(row.publicId);
+    return this.getAgent(tenantId, agentId);
+  }
+
+  async deleteAgentRecord(tenantId: string, agentId: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    if (!row.revokedAt) {
+      throw new ForbiddenException('Revoke the agent first, then you can remove it from your organization list.');
+    }
+    if (row.isPrimary) {
+      throw new ForbiddenException('The default master agent cannot be deleted. You may revoke or reactivate it.');
+    }
+    await this.prisma.edgeAgent.delete({ where: { id: agentId } });
+    return { deleted: true, publicId: row.publicId };
   }
 
   async rotateCredentials(tenantId: string, agentId: string, platform: 'linux' | 'win' | 'darwin' = 'linux') {

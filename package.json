@@ -1,6 +1,6 @@
 {
   "name": "uidrac",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Universal iDRAC Console — Conzex Docker-hosted fleet management (iDRAC 6–9)",
   "license": "MIT",
@@ -28,6 +28,9 @@
     "build:edge-agent": "pnpm --filter @idrac/edge-agent build",
     "clean": "turbo clean && rm -rf node_modules",
     "version:track": "node scripts/version-track.mjs",
+    "release": "bash scripts/release.sh",
+    "release:minor": "bash scripts/release.sh minor",
+    "release:major": "bash scripts/release.sh major",
     "prepare": "node scripts/install-git-hooks.mjs"
   },
   "devDependencies": {

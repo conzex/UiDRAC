@@ -1,13 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { UIDRAC_AGENT_BUNDLE_PREFIX, APP_VERSION_LABEL, type AgentConnectionState } from '@idrac/shared';
-import AppPageHeader from '@/components/layout/app-page-header';
-import { AgentPlatformIcon } from '@/components/agent/agent-platform-icon';
-import Link from 'next/link';
-import { Download, Loader2, RefreshCw, Plus, ChevronRight } from 'lucide-react';
-import { readStoredUser } from '@/lib/auth-client';
+import type { AgentConnectionState } from '@idrac/shared';
 
 export type AgentPlatform = 'linux' | 'darwin' | 'win';
 
@@ -31,6 +26,7 @@ export type AgentRow = {
 export type AgentDownloadMeta = {
   latestVersion: string;
   productionCloudUrl: string;
+  wsUrl: string;
   platforms: { id: AgentPlatform; label: string; architectures: string[] }[];
   requirements: Record<string, string>;
 };
@@ -88,10 +84,12 @@ function saveBlob(data: BlobPart, filename: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
-export function useAgentsList(pollMs = 10_000) {
+/** Live agent list — polls API every few seconds for connection state. */
+export function useAgentsList(pollMs = 5_000) {
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
 
   const refresh = useCallback(() => {
     api
@@ -100,6 +98,7 @@ export function useAgentsList(pollMs = 10_000) {
         setAgents(r.data);
         setError('');
         setLoading(false);
+        setLastRefreshAt(new Date());
       })
       .catch((err) => {
         setError(err.response?.data?.message || 'Unable to load agents');
@@ -113,7 +112,7 @@ export function useAgentsList(pollMs = 10_000) {
     return () => clearInterval(t);
   }, [refresh, pollMs]);
 
-  return { agents, loading, error, refresh };
+  return { agents, loading, error, refresh, lastRefreshAt };
 }
 
 export function useAgentDownloadMeta() {

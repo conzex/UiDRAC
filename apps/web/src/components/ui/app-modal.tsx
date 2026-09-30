@@ -12,6 +12,9 @@ type AppModalProps = {
   subtitle?: string;
   children: ReactNode;
   maxWidthClass?: string;
+  maxHeightClass?: string;
+  /** When false, body does not scroll (fits content in one view). */
+  bodyScroll?: boolean;
 };
 
 export default function AppModal({
@@ -21,6 +24,8 @@ export default function AppModal({
   subtitle,
   children,
   maxWidthClass = 'max-w-lg',
+  maxHeightClass = 'max-h-[min(90vh,720px)]',
+  bodyScroll = true,
 }: AppModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
@@ -58,7 +63,7 @@ export default function AppModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="app-modal-title"
-        className={`bg-white border border-border-card rounded shadow-2xl w-full ${maxWidthClass} max-h-[min(90vh,720px)] flex flex-col overflow-hidden text-text-primary`}
+        className={`bg-white border border-border-card rounded shadow-2xl w-full ${maxWidthClass} ${maxHeightClass} flex flex-col overflow-hidden text-text-primary`}
       >
         <div className="bg-card-header px-4 py-3 border-b border-border-card flex items-start justify-between gap-3 shrink-0">
           <div className="min-w-0">
@@ -76,7 +81,11 @@ export default function AppModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-4 sm:p-6 overflow-y-auto text-text-primary">{children}</div>
+        <div
+          className={`p-4 sm:p-5 text-text-primary ${bodyScroll ? 'overflow-y-auto min-h-0 flex-1' : 'overflow-visible'}`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

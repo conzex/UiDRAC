@@ -1,6 +1,7 @@
 # ═══════════════════════════════════════════════════════════════
 # docker-compose.prod.yml — Production deployment for Universal iDRAC Console
 # Usage: docker compose -f docker-compose.prod.yml up -d
+# Conzex product — uidrac.cloud.conzex.com (includes edge agent)
 # TLS termination via nginx, no exposed internal ports.
 # ═══════════════════════════════════════════════════════════════
 
@@ -8,9 +9,9 @@ name: uidrac
 
 services:
   # ── PostgreSQL 16 ──
-  postgres:
+  u-postgres:
     image: postgres:16-alpine
-    container_name: uidrac-postgres
+    container_name: u-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -29,12 +30,12 @@ services:
           cpus: "1.0"
           memory: 1G
     networks:
-      - uidrac-internal
+      - u-net
 
   # ── Redis 7 ──
-  redis:
+  u-redis:
     image: redis:7-alpine
-    container_name: uidrac-redis
+    container_name: u-redis
     restart: unless-stopped
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
@@ -50,20 +51,20 @@ services:
           cpus: "0.5"
           memory: 512M
     networks:
-      - uidrac-internal
+      - u-net
 
-  # ── NestJS API ──
-  api:
+  # ── NestJS API (with edge-agent support) ──
+  u-api:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
       target: production
-    container_name: uidrac-api
+    container_name: u-api
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-idrac}
-      REDIS_URL: redis://redis:6379
+      POSTGRES_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@u-postgres:5432/${POSTGRES_DB:-idrac}
+      REDIS_URL: redis://u-redis:6379
       JWT_SECRET: ${JWT_SECRET}
       REFRESH_SECRET: ${REFRESH_SECRET}
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
@@ -80,9 +81,9 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
     depends_on:
-      postgres:
+      u-postgres:
         condition: service_healthy
-      redis:
+      u-redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/api/health"]
@@ -96,24 +97,24 @@ services:
           cpus: "1.0"
           memory: 1G
     networks:
-      - uidrac-internal
+      - u-net
 
   # ── Next.js Frontend ──
-  web:
+  u-web:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
       target: production
-    container_name: uidrac-web
+    container_name: u-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      API_UPSTREAM: http://api:4000
+      API_UPSTREAM: http://u-api:4000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_CONSOLE_URL: ${NEXT_PUBLIC_CONSOLE_URL}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     depends_on:
-      - api
+      - u-api
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
       interval: 30s
@@ -126,15 +127,15 @@ services:
           cpus: "0.5"
           memory: 512M
     networks:
-      - uidrac-internal
+      - u-net
 
   # ── Console Gateway ──
-  console-gw:
+  u-console-gw:
     build:
       context: .
       dockerfile: docker/console-gw.Dockerfile
       target: production
-    container_name: uidrac-console-gw
+    container_name: u-console-gw
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -144,7 +145,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
-      - api
+      - u-api
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:6080/health"]
       interval: 30s
@@ -156,12 +157,12 @@ services:
           cpus: "1.0"
           memory: 1G
     networks:
-      - uidrac-internal
+      - u-net
 
   # ── Nginx Reverse Proxy ──
-  nginx:
+  u-nginx:
     image: nginx:1.27-alpine
-    container_name: uidrac-nginx
+    container_name: u-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -172,9 +173,9 @@ services:
       - ${TLS_CERT_PATH:-./nginx/certs/fullchain.pem}:/etc/nginx/certs/fullchain.pem:ro
       - ${TLS_KEY_PATH:-./nginx/certs/privkey.pem}:/etc/nginx/certs/privkey.pem:ro
     depends_on:
-      - web
-      - api
-      - console-gw
+      - u-web
+      - u-api
+      - u-console-gw
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
       interval: 30s
@@ -186,13 +187,13 @@ services:
           cpus: "0.5"
           memory: 256M
     networks:
-      - uidrac-internal
+      - u-net
 
 volumes:
   postgres-data:
   redis-data:
 
 networks:
-  uidrac-internal:
+  u-net:
     driver: bridge
     internal: false

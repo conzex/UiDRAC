@@ -80,6 +80,13 @@ if launchctl print "system/$LABEL" &>/dev/null; then
   launchctl bootout system "$PLIST" 2>/dev/null || true
 fi
 
+# Build a PATH that includes common Node.js install locations
+DAEMON_PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# If the current shell has extra dirs (e.g. nvm, volta), pull them in too
+for d in $(echo "${PATH:-}" | tr ':' ' '); do
+  case "$DAEMON_PATH" in *"$d"*) ;; *) DAEMON_PATH="$DAEMON_PATH:$d" ;; esac
+done
+
 cat >"$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -93,6 +100,8 @@ cat >"$PLIST" <<EOF
   </array>
   <key>EnvironmentVariables</key>
   <dict>
+    <key>PATH</key>
+    <string>$DAEMON_PATH</string>
     <key>UIDRAC_AGENT_CONFIG</key>
     <string>$DATA_DIR/agent.json</string>
     <key>IDRAC_AGENT_CONFIG</key>
@@ -121,4 +130,5 @@ echo "Conzex UiDRAC Agent — Copyright (c) 2026 Conzex Global Private Limited"
 echo "Installed. Config: $DATA_DIR/agent.json"
 echo "Logs: $LOG_DIR/uidrac-agent.log"
 echo "Local agent console (logo, live logs, iDRAC table): http://127.0.0.1:9742"
-echo "Verify Connected in portal → Settings → UiDRAC agent."
+echo "Verify Connected in portal → Agents (refresh every few seconds)."
+echo "If Terminal shows getcwd errors, open a new window and use full paths (see README in the ZIP)."

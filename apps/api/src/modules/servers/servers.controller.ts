@@ -1,6 +1,7 @@
 /** servers.controller.ts — Full iDRAC server management endpoints. */
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req } from '@nestjs/common';
 import { ServersService } from './servers.service';
+import { AuditService } from '../audit/audit.service';
 import { Roles } from '../auth/decorators';
 import { PrismaService } from '../../prisma.service';
 import { SYSTEM_TENANT_SLUG } from '../../common/rbac.constants';
@@ -10,12 +11,22 @@ const SYSTEM_SLUG = SYSTEM_TENANT_SLUG;
 @Controller('servers')
 @Roles('VIEWER')
 export class ServersController {
-  constructor(private servers: ServersService, private prisma: PrismaService) {}
+  constructor(private servers: ServersService, private prisma: PrismaService, private audit: AuditService) {}
 
   private async tenantId(req: any): Promise<string | null> {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: req.user?.tenantId ?? '' } });
     if (tenant?.slug === SYSTEM_SLUG && req.user?.role === 'OWNER') return null;
     return req.user?.tenantId ?? '';
+  }
+
+  private ip(req: any): string {
+    return (
+      (req.headers?.['cf-connecting-ip'] as string)?.trim() ||
+      (req.headers?.['true-client-ip'] as string)?.trim() ||
+      (req.headers?.['x-real-ip'] as string)?.trim() ||
+      (req.headers?.['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.ip || '0.0.0.0'
+    );
   }
 
   // ── CRUD ──
@@ -28,15 +39,33 @@ export class ServersController {
 
   @Post()
   @Roles('OPERATOR')
-  create(@Body() body: any, @Req() req: any) { return this.servers.create(req.user?.tenantId, body); }
+  async create(@Body() body: any, @Req() req: any) {
+    const result = await this.servers.create(req.user?.tenantId, body);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.create', { name: body.name, ip: body.ip }, this.ip(req), result.id);
+    } catch { /* non-critical */ }
+    return result;
+  }
 
   @Patch(':id')
   @Roles('OPERATOR')
-  async update(@Param('id') id: string, @Body() body: any, @Req() req: any) { return this.servers.update(id, await this.tenantId(req), body); }
+  async update(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    const result = await this.servers.update(id, await this.tenantId(req), body);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.update', { serverId: id, changes: Object.keys(body) }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
+  }
 
   @Delete(':id')
   @Roles('ADMIN')
-  async remove(@Param('id') id: string, @Req() req: any) { return this.servers.remove(id, await this.tenantId(req)); }
+  async remove(@Param('id') id: string, @Req() req: any) {
+    const result = await this.servers.remove(id, await this.tenantId(req));
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.delete', { serverId: id }, this.ip(req));
+    } catch { /* non-critical */ }
+    return result;
+  }
 
   @Post('probe')
   probe(@Body() body: { ip: string; username: string; password: string }, @Req() req: any) {
@@ -74,7 +103,11 @@ export class ServersController {
   @Post(':id/power')
   @Roles('OPERATOR')
   async powerAction(@Param('id') id: string, @Body() body: { action: string }, @Req() req: any) {
-    return this.servers.powerAction(id, await this.tenantId(req), body.action);
+    const result = await this.servers.powerAction(id, await this.tenantId(req), body.action);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.power', { action: body.action }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Get(':id/power/readings')
@@ -86,7 +119,11 @@ export class ServersController {
   @Patch(':id/power/cap')
   @Roles('OPERATOR')
   async setPowerCap(@Param('id') id: string, @Body() body: { watts: number | null }, @Req() req: any) {
-    return this.servers.setPowerCap(id, await this.tenantId(req), body.watts);
+    const result = await this.servers.setPowerCap(id, await this.tenantId(req), body.watts);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.power_cap', { watts: body.watts }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Post(':id/identify')
@@ -103,13 +140,21 @@ export class ServersController {
   @Patch(':id/bios')
   @Roles('OPERATOR')
   async setBiosAttributes(@Param('id') id: string, @Body() body: { attributes: Record<string, string> }, @Req() req: any) {
-    return this.servers.setBiosAttributes(id, await this.tenantId(req), body.attributes);
+    const result = await this.servers.setBiosAttributes(id, await this.tenantId(req), body.attributes);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.bios_update', { attributes: Object.keys(body.attributes) }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Patch(':id/boot-order')
   @Roles('OPERATOR')
   async setBootOrder(@Param('id') id: string, @Body() body: { order: string[] }, @Req() req: any) {
-    return this.servers.setBootOrder(id, await this.tenantId(req), body.order);
+    const result = await this.servers.setBootOrder(id, await this.tenantId(req), body.order);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.boot_order', { order: body.order }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   // ── iDRAC Users ──
@@ -120,19 +165,31 @@ export class ServersController {
   @Post(':id/idrac-users')
   @Roles('ADMIN')
   async createIdracUser(@Param('id') id: string, @Body() body: { name: string; password: string; privilege: string }, @Req() req: any) {
-    return this.servers.createIdracUser(id, await this.tenantId(req), body.name, body.password, body.privilege);
+    const result = await this.servers.createIdracUser(id, await this.tenantId(req), body.name, body.password, body.privilege);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.idrac_user_create', { username: body.name }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Delete(':id/idrac-users/:userId')
   @Roles('ADMIN')
   async deleteIdracUser(@Param('id') id: string, @Param('userId') userId: string, @Req() req: any) {
-    return this.servers.deleteIdracUser(id, await this.tenantId(req), parseInt(userId));
+    const result = await this.servers.deleteIdracUser(id, await this.tenantId(req), parseInt(userId));
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.idrac_user_delete', { idracUserId: userId }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Patch(':id/idrac-users/:userId/password')
   @Roles('ADMIN')
   async updateIdracUserPassword(@Param('id') id: string, @Param('userId') userId: string, @Body() body: { password: string }, @Req() req: any) {
-    return this.servers.updateIdracUserPassword(id, await this.tenantId(req), parseInt(userId), body.password);
+    const result = await this.servers.updateIdracUserPassword(id, await this.tenantId(req), parseInt(userId), body.password);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.idrac_user_password', { idracUserId: userId }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   // ── Virtual Media ──
@@ -143,12 +200,22 @@ export class ServersController {
   @Post(':id/virtual-media/mount')
   @Roles('OPERATOR')
   async mountVirtualMedia(@Param('id') id: string, @Body() body: { image: string }, @Req() req: any) {
-    return this.servers.mountVirtualMedia(id, await this.tenantId(req), body.image);
+    const result = await this.servers.mountVirtualMedia(id, await this.tenantId(req), body.image);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.media_mount', { image: body.image }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   @Post(':id/virtual-media/eject')
   @Roles('OPERATOR')
-  async ejectVirtualMedia(@Param('id') id: string, @Req() req: any) { return this.servers.ejectVirtualMedia(id, await this.tenantId(req)); }
+  async ejectVirtualMedia(@Param('id') id: string, @Req() req: any) {
+    const result = await this.servers.ejectVirtualMedia(id, await this.tenantId(req));
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.media_eject', {}, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
+  }
 
   // ── iDRAC Network ──
 
@@ -158,7 +225,11 @@ export class ServersController {
   @Patch(':id/idrac-network')
   @Roles('ADMIN')
   async setIdracNetwork(@Param('id') id: string, @Body() body: any, @Req() req: any) {
-    return this.servers.setIdracNetwork(id, await this.tenantId(req), body);
+    const result = await this.servers.setIdracNetwork(id, await this.tenantId(req), body);
+    try {
+      await this.audit.create(req.user?.tenantId, req.user?.id, 'server.idrac_network', { changes: Object.keys(body) }, this.ip(req), id);
+    } catch { /* non-critical */ }
+    return result;
   }
 
   // ── Inventory ──

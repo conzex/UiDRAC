@@ -1,9 +1,10 @@
 /** auth.service.ts — Authentication business logic with session management. */
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, TooManyRequestsException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma.service';
+import { RedisService } from '../../redis.service';
 import { AgentService } from '../agent/agent.service';
 
 const SESSION_TTL_DAYS = 7;
@@ -11,7 +12,7 @@ const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService, private agentService: AgentService) {
+  constructor(private prisma: PrismaService, private jwt: JwtService, private agentService: AgentService, private redis: RedisService) {
     this.scheduleSessionCleanup();
   }
 
@@ -30,12 +31,26 @@ export class AuthService {
   }
 
   async login(email: string, password: string, ip = '0.0.0.0', userAgent = 'api') {
+    const blockKey = `login_block:${ip}`;
+    const blocked = await this.redis.get(blockKey);
+    if (blocked) throw new TooManyRequestsException('Too many failed login attempts. Try again in 15 minutes.');
+
     const user = await this.prisma.user.findFirst({ where: { email } });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await argon2.verify(user.passwordHash, password);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      const failsKey = `login_fails:${ip}`;
+      const count = await this.redis.client.incr(failsKey);
+      await this.redis.client.expire(failsKey, 900);
+      if (count >= 15) {
+        await this.redis.set(blockKey, '1', 900);
+        await this.redis.del(failsKey);
+      }
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
+    await this.redis.del(`login_fails:${ip}`);
     await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     return this.generateTokens(user, ip, userAgent);
   }

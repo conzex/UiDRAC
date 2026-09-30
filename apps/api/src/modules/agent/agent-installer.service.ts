@@ -55,8 +55,12 @@ Copyright (c) 2026 Conzex Global Private Limited
 credentials.json is bound to YOUR account only. Do not share.
 
 macOS:
-  1. Unzip, double-click Install-UiDRAC-Agent.command (or run install steps in README)
-  2. Open http://127.0.0.1:9742 for live console (after agent starts)
+  1. Unzip on your Mac (keep only one folder in Downloads).
+  2. Easiest: double-click Install-UiDRAC-Agent.command
+  3. Or Terminal — cd into the unzipped folder, then:
+     sudo installer -pkg "$PWD/UidracAgent.pkg" -target /
+     sudo "$PWD/install.sh" --config "$PWD/credentials.json"
+  4. Portal → Agents → refresh until Connected
 
 Windows:
   1. Run Install-UiDRAC-Agent.ps1 as Administrator
@@ -88,6 +92,7 @@ if [[ -f "$DIR/UidracAgent.pkg" ]]; then
   sudo installer -pkg "$DIR/UidracAgent.pkg" -target /
 fi
 sudo "$DIR/install.sh" --config "$DIR/credentials.json"
+echo "Portal → Agents → refresh until Connected."
 echo "Open http://127.0.0.1:9742 for agent console"
 open "http://127.0.0.1:9742" 2>/dev/null || true
 `,

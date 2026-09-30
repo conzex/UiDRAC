@@ -2,7 +2,7 @@
 'use client';
 
 import {
-  Server, Shield, Monitor, Zap, BookOpen, ArrowRight, LayoutDashboard, Activity, Lock, ChevronRight,
+  Server, Shield, Monitor, Zap, BookOpen, ArrowRight, LayoutDashboard, ChevronRight,
 } from 'lucide-react';
 import PublicHeader from '@/components/layout/public-header';
 import PublicFooter from '@/components/layout/public-footer';
@@ -17,7 +17,7 @@ const stats = [
   { value: '4', label: 'iDRAC Generations', sub: '6 · 7 · 8 · 9' },
   { value: '30+', label: 'API Endpoints', sub: 'Full coverage' },
   { value: '256-bit', label: 'AES Encryption', sub: 'Credentials at rest' },
-  { value: 'Cloud', label: 'Conzex hosted', sub: 'Multi-tenant SaaS' },
+  { value: 'SaaS', label: 'Fully managed cloud', sub: 'Secure multi-tenant platform' },
 ];
 
 const highlights = [
@@ -43,7 +43,7 @@ export default function HomePage() {
         size="large"
         badge={
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-medium mb-6 border border-white/20">
-            <Activity className="w-3 h-3" /> Every iDRAC Generation · One Console · Zero Client Install
+            <Shield className="w-3 h-3" /> Trusted by Infrastructure Teams · Enterprise-Grade Security · 99.9% Uptime
           </div>
         }
         title={
@@ -54,20 +54,15 @@ export default function HomePage() {
         }
         subtitle="A Conzex cloud platform for modern iDRAC management across generations 6–9. Install the lightweight UiDRAC agent on your network to connect Dell PowerEdge securely—no Java or plugins on operator PCs."
       >
-        <div className={heroCtaGroupClass}>
+        <div className="flex justify-center mt-8">
           {loggedIn ? (
-            <a href="/dashboard" className={`${heroCtaBtnClass} sm:col-span-2 bg-white text-dell-blue hover:bg-white/90 shadow-lg shadow-black/10`}>
+            <a href="/dashboard" className="w-full max-w-[14rem] px-6 py-3 text-sm font-semibold rounded transition-colors inline-flex items-center justify-center gap-2 bg-white text-dell-blue hover:bg-white/90 shadow-lg shadow-black/10">
               <LayoutDashboard className="w-4 h-4" /> Go to Dashboard <ArrowRight className="w-4 h-4" />
             </a>
           ) : (
-            <>
-              <a href="/register" className={`${heroCtaBtnClass} bg-white text-dell-blue hover:bg-white/90 shadow-lg shadow-black/10`}>
-                Get Started Free <ArrowRight className="w-4 h-4" />
-              </a>
-              <a href="/login" className={`${heroCtaBtnClass} bg-white/10 text-white hover:bg-white/20 border border-white/25 backdrop-blur-sm`}>
-                <Lock className="w-4 h-4" /> Sign In
-              </a>
-            </>
+            <a href="/register" className="w-full max-w-[14rem] px-6 py-3 text-sm font-semibold rounded transition-colors inline-flex items-center justify-center gap-2 bg-white text-dell-blue hover:bg-white/90 shadow-lg shadow-black/10">
+              Get Started Free <ArrowRight className="w-4 h-4" />
+            </a>
           )}
         </div>
       </PageHeroBand>

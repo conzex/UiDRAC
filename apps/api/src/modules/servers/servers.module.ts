@@ -4,9 +4,10 @@ import { ServersController } from './servers.controller';
 import { ServersService } from './servers.service';
 import { PrismaService } from '../../prisma.service';
 import { AgentModule } from '../agent/agent.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [AgentModule],
+  imports: [AgentModule, AuditModule],
   controllers: [ServersController],
   providers: [ServersService, PrismaService],
   exports: [ServersService],
