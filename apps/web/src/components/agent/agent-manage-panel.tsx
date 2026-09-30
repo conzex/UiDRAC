@@ -15,6 +15,7 @@ import { AgentPlatformPicker } from '@/components/agent/agent-platform-picker';
 import { getAgentInstallGuide } from '@/lib/client-platform';
 import { detectClientPlatform } from '@/lib/client-platform';
 import ConfirmModal from '@/components/ui/confirm-modal';
+import { AgentConsolePanel } from '@/components/agent/agent-console-panel';
 import { Loader2, RefreshCw } from 'lucide-react';
 
 type Props = {
@@ -295,6 +296,19 @@ export function AgentManagePanel({ agentId, onChanged, onDeleted }: Props) {
             </p>
           </div>
         )}
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-border-card space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Agent console</p>
+          <a
+            href={`/agents/${agentId}/console`}
+            className="text-xs font-semibold text-dell-blue hover:underline"
+          >
+            Open full page
+          </a>
+        </div>
+        <AgentConsolePanel agentId={agentId} compact />
       </div>
 
       <ConfirmModal

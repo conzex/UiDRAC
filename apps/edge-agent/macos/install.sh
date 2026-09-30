@@ -59,6 +59,31 @@ chmod 755 "$DATA_DIR" "$LOG_DIR"
 cp -f "$CONFIG" "$DATA_DIR/agent.json"
 chmod 600 "$DATA_DIR/agent.json"
 
+# Local API fallback for Docker / localhost portal (agent tries 127.0.0.1:4000 before cloud URL).
+LOCAL_URL_ENV=""
+LOCAL_WS_ENV=""
+if command -v python3 >/dev/null 2>&1; then
+  read -r LOCAL_URL_ENV LOCAL_WS_ENV < <(python3 - "$DATA_DIR/agent.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as f:
+    d = json.load(f)
+local = d.get("localUrl") or ""
+local_ws = d.get("localWsUrl") or ""
+cloud = d.get("cloudUrl") or ""
+embed = d.get("enableLocalFallback")
+if embed is False:
+    print("", "")
+elif local:
+    print(local, local_ws or "ws://127.0.0.1:4000/api/agent/ws")
+elif cloud and "localhost" not in cloud and "127.0.0.1" not in cloud:
+    print("http://127.0.0.1:4000", "ws://127.0.0.1:4000/api/agent/ws")
+else:
+    print("", "")
+PY
+)
+fi
+
 if [[ ! -x "$AGENT_BIN" ]] && [[ ! -f "$INSTALL_DIR/agent-bundle.cjs" ]]; then
   if command -v node >/dev/null 2>&1; then
     cat >"$INSTALL_DIR/run-uidrac-agent.sh" <<EOF
@@ -106,8 +131,16 @@ cat >"$PLIST" <<EOF
     <string>$DATA_DIR/agent.json</string>
     <key>IDRAC_AGENT_CONFIG</key>
     <string>$DATA_DIR/agent.json</string>
+    <key>UIDRAC_AGENT_UI</key>
+    <string>0</string>
     <key>UIDRAC_AGENT_CONSOLE_DIR</key>
     <string>$INSTALL_DIR/console/public</string>
+$(if [[ -n "$LOCAL_URL_ENV" ]]; then
+  echo "    <key>UIDRAC_LOCAL_URL</key>"
+  echo "    <string>$LOCAL_URL_ENV</string>"
+  echo "    <key>UIDRAC_LOCAL_WS_URL</key>"
+  echo "    <string>${LOCAL_WS_ENV:-ws://127.0.0.1:4000/api/agent/ws}</string>"
+fi)
   </dict>
   <key>RunAtLoad</key>
   <true/>
@@ -129,6 +162,6 @@ launchctl kickstart -k "system/$LABEL" 2>/dev/null || true
 echo "Conzex UiDRAC Agent — Copyright (c) 2026 Conzex Global Private Limited"
 echo "Installed. Config: $DATA_DIR/agent.json"
 echo "Logs: $LOG_DIR/uidrac-agent.log"
-echo "Local agent console (logo, live logs, iDRAC table): http://127.0.0.1:9742"
+echo "Agent console: sign in to the portal → Agents → manage this connector."
 echo "Verify Connected in portal → Agents (refresh every few seconds)."
 echo "If Terminal shows getcwd errors, open a new window and use full paths (see README in the ZIP)."

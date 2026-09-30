@@ -3,13 +3,13 @@
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-/** Deep links open the manage lightbox on /agents instead of a separate page. */
+/** Deep links open the portal agent console for this agent. */
 export default function AgentDetailRedirectPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   useEffect(() => {
-    if (id) router.replace(`/agents?manage=${id}`);
+    if (id) router.replace(`/agents/${id}/console`);
     else router.replace('/agents');
   }, [id, router]);
 

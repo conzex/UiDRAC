@@ -22,6 +22,14 @@ import { APP_VERSION } from '@idrac/shared';
 export class AgentsController {
   constructor(private agent: AgentService, private audit: AuditService) {}
 
+  private portalOrigin(req: { headers?: Record<string, string | string[] | undefined> }): string | undefined {
+    const origin = req.headers?.origin;
+    if (typeof origin === 'string' && origin.trim()) return origin.trim();
+    const host = req.headers?.host;
+    if (typeof host === 'string' && host.trim()) return `http://${host.trim()}`;
+    return undefined;
+  }
+
   private ip(req: any): string {
     return (
       (req.headers?.['cf-connecting-ip'] as string)?.trim() ||
@@ -76,6 +84,12 @@ export class AgentsController {
       await this.audit.create(req.user.tenantId, req.user.id, 'agent.register', { agentId: result.publicId, name: result.name }, this.ip(req));
     } catch { /* non-critical */ }
     return result;
+  }
+
+  @Get(':id/console')
+  @Roles('VIEWER')
+  consoleView(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
+    return this.agent.getAgentConsoleView(req.user.tenantId, id);
   }
 
   @Get(':id')
@@ -150,7 +164,12 @@ export class AgentsController {
     } catch { /* non-critical */ }
     if (format === 'json') {
       const record = await this.agent.resolveAgentForDownload(req.user.tenantId, id);
-      const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, record);
+      const { filename, bundle } = await this.agent.buildDownloadBundle(
+        req.user.tenantId,
+        plat,
+        record,
+        this.portalOrigin(req),
+      );
       const json = JSON.stringify(bundle, null, 2);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -158,7 +177,12 @@ export class AgentsController {
       res.send(json);
       return;
     }
-    const { filename, stream, sha256 } = await this.agent.buildInstallerPackage(req.user.tenantId, plat, id);
+    const { filename, stream, sha256 } = await this.agent.buildInstallerPackage(
+      req.user.tenantId,
+      plat,
+      id,
+      this.portalOrigin(req),
+    );
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-Checksum-Sha256', sha256);
@@ -182,7 +206,12 @@ export class AgentsController {
     } catch { /* non-critical */ }
     if (format === 'json') {
       const record = await this.agent.resolveAgentForDownload(req.user.tenantId, id);
-      const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, record);
+      const { filename, bundle } = await this.agent.buildDownloadBundle(
+        req.user.tenantId,
+        plat,
+        record,
+        this.portalOrigin(req),
+      );
       const json = JSON.stringify(bundle, null, 2);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -190,7 +219,12 @@ export class AgentsController {
       res.send(json);
       return;
     }
-    const { filename, stream, sha256 } = await this.agent.buildInstallerPackage(req.user.tenantId, plat, id);
+    const { filename, stream, sha256 } = await this.agent.buildInstallerPackage(
+      req.user.tenantId,
+      plat,
+      id,
+      this.portalOrigin(req),
+    );
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-Checksum-Sha256', sha256);

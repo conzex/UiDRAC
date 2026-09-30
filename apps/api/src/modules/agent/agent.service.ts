@@ -10,7 +10,13 @@ import {
   enrollmentSignature,
   randomAgentSecret,
 } from '../../common/crypto.util';
-import { agentWebSocketUrl, cloudPublicUrl, requireEdgeAgent } from '../../common/edge-agent.config';
+import {
+  agentWebSocketUrl,
+  cloudPublicUrl,
+  cloudPublicUrlFromRequest,
+  requireEdgeAgent,
+  shouldEmbedLocalAgentEndpoints,
+} from '../../common/edge-agent.config';
 import {
   APP_VERSION,
   type AgentConnectionState,
@@ -258,6 +264,7 @@ export class AgentService implements OnModuleInit {
     tenantId: string,
     platform: 'linux' | 'win' | 'darwin',
     agentRow?: Awaited<ReturnType<typeof this.resolveAgentForDownload>>,
+    requestOrigin?: string,
   ) {
     const record = agentRow ?? (await this.ensurePrimaryForTenant(tenantId));
     const tenant = await this.prisma.tenant.findUniqueOrThrow({
@@ -273,7 +280,18 @@ export class AgentService implements OnModuleInit {
         expiresIn: '3650d',
       },
     );
-    const cloud = cloudPublicUrl();
+    const cloud =
+      cloudPublicUrlFromRequest(requestOrigin) ??
+      cloudPublicUrl();
+    const ws = agentWebSocketUrl(cloud);
+    const localUrl = process.env.AGENT_LOCAL_URL ?? 'http://127.0.0.1:4000';
+    const localWsUrl = process.env.AGENT_LOCAL_WS_URL ?? 'ws://127.0.0.1:4000/api/agent/ws';
+    const embedLocal = shouldEmbedLocalAgentEndpoints();
+    const endpoints: { label: string; cloudUrl: string; wsUrl: string }[] = [];
+    if (embedLocal && !/localhost|127\.0\.0\.1/.test(cloud)) {
+      endpoints.push({ label: 'local', cloudUrl: localUrl, wsUrl: localWsUrl });
+    }
+    endpoints.push({ label: 'cloud', cloudUrl: cloud, wsUrl: ws });
     const bundlePrefix = UIDRAC_AGENT_BUNDLE_PREFIX;
     const bundle: Record<string, unknown> = {
       schema: UIDRAC_AGENT_BUNDLE_SCHEMA,
@@ -289,7 +307,9 @@ export class AgentService implements OnModuleInit {
       enrollmentSignature: record.enrollmentSig,
       enrollmentToken,
       cloudUrl: cloud,
-      wsUrl: agentWebSocketUrl(),
+      wsUrl: ws,
+      enableLocalFallback: embedLocal,
+      endpoints,
       platform,
       install: {
         linux: `curl -fsSL "${cloud}/api/agent/install.sh" | bash -s -- --config credentials.json`,
@@ -301,14 +321,16 @@ export class AgentService implements OnModuleInit {
           UIDRAC_AGENT_ID: record.publicId,
           UIDRAC_AGENT_SECRET: secret,
           UIDRAC_CLOUD_URL: cloud,
-          UIDRAC_AGENT_WS_URL: agentWebSocketUrl(),
+          UIDRAC_AGENT_WS_URL: ws,
+          UIDRAC_LOCAL_URL: embedLocal ? localUrl : undefined,
+          UIDRAC_LOCAL_WS_URL: embedLocal ? localWsUrl : undefined,
         },
         npm: 'npx @idrac/edge-agent',
       },
     };
-    if (process.env.NODE_ENV !== 'production') {
-      bundle.localUrl = process.env.AGENT_LOCAL_URL ?? 'http://127.0.0.1:4000';
-      bundle.localWsUrl = process.env.AGENT_LOCAL_WS_URL ?? 'ws://127.0.0.1:4000/api/agent/ws';
+    if (embedLocal) {
+      bundle.localUrl = localUrl;
+      bundle.localWsUrl = localWsUrl;
     }
     return { filename: `${bundlePrefix}-${platform}.json`, bundle, record };
   }
@@ -317,21 +339,53 @@ export class AgentService implements OnModuleInit {
     tenantId: string,
     platform: 'linux' | 'win' | 'darwin',
     agentId?: string,
+    requestOrigin?: string,
   ) {
     const tenant = await this.prisma.tenant.findUniqueOrThrow({
       where: { id: tenantId },
       select: { slug: true },
     });
     const record = await this.resolveAgentForDownload(tenantId, agentId);
-    const { bundle } = await this.buildDownloadBundle(tenantId, platform, record);
+    const { bundle } = await this.buildDownloadBundle(tenantId, platform, record, requestOrigin);
     const credentialsJson = JSON.stringify(bundle, null, 2);
     return buildAgentInstallerZip(platform, credentialsJson, tenant.slug, record.publicId);
   }
 
+  async getAgentConsoleView(tenantId: string, agentId: string) {
+    const row = await this.assertAgentOwned(tenantId, agentId);
+    const agent = await this.toAgentDto(row);
+    const remote = await this.consoleStore.getConsoleData(row.publicId);
+    const startedAt =
+      agent.firstRegisteredAt ?? agent.lastConnectedAt ?? new Date().toISOString();
+    const fallbackSnapshot = {
+      version: agent.agentVersion ?? APP_VERSION,
+      cloudUrl: agent.cloudUrl,
+      wsUrl: agent.wsUrl,
+      agentId: agent.publicId,
+      tenantId: agent.tenantId,
+      tenantName: agent.tenantName,
+      cloudConnected: agent.connected,
+      authenticated: agent.connected,
+      lastError: null as string | null,
+      startedAt,
+    };
+    return {
+      agent,
+      snapshot: remote.snapshot ?? fallbackSnapshot,
+      logs: remote.logs,
+      activity: remote.activity,
+    };
+  }
+
   async getConsoleView(tenantId: string) {
     const status = await this.getStatus(tenantId);
-    const remote = await this.consoleStore.getConsoleData(tenantId);
-    return { status, agents: await this.listAgents(tenantId), ...remote, localConsoleUrl: 'http://127.0.0.1:9742' };
+    const agents = await this.listAgents(tenantId);
+    const primary = agents.find((a) => a.isPrimary) ?? agents[0];
+    if (!primary) {
+      return { status, agents, agent: null, snapshot: null, logs: [], activity: [] };
+    }
+    const view = await this.getAgentConsoleView(tenantId, primary.id);
+    return { status, agents, ...view };
   }
 
   async markConnected(

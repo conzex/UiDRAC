@@ -22,6 +22,14 @@ function pipeInstaller(
   stream.pipe(res);
 }
 
+function portalOrigin(req: { headers?: Record<string, string | string[] | undefined> }): string | undefined {
+  const origin = req.headers?.origin;
+  if (typeof origin === 'string' && origin.trim()) return origin.trim();
+  const host = req.headers?.host;
+  if (typeof host === 'string' && host.trim()) return `http://${host.trim()}`;
+  return undefined;
+}
+
 @Controller('agent')
 export class AgentController {
   constructor(private agent: AgentService) {}
@@ -41,16 +49,17 @@ export class AgentController {
   @Get('download')
   @Roles('OPERATOR')
   async download(
-    @Req() req: { user: { tenantId: string } },
+    @Req() req: { user: { tenantId: string }; headers?: Record<string, string | string[] | undefined> },
     @Query('platform') platform: string,
     @Query('format') format: string,
     @Query('agentId') agentId: string | undefined,
     @Res() res: Response,
   ) {
     const plat = platform === 'win' || platform === 'darwin' ? platform : 'linux';
+    const origin = portalOrigin(req);
     if (format === 'json') {
       const record = await this.agent.resolveAgentForDownload(req.user.tenantId, agentId);
-      const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, record);
+      const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, record, origin);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Cache-Control', 'no-store, private');
@@ -62,30 +71,35 @@ export class AgentController {
       req.user.tenantId,
       plat,
       agentId,
+      origin,
     );
     pipeInstaller(res, req.user.tenantId, filename, stream, sha256);
   }
 
   @Get('console')
   @Roles('VIEWER')
-  consoleView(@Req() req: { user: { tenantId: string } }) {
+  consoleView(@Req() req: { user: { tenantId: string } }, @Query('agentId') agentId?: string) {
+    if (agentId) {
+      return this.agent.getAgentConsoleView(req.user.tenantId, agentId);
+    }
     return this.agent.getConsoleView(req.user.tenantId);
   }
 
   @Post('rotate')
   @Roles('ADMIN')
   async rotate(
-    @Req() req: { user: { tenantId: string } },
+    @Req() req: { user: { tenantId: string }; headers?: Record<string, string | string[] | undefined> },
     @Query('platform') platform: string,
     @Query('format') format: string,
     @Query('agentId') agentId: string | undefined,
     @Res() res: Response,
   ) {
     const plat = platform === 'win' || platform === 'darwin' ? platform : 'linux';
+    const origin = portalOrigin(req);
     const primary = await this.agent.resolveAgentForDownload(req.user.tenantId, agentId);
     await this.agent.rotateCredentials(req.user.tenantId, primary.id, plat);
     if (format === 'json') {
-      const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, primary);
+      const { filename, bundle } = await this.agent.buildDownloadBundle(req.user.tenantId, plat, primary, origin);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(JSON.stringify(bundle, null, 2));
@@ -95,6 +109,7 @@ export class AgentController {
       req.user.tenantId,
       plat,
       primary.id,
+      origin,
     );
     pipeInstaller(res, req.user.tenantId, filename, stream, sha256);
   }

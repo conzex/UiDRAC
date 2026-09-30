@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @idrac/edge-agent — Tenant-bound LAN bridge for Universal iDRAC Console (cloud).
- * Local console: http://127.0.0.1:9742 (logo, live logs, iDRAC activity table)
+ * Optional local stub: http://127.0.0.1:9742 (portal-only message; disabled unless UIDRAC_AGENT_UI=1)
  * Copyright (c) 2026 Conzex Global Private Limited
  */
 import * as fs from 'fs';
@@ -18,8 +18,9 @@ import {
   setCloudConnected,
   updateActivity,
   setCloudEventRelay,
+  relaySnapshotToCloud,
 } from './agent-state';
-import { maybeOpenBrowser, startLocalConsole } from './local-console';
+import { startLocalConsole } from './local-console';
 
 const VERSION = APP_VERSION;
 const UI_PORT = parseInt(process.env.UIDRAC_AGENT_UI_PORT ?? '9742', 10);
@@ -47,8 +48,21 @@ function envFirst(...keys: string[]): string | undefined {
 }
 
 function deriveWsUrl(cloudUrl: string): string {
-  return cloudUrl.replace(/^http/, 'ws').replace(/\/$/, '') + '/api/agent/ws';
+  const base = cloudUrl.replace(/^https/, 'wss').replace(/^http/, 'ws').replace(/\/$/, '');
+  return `${base}/api/agent/ws`;
 }
+
+function isLoopbackUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname;
+    return h === 'localhost' || h === '127.0.0.1';
+  } catch {
+    return /localhost|127\.0\.0\.1/.test(url);
+  }
+}
+
+const DEFAULT_LOCAL_URL = 'http://127.0.0.1:4000';
+const DEFAULT_LOCAL_WS = 'ws://127.0.0.1:4000/api/agent/ws';
 
 function loadConfig(): Config {
   const configPath = envFirst('UIDRAC_AGENT_CONFIG', 'IDRAC_AGENT_CONFIG');
@@ -60,9 +74,11 @@ function loadConfig(): Config {
   let primaryWsUrl: string | undefined;
   let localUrl: string | undefined;
   let localWsUrl: string | undefined;
+  let enableLocalFallback = true;
 
   if (configPath && fs.existsSync(configPath)) {
     const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<string, any>;
+    if (raw.enableLocalFallback === false) enableLocalFallback = false;
     const schema = raw.schema as string | undefined;
     if (schema && !VALID_SCHEMAS.has(schema)) {
       console.error(`Unsupported agent bundle schema: ${schema}. Download a fresh bundle from Settings → Agent download.`);
@@ -81,6 +97,45 @@ function loadConfig(): Config {
     primaryWsUrl = raw.wsUrl || raw.UIDRAC_AGENT_WS_URL || raw.IDRAC_AGENT_WS_URL;
     localUrl = raw.localUrl;
     localWsUrl = raw.localWsUrl;
+
+    if (Array.isArray(raw.endpoints) && raw.endpoints.length > 0) {
+      const parsed: Endpoint[] = raw.endpoints
+        .map((e: Record<string, string>) => {
+          const cloudUrl = e.cloudUrl || e.cloud;
+          if (!cloudUrl) return null;
+          const label = e.label || (isLoopbackUrl(cloudUrl) ? 'local' : 'cloud');
+          return {
+            cloudUrl,
+            wsUrl: e.wsUrl || deriveWsUrl(cloudUrl),
+            label,
+          };
+        })
+        .filter(Boolean) as Endpoint[];
+      if (parsed.length > 0) {
+        localUrl = envFirst('UIDRAC_LOCAL_URL') ?? localUrl;
+        localWsUrl = envFirst('UIDRAC_LOCAL_WS_URL') ?? localWsUrl;
+        const cloudOnly = process.env.UIDRAC_AGENT_CLOUD_ONLY === '1';
+        const endpoints = cloudOnly
+          ? parsed.filter((e) => e.label !== 'local' && !isLoopbackUrl(e.cloudUrl))
+          : parsed;
+        if (!cloudOnly && localUrl && !endpoints.some((e) => isLoopbackUrl(e.cloudUrl))) {
+          endpoints.unshift({
+            cloudUrl: localUrl,
+            wsUrl: localWsUrl || deriveWsUrl(localUrl),
+            label: 'local',
+          });
+        }
+        return {
+          agentId,
+          agentSecret,
+          tenantId,
+          tenantName,
+          cloudUrl: primaryCloudUrl,
+          wsUrl: primaryWsUrl,
+          endpoints: endpoints.length ? endpoints : parsed,
+        };
+      }
+    }
   } else {
     agentId = envFirst('UIDRAC_AGENT_ID', 'IDRAC_AGENT_ID') ?? '';
     agentSecret = envFirst('UIDRAC_AGENT_SECRET', 'IDRAC_AGENT_SECRET') ?? '';
@@ -98,10 +153,17 @@ function loadConfig(): Config {
   localUrl = envFirst('UIDRAC_LOCAL_URL') ?? localUrl;
   localWsUrl = envFirst('UIDRAC_LOCAL_WS_URL') ?? localWsUrl;
 
+  const cloudOnly = process.env.UIDRAC_AGENT_CLOUD_ONLY === '1';
+
+  if (!cloudOnly && enableLocalFallback && !localUrl && primaryCloudUrl && !isLoopbackUrl(primaryCloudUrl)) {
+    localUrl = DEFAULT_LOCAL_URL;
+    localWsUrl = DEFAULT_LOCAL_WS;
+  }
+
   // Build ordered endpoint list: local first (fast fail), then cloud
   const endpoints: Endpoint[] = [];
 
-  if (localUrl) {
+  if (localUrl && !cloudOnly) {
     endpoints.push({
       cloudUrl: localUrl,
       wsUrl: localWsUrl || deriveWsUrl(localUrl),
@@ -109,11 +171,11 @@ function loadConfig(): Config {
     });
   }
 
-  const cloud = primaryCloudUrl ?? 'http://localhost:4000';
+  const cloud = primaryCloudUrl ?? DEFAULT_LOCAL_URL;
   endpoints.push({
     cloudUrl: cloud,
     wsUrl: primaryWsUrl || deriveWsUrl(cloud),
-    label: 'cloud',
+    label: isLoopbackUrl(cloud) ? 'local' : 'cloud',
   });
 
   return {
@@ -165,6 +227,9 @@ function connect(cfg: Config) {
         ws.send(JSON.stringify(payload));
       }
     });
+    relaySnapshotToCloud();
+    const snapshotTimer = setInterval(() => relaySnapshotToCloud(), 15_000);
+    ws.on('close', () => clearInterval(snapshotTimer));
   };
   pushLog('info', `Connecting to ${wsUrl} [${ep.label}] (${UIDRAC_AGENT_NAME} v${VERSION})`);
   setCloudConnected(false);
@@ -377,15 +442,12 @@ initAgentState({
   uiUrl,
 });
 
-if (process.env.UIDRAC_AGENT_UI !== '0') {
+if (process.env.UIDRAC_AGENT_UI === '1') {
   startLocalConsole(UI_PORT);
-  if (process.stdin.isTTY || process.env.UIDRAC_AGENT_OPEN_UI === '1') {
-    setTimeout(() => maybeOpenBrowser(`http://127.0.0.1:${UI_PORT}`), 800);
-  }
 } else {
-  console.log('[edge-agent] Local console disabled (UIDRAC_AGENT_UI=0). Set UIDRAC_AGENT_UI=1 to enable http://127.0.0.1:9742');
+  console.log('[edge-agent] Agent console is portal-only (Agents → manage). Set UIDRAC_AGENT_UI=1 for local stub.');
 }
 
 pushLog('info', `${UIDRAC_AGENT_NAME} started — endpoints: ${cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(', ')}`);
-pushLog('info', `Local console: ${uiUrl}`);
+pushLog('info', 'Use the portal Agents page for this connector’s live console.');
 connect(cfg);

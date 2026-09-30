@@ -1,0 +1,231 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import api from '@/lib/api';
+import { STATUS_LABEL, statusBadgeClass, type AgentRow } from '@/lib/agents-client';
+import {
+  CONZEX_COPYRIGHT_LINE,
+  UIDRAC_AGENT_CONSOLE_TAGLINE,
+  UIDRAC_AGENT_NAME,
+} from '@idrac/shared';
+import { Loader2 } from 'lucide-react';
+
+type LogEntry = { at: string; level: string; message: string };
+type ActivityRow = {
+  at: string;
+  event: string;
+  ip: string;
+  serviceTag?: string;
+  model?: string;
+  health?: string;
+  result: string;
+  detail?: string;
+};
+
+type ConsoleSnapshot = {
+  version: string;
+  cloudUrl: string;
+  wsUrl: string;
+  agentId: string;
+  tenantId: string;
+  tenantName: string;
+  cloudConnected: boolean;
+  authenticated: boolean;
+  lastError: string | null;
+  startedAt: string;
+};
+
+type ConsolePayload = {
+  agent: AgentRow;
+  snapshot: ConsoleSnapshot;
+  logs: LogEntry[];
+  activity: ActivityRow[];
+};
+
+type Props = {
+  agentId: string;
+  compact?: boolean;
+};
+
+function resultClass(result: string): string {
+  if (result === 'ok') return 'text-green-healthy font-semibold';
+  if (result === 'fail') return 'text-red-critical font-semibold';
+  return 'text-amber-700 font-semibold';
+}
+
+export function AgentConsolePanel({ agentId, compact }: Props) {
+  const [data, setData] = useState<ConsolePayload | null>(null);
+  const [error, setError] = useState('');
+
+  const load = useCallback(() => {
+    setError('');
+    api
+      .get<ConsolePayload>(`/agents/${agentId}/console`)
+      .then((r) => setData(r.data))
+      .catch(() => setError('Unable to load agent console'));
+  }, [agentId]);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 4_000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  if (!data && !error) {
+    return (
+      <div className="py-10 flex justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-dell-blue" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return <p className="text-sm text-red-600">{error}</p>;
+  }
+
+  const { agent, snapshot, logs, activity } = data;
+  const connected = snapshot.authenticated && snapshot.cloudConnected;
+  const displayName = agent.isPrimary ? 'Master-Agent (Default)' : agent.name;
+
+  return (
+    <section className="flex flex-col border border-border-card rounded bg-white overflow-hidden">
+      <div className="bg-card-header px-4 py-3 border-b border-border-card flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-bold uppercase tracking-wide text-text-primary">{UIDRAC_AGENT_NAME}</h2>
+          <p className="text-xs text-text-secondary mt-0.5">{UIDRAC_AGENT_CONSOLE_TAGLINE}</p>
+          <p className="text-[11px] text-text-secondary mt-1">
+            <span className="font-semibold text-text-primary">{displayName}</span>
+            <span className="mx-1.5 text-border-card">·</span>
+            <span className="font-mono">{snapshot.agentId}</span>
+          </p>
+        </div>
+        <span
+          className={`text-[11px] px-2.5 py-1 rounded-full font-semibold shrink-0 ${
+            connected ? 'bg-green-100 text-green-800' : statusBadgeClass(agent.status)
+          }`}
+        >
+          {connected ? 'Connected' : STATUS_LABEL[agent.status]}
+        </span>
+      </div>
+
+      <div className={`p-4 space-y-4 ${compact ? '' : ''}`}>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="border border-border-card rounded p-3 bg-bg-body/30">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-2">Cloud connection</h3>
+            <dl className="text-xs space-y-1.5">
+              <div>
+                <dt className="text-text-secondary">Cloud URL</dt>
+                <dd className="font-mono text-[11px] break-all text-text-primary">{snapshot.cloudUrl}</dd>
+              </div>
+              <div>
+                <dt className="text-text-secondary">WebSocket</dt>
+                <dd className="font-mono text-[11px] break-all text-text-primary">{snapshot.wsUrl}</dd>
+              </div>
+              {snapshot.lastError && (
+                <div>
+                  <dt className="text-text-secondary">Last error</dt>
+                  <dd className="text-red-700">{snapshot.lastError}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+          <div className="border border-border-card rounded p-3 bg-bg-body/30">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-secondary mb-2">Agent</h3>
+            <dl className="text-xs space-y-1.5">
+              <div>
+                <dt className="text-text-secondary">Version</dt>
+                <dd className="font-mono text-text-primary">{snapshot.version || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-text-secondary">Tenant</dt>
+                <dd className="text-text-primary">{snapshot.tenantName || snapshot.tenantId || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-text-secondary">Locked agent ID</dt>
+                <dd className="font-mono text-[11px] break-all text-text-primary">{snapshot.agentId}</dd>
+              </div>
+              <div>
+                <dt className="text-text-secondary">Started</dt>
+                <dd className="text-text-primary">
+                  {snapshot.startedAt ? new Date(snapshot.startedAt).toLocaleString() : '—'}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        <div className="border border-border-card rounded overflow-hidden">
+          <div className="bg-row-alt px-3 py-2 border-b border-border-card">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-primary">Live log</h3>
+          </div>
+          <div
+            className={`font-mono text-[11px] p-3 bg-gray-900 text-gray-100 overflow-y-auto ${
+              compact ? 'max-h-40' : 'max-h-52'
+            }`}
+          >
+            {logs.length === 0 ? (
+              <p className="text-gray-500">No log lines yet — connect this agent to the cloud.</p>
+            ) : (
+              logs.map((e, i) => (
+                <div
+                  key={`${e.at}-${i}`}
+                  className={
+                    e.level === 'error' ? 'text-red-300' : e.level === 'warn' ? 'text-amber-200' : 'text-gray-200'
+                  }
+                >
+                  {new Date(e.at).toLocaleTimeString()} — {e.message}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="border border-border-card rounded overflow-hidden">
+          <div className="bg-row-alt px-3 py-2 border-b border-border-card">
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-text-primary">iDRAC activity</h3>
+          </div>
+          <div className={`overflow-auto ${compact ? 'max-h-48' : 'max-h-64'}`}>
+            <table className="w-full text-xs">
+              <thead className="bg-white text-left text-[10px] uppercase text-text-secondary border-b border-border-card sticky top-0">
+                <tr>
+                  <th className="p-2 font-semibold">Time</th>
+                  <th className="p-2 font-semibold">Event</th>
+                  <th className="p-2 font-semibold">iDRAC IP</th>
+                  <th className="p-2 font-semibold hidden sm:table-cell">Tag</th>
+                  <th className="p-2 font-semibold hidden md:table-cell">Model</th>
+                  <th className="p-2 font-semibold">Result</th>
+                  <th className="p-2 font-semibold hidden lg:table-cell">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activity.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-4 text-text-secondary text-center">
+                      No LAN activity yet for this agent.
+                    </td>
+                  </tr>
+                ) : (
+                  activity.map((r, i) => (
+                    <tr key={`${r.at}-${i}`} className={i % 2 === 1 ? 'bg-row-alt' : ''}>
+                      <td className="p-2 whitespace-nowrap">{new Date(r.at).toLocaleString()}</td>
+                      <td className="p-2">{r.event}</td>
+                      <td className="p-2 font-mono">{r.ip}</td>
+                      <td className="p-2 hidden sm:table-cell">{r.serviceTag ?? '—'}</td>
+                      <td className="p-2 hidden md:table-cell">{r.model ?? '—'}</td>
+                      <td className={`p-2 ${resultClass(r.result)}`}>{r.result}</td>
+                      <td className="p-2 hidden lg:table-cell text-text-secondary">{r.detail ?? '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <footer className="px-4 py-2.5 border-t border-border-card bg-bg-body/40 text-center text-[10px] text-text-secondary">
+        {CONZEX_COPYRIGHT_LINE}
+      </footer>
+    </section>
+  );
+}

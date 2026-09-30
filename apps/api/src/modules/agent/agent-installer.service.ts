@@ -64,11 +64,11 @@ macOS:
 
 Windows:
   1. Run Install-UiDRAC-Agent.ps1 as Administrator
-  2. Open http://127.0.0.1:9742
+  2. Portal → Agents → manage this connector for the UiDRAC Agent console
 
 Linux:
   1. sudo ./install-linux.sh
-  2. Open http://127.0.0.1:9742
+  2. Portal → Agents → manage this connector for the UiDRAC Agent console
 `;
   archive.append(readme, { name: 'README.txt' });
 
@@ -93,8 +93,7 @@ if [[ -f "$DIR/UidracAgent.pkg" ]]; then
 fi
 sudo "$DIR/install.sh" --config "$DIR/credentials.json"
 echo "Portal → Agents → refresh until Connected."
-echo "Open http://127.0.0.1:9742 for agent console"
-open "http://127.0.0.1:9742" 2>/dev/null || true
+echo "Agent console (live log & iDRAC activity) is in the portal only."
 `,
       { name: 'Install-UiDRAC-Agent.command', mode: 0o755 },
     );
@@ -128,8 +127,7 @@ if (Test-Path "$Dir\\UidracAgentSetup.exe") {
   Start-Process -Wait -FilePath "$Dir\\UidracAgentSetup.exe" -ErrorAction SilentlyContinue
 }
 powershell -ExecutionPolicy Bypass -File "$Dir\\install.ps1" -Config "$Dir\\credentials.json"
-Write-Host "Agent console: http://127.0.0.1:9742"
-Start-Process "http://127.0.0.1:9742"
+Write-Host "Agent console: sign in to the portal → Agents → manage this connector."
 `,
       { name: 'Install-UiDRAC-Agent.ps1' },
     );

@@ -20,7 +20,12 @@ export const PRIMARY_PLATFORM_ADMIN_EMAIL = 'admin';
 export const CONZEX_CLOUD_PRODUCTION_URL = 'https://uidrac.cloud.conzex.com';
 
 /** User-facing name for the tenant LAN connector (cloud product). */
-export const UIDRAC_AGENT_NAME = 'UiDRAC agent';
+export const UIDRAC_AGENT_NAME = 'UiDRAC Agent';
+
+/** Agent console subtitle (portal); copyright is shown in the footer separately. */
+export const UIDRAC_AGENT_CONSOLE_TAGLINE = `${PRODUCT_NAME} — LAN bridge`;
+
+export const CONZEX_COPYRIGHT_LINE = 'Copyright © 2026 Conzex Global Private Limited';
 
 /** Download bundle filename prefix (e.g. uidrac-agent-linux.json). */
 export const UIDRAC_AGENT_BUNDLE_PREFIX = 'uidrac-agent';

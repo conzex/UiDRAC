@@ -117,16 +117,33 @@ export class AgentBridgeService {
       ws.send(JSON.stringify({ type: 'pong' }));
       return;
     }
-    if (msg.type === 'agent.log' && ws.tenantId) {
-      void this.consoleStore.appendLog(ws.tenantId, {
+    if (msg.type === 'agent.log' && ws.publicId) {
+      void this.consoleStore.appendLog(ws.publicId, {
         at: msg.at ?? new Date().toISOString(),
         level: msg.level ?? 'info',
         message: msg.message ?? '',
       });
       return;
     }
-    if (msg.type === 'agent.activity' && ws.tenantId) {
-      void this.consoleStore.appendActivity(ws.tenantId, msg as Record<string, unknown>);
+    if (msg.type === 'agent.activity' && ws.publicId) {
+      const { type: _t, ...row } = msg as Record<string, unknown>;
+      void this.consoleStore.appendActivity(ws.publicId, row);
+      return;
+    }
+    if (msg.type === 'agent.snapshot' && ws.publicId) {
+      const data = msg as Record<string, unknown>;
+      void this.consoleStore.setSnapshot(ws.publicId, {
+        version: String(data.version ?? ''),
+        cloudUrl: String(data.cloudUrl ?? ''),
+        wsUrl: String(data.wsUrl ?? ''),
+        agentId: String(data.agentId ?? ws.publicId),
+        tenantId: String(data.tenantId ?? ws.tenantId ?? ''),
+        tenantName: String(data.tenantName ?? ''),
+        cloudConnected: Boolean(data.cloudConnected),
+        authenticated: Boolean(data.authenticated),
+        lastError: data.lastError != null ? String(data.lastError) : null,
+        startedAt: String(data.startedAt ?? new Date().toISOString()),
+      });
       return;
     }
     if (!msg.id || !msg.type?.endsWith('.result')) return;

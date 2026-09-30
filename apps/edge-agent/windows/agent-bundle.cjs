@@ -12547,11 +12547,11 @@ var require_mime_types = __commonJS({
       }
       return exts[0];
     }
-    function lookup(path2) {
-      if (!path2 || typeof path2 !== "string") {
+    function lookup(path) {
+      if (!path || typeof path !== "string") {
         return false;
       }
-      var extension3 = extname("x." + path2).toLowerCase().substr(1);
+      var extension3 = extname("x." + path).toLowerCase().substr(1);
       if (!extension3) {
         return false;
       }
@@ -13656,11 +13656,11 @@ var require_form_data = __commonJS({
     "use strict";
     var CombinedStream = require_combined_stream();
     var util5 = require("util");
-    var path2 = require("path");
+    var path = require("path");
     var http4 = require("http");
     var https3 = require("https");
     var parseUrl2 = require("url").parse;
-    var fs3 = require("fs");
+    var fs2 = require("fs");
     var Stream = require("stream").Stream;
     var crypto2 = require("crypto");
     var mime = require_mime_types();
@@ -13730,7 +13730,7 @@ var require_form_data = __commonJS({
         if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
           callback(null, value.end + 1 - (value.start ? value.start : 0));
         } else {
-          fs3.stat(value.path, function(err, stat) {
+          fs2.stat(value.path, function(err, stat) {
             if (err) {
               callback(err);
               return;
@@ -13787,11 +13787,11 @@ var require_form_data = __commonJS({
     FormData3.prototype._getContentDisposition = function(value, options) {
       var filename;
       if (typeof options.filepath === "string") {
-        filename = path2.normalize(options.filepath).replace(/\\/g, "/");
+        filename = path.normalize(options.filepath).replace(/\\/g, "/");
       } else if (options.filename || value && (value.name || value.path)) {
-        filename = path2.basename(options.filename || value && (value.name || value.path));
+        filename = path.basename(options.filename || value && (value.name || value.path));
       } else if (value && value.readable && hasOwn(value, "httpVersion")) {
-        filename = path2.basename(value.client._httpMessage.path || "");
+        filename = path.basename(value.client._httpMessage.path || "");
       }
       if (filename) {
         return 'filename="' + escapeHeaderParam(filename) + '"';
@@ -15717,7 +15717,7 @@ var require_follow_redirects = __commonJS({
 });
 
 // src/index.ts
-var fs2 = __toESM(require("fs"));
+var fs = __toESM(require("fs"));
 var os = __toESM(require("os"));
 
 // ../../node_modules/.pnpm/ws@8.21.3/node_modules/ws/wrapper.mjs
@@ -16209,8 +16209,8 @@ function getErrorMap() {
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path2, errorMaps, issueData } = params;
-  const fullPath = [...path2, ...issueData.path || []];
+  const { data, path, errorMaps, issueData } = params;
+  const fullPath = [...path, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -16326,11 +16326,11 @@ var errorUtil;
 
 // ../../node_modules/.pnpm/zod@3.25.76/node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path2, key) {
+  constructor(parent, value, path, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path2;
+    this._path = path;
     this._key = key;
   }
   get path() {
@@ -19918,7 +19918,7 @@ var csvImportRowSchema = external_exports.object({
 });
 
 // ../../packages/shared/src/version.ts
-var APP_VERSION = "1.2.0";
+var APP_VERSION = "1.2.1";
 var APP_VERSION_LABEL = `v${APP_VERSION}`;
 
 // ../../packages/shared/src/release-history.json
@@ -20026,7 +20026,10 @@ var VERSIONING_POLICY = release_history_default.versioningPolicy;
 var PRODUCT_RELEASES = release_history_default.releases;
 
 // ../../packages/shared/src/product.ts
-var UIDRAC_AGENT_NAME = "UiDRAC agent";
+var PRODUCT_NAME = "Universal iDRAC Console";
+var UIDRAC_AGENT_NAME = "UiDRAC Agent";
+var UIDRAC_AGENT_CONSOLE_TAGLINE = `${PRODUCT_NAME} \u2014 LAN bridge`;
+var CONZEX_COPYRIGHT_LINE = "Copyright \xA9 2026 Conzex Global Private Limited";
 var UIDRAC_AGENT_BUNDLE_SCHEMA = "uidrac-edge-agent/v1";
 var UIDRAC_AGENT_BUNDLE_SCHEMA_LEGACY = "idrac-edge-agent/v1";
 
@@ -21186,9 +21189,9 @@ function isVisitable(thing) {
 function removeBrackets(key) {
   return utils_default.endsWith(key, "[]") ? key.slice(0, -2) : key;
 }
-function renderKey(path2, key, dots) {
-  if (!path2) return key;
-  return path2.concat(key).map(function each(token, i) {
+function renderKey(path, key, dots) {
+  if (!path) return key;
+  return path.concat(key).map(function each(token, i) {
     token = removeBrackets(token);
     return !dots && i ? "[" + token + "]" : token;
   }).join(dots ? "." : "");
@@ -21269,13 +21272,13 @@ function toFormData(obj, formData, options) {
       return currentValue;
     });
   }
-  function defaultVisitor(value, key, path2) {
+  function defaultVisitor(value, key, path) {
     let arr = value;
     if (utils_default.isReactNative(formData) && utils_default.isReactNativeBlob(value)) {
-      formData.append(renderKey(path2, key, dots), convertValue(value));
+      formData.append(renderKey(path, key, dots), convertValue(value));
       return false;
     }
-    if (value && !path2 && typeof value === "object") {
+    if (value && !path && typeof value === "object") {
       if (utils_default.endsWith(key, "{}")) {
         key = metaTokens ? key : key.slice(0, -2);
         value = stringifyWithDepthLimit(value, 1);
@@ -21294,7 +21297,7 @@ function toFormData(obj, formData, options) {
     if (isVisitable(value)) {
       return true;
     }
-    formData.append(renderKey(path2, key, dots), convertValue(value));
+    formData.append(renderKey(path, key, dots), convertValue(value));
     return false;
   }
   const exposedHelpers = Object.assign(predicates, {
@@ -21302,17 +21305,17 @@ function toFormData(obj, formData, options) {
     convertValue,
     isVisitable
   });
-  function build(value, path2, depth = 0) {
+  function build(value, path, depth = 0) {
     if (utils_default.isUndefined(value)) return;
     throwIfMaxDepthExceeded(depth);
     if (stack.indexOf(value) !== -1) {
-      throw new Error("Circular reference detected in " + path2.join("."));
+      throw new Error("Circular reference detected in " + path.join("."));
     }
     stack.push(value);
     utils_default.forEach(value, function each(el, key) {
-      const result = !(utils_default.isUndefined(el) || el === null) && visitor.call(formData, el, utils_default.isString(key) ? key.trim() : key, path2, exposedHelpers);
+      const result = !(utils_default.isUndefined(el) || el === null) && visitor.call(formData, el, utils_default.isString(key) ? key.trim() : key, path, exposedHelpers);
       if (result === true) {
-        build(el, path2 ? path2.concat(key) : [key], depth + 1);
+        build(el, path ? path.concat(key) : [key], depth + 1);
       }
     });
     stack.pop();
@@ -21597,7 +21600,7 @@ var platform_default = {
 // ../../node_modules/.pnpm/axios@1.20.0/node_modules/axios/lib/helpers/toURLEncodedForm.js
 function toURLEncodedForm(data, options) {
   return toFormData_default(data, new platform_default.classes.URLSearchParams(), {
-    visitor: function(value, key, path2, helpers) {
+    visitor: function(value, key, path, helpers) {
       if (platform_default.isNode && utils_default.isBuffer(value)) {
         this.append(key, value.toString("base64"));
         return false;
@@ -21619,14 +21622,14 @@ function throwIfDepthExceeded(index) {
   }
 }
 function parsePropPath(name) {
-  const path2 = [];
+  const path = [];
   const pattern = /[^.[\]]+|\[([^.[\]]*)]/g;
   let match;
   while ((match = pattern.exec(name)) !== null) {
-    throwIfDepthExceeded(path2.length);
-    path2.push(match[0] === "[]" ? "" : match[1] || match[0]);
+    throwIfDepthExceeded(path.length);
+    path.push(match[0] === "[]" ? "" : match[1] || match[0]);
   }
-  return path2;
+  return path;
 }
 function arrayToObject(arr) {
   const obj = {};
@@ -21641,12 +21644,12 @@ function arrayToObject(arr) {
   return obj;
 }
 function formDataToJSON(formData) {
-  function buildPath(path2, value, target, index) {
+  function buildPath(path, value, target, index) {
     throwIfDepthExceeded(index);
-    let name = path2[index++];
+    let name = path[index++];
     if (name === "__proto__") return true;
     const isNumericKey = Number.isFinite(+name);
-    const isLast = index >= path2.length;
+    const isLast = index >= path.length;
     name = !name && utils_default.isArray(target) ? target.length : name;
     if (isLast) {
       if (utils_default.hasOwnProp(target, name)) {
@@ -21659,7 +21662,7 @@ function formDataToJSON(formData) {
     if (!utils_default.hasOwnProp(target, name) || !utils_default.isObject(target[name])) {
       target[name] = [];
     }
-    const result = buildPath(path2, value, target[name], index);
+    const result = buildPath(path, value, target[name], index);
     if (result && utils_default.isArray(target[name])) {
       target[name] = arrayToObject(target[name]);
     }
@@ -23563,9 +23566,9 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config) {
       auth = urlUsername + ":" + urlPassword;
     }
     auth && headers.delete("authorization");
-    let path2;
+    let path;
     try {
-      path2 = buildURL(
+      path = buildURL(
         parsed.pathname + parsed.search,
         own2("params"),
         own2("paramsSerializer")
@@ -23587,7 +23590,7 @@ var http_default = isHttpAdapterSupported && function httpAdapter(config) {
       http2Options = Object.assign(/* @__PURE__ */ Object.create(null), http2Options, { lookup });
     }
     const options = Object.assign(/* @__PURE__ */ Object.create(null), {
-      path: path2,
+      path,
       method,
       headers: toByteStringHeaderObject(headers),
       agents: { http: httpAgent, https: httpsAgent },
@@ -24003,14 +24006,14 @@ var isURLSameOrigin_default = platform_default.hasStandardBrowserEnv ? /* @__PUR
 var cookies_default = platform_default.hasStandardBrowserEnv ? (
   // Standard browser envs support document.cookie
   {
-    write(name, value, expires, path2, domain, secure, sameSite) {
+    write(name, value, expires, path, domain, secure, sameSite) {
       if (typeof document === "undefined") return;
       const cookie = [`${name}=${encodeURIComponent(value)}`];
       if (utils_default.isNumber(expires)) {
         cookie.push(`expires=${new Date(expires).toUTCString()}`);
       }
-      if (utils_default.isString(path2)) {
-        cookie.push(`path=${path2}`);
+      if (utils_default.isString(path)) {
+        cookie.push(`path=${path}`);
       }
       if (utils_default.isString(domain)) {
         cookie.push(`domain=${domain}`);
@@ -26986,10 +26989,12 @@ function getSnapshot() {
 function setCloudConnected(connected) {
   snapshot.cloudConnected = connected;
   if (!connected) snapshot.authenticated = false;
+  relaySnapshotToCloud();
 }
 function setAuthenticated(ok, error) {
   snapshot.authenticated = ok;
   snapshot.lastError = ok ? null : error ?? snapshot.lastError;
+  relaySnapshotToCloud();
 }
 function pushLog(level, message) {
   const entry = { id: id(), at: (/* @__PURE__ */ new Date()).toISOString(), level, message };
@@ -27002,13 +27007,6 @@ function pushLog(level, message) {
   cloudRelay?.({ type: "agent.log", level, message, at: entry.at });
   for (const fn of logListeners) fn(entry);
 }
-function subscribeLogs(fn) {
-  logListeners.add(fn);
-  return () => logListeners.delete(fn);
-}
-function getLogs() {
-  return [...logs];
-}
 function pushActivity(row) {
   const full = {
     id: id(),
@@ -27017,219 +27015,77 @@ function pushActivity(row) {
   };
   rows.unshift(full);
   if (rows.length > MAX_ROWS) rows.pop();
-  cloudRelay?.({ type: "agent.activity", ...full });
+  const { id: rowId, ...activityPayload } = full;
+  cloudRelay?.({ type: "agent.activity", id: rowId, ...activityPayload });
   return full;
+}
+function relaySnapshotToCloud() {
+  const s = getSnapshot();
+  cloudRelay?.({
+    type: "agent.snapshot",
+    version: s.version,
+    cloudUrl: s.cloudUrl,
+    wsUrl: s.wsUrl,
+    agentId: s.agentId,
+    tenantId: s.tenantId,
+    tenantName: s.tenantName,
+    cloudConnected: s.cloudConnected,
+    authenticated: s.authenticated,
+    lastError: s.lastError,
+    startedAt: s.startedAt
+  });
 }
 function updateActivity(id2, patch) {
   const i = rows.findIndex((r) => r.id === id2);
   if (i >= 0) rows[i] = { ...rows[i], ...patch };
 }
-function getActivityRows() {
-  return [...rows];
-}
 
 // src/local-console.ts
-var fs = __toESM(require("fs"));
 var http3 = __toESM(require("http"));
-var path = __toESM(require("path"));
 var DEFAULT_PORT = 9742;
-function resolveConsolePublicDir() {
-  const candidates = [
-    process.env.UIDRAC_AGENT_CONSOLE_DIR,
-    path.join(process.cwd(), "console/public"),
-    path.join(__dirname, "..", "console", "public"),
-    path.join(__dirname, "console", "public"),
-    "/Library/Application Support/Conzex/UiDRAC Agent/console/public"
-  ].filter(Boolean);
-  for (const dir of candidates) {
-    if (fs.existsSync(path.join(dir, "logo.png"))) return dir;
-  }
-  return candidates[0] ?? path.join(__dirname, "..", "console", "public");
-}
-function dashboardHtml(uiUrl2) {
+function portalOnlyHtml() {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Conzex UiDRAC Agent</title>
-  <link rel="icon" href="/favicon.png"/>
+  <title>${UIDRAC_AGENT_NAME}</title>
   <style>
-    :root { --bg:#0f1419; --card:#1a2332; --border:#2d3a4d; --text:#e8eef5; --muted:#8b9cb3; --ok:#22c55e; --bad:#ef4444; --warn:#f59e0b; --accent:#3b82f6; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); min-height:100vh; }
-    header { display:flex; align-items:center; gap:16px; padding:16px 24px; border-bottom:1px solid var(--border); background: var(--card); }
-    header img { height:48px; width:auto; }
-    header h1 { font-size:1.15rem; font-weight:600; margin:0; }
-    header p { margin:4px 0 0; font-size:0.8rem; color: var(--muted); }
-    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:600; }
-    .badge.ok { background: rgba(34,197,94,.15); color: var(--ok); }
-    .badge.bad { background: rgba(239,68,68,.15); color: var(--bad); }
-    main { padding:20px 24px; max-width:1200px; margin:0 auto; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px; }
-    @media (max-width:900px) { .grid { grid-template-columns:1fr; } }
-    .card { background: var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; }
-    .card h2 { margin:0 0 12px; font-size:0.95rem; }
-    .meta { font-size:0.8rem; color: var(--muted); line-height:1.6; }
-    .meta code { color: var(--accent); font-size:0.75rem; }
-    #logs { height:220px; overflow:auto; font-family: ui-monospace, monospace; font-size:0.72rem; background:#0a0e14; border-radius:8px; padding:10px; border:1px solid var(--border); }
-    .log-line { margin:2px 0; }
-    .log-line.error { color: #fca5a5; }
-    .log-line.warn { color: #fcd34d; }
-    table { width:100%; border-collapse: collapse; font-size:0.78rem; }
-    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); }
-    th { color: var(--muted); font-weight:600; }
-    .res-ok { color: var(--ok); }
-    .res-fail { color: var(--bad); }
-    .res-pending { color: var(--warn); }
-    footer { text-align:center; padding:16px; font-size:0.7rem; color: var(--muted); }
+    body { margin:0; font-family: system-ui, sans-serif; background:#f4f6f8; color:#1a1a1a; min-height:100vh; display:flex; flex-direction:column; }
+    main { flex:1; max-width:32rem; margin:auto; padding:2rem 1.5rem; text-align:center; }
+    h1 { font-size:1.25rem; margin:0 0 0.5rem; }
+    p { font-size:0.9rem; color:#5c6b7a; line-height:1.5; }
+    footer { font-size:0.7rem; color:#8b9cb3; padding:1rem; text-align:center; border-top:1px solid #dde3ea; }
   </style>
 </head>
 <body>
-  <header>
-    <img src="/logo.png" alt="Conzex"/>
-    <div style="flex:1">
-      <h1>Conzex UiDRAC Agent</h1>
-      <p>Universal iDRAC Console \u2014 LAN bridge \xB7 Copyright \xA9 2026 Conzex Global Private Limited</p>
-    </div>
-    <div id="statusBadge" class="badge bad">Connecting\u2026</div>
-  </header>
   <main>
-    <div class="grid">
-      <div class="card">
-        <h2>Cloud connection</h2>
-        <div class="meta" id="cloudMeta">Loading\u2026</div>
-      </div>
-      <div class="card">
-        <h2>Agent</h2>
-        <div class="meta" id="agentMeta">Loading\u2026</div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:16px">
-      <h2>Live log</h2>
-      <div id="logs"></div>
-    </div>
-    <div class="card">
-      <h2>iDRAC activity (realtime)</h2>
-      <div style="overflow:auto; max-height:360px">
-        <table>
-          <thead>
-            <tr><th>Time</th><th>Event</th><th>iDRAC IP</th><th>Service tag</th><th>Model</th><th>Health</th><th>Result</th><th>Detail</th></tr>
-          </thead>
-          <tbody id="activityBody"></tbody>
-        </table>
-      </div>
-    </div>
+    <h1>${UIDRAC_AGENT_NAME}</h1>
+    <p>${UIDRAC_AGENT_CONSOLE_TAGLINE}</p>
+    <p style="margin-top:1.25rem">Live logs and iDRAC activity are available in the <strong>portal only</strong> \u2014 open <strong>Agents</strong>, select this site connector, and use the agent console.</p>
   </main>
-  <footer>Authorized use only with your Conzex tenant \xB7 ${uiUrl2}</footer>
-  <script>
-    const logsEl = document.getElementById('logs');
-    const bodyEl = document.getElementById('activityBody');
-    const badge = document.getElementById('statusBadge');
-    function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
-    function appendLog(e){
-      const d = document.createElement('div');
-      d.className = 'log-line ' + (e.level||'info');
-      d.textContent = new Date(e.at).toLocaleTimeString() + ' \u2014 ' + e.message;
-      logsEl.appendChild(d);
-      logsEl.scrollTop = logsEl.scrollHeight;
-    }
-    function renderActivity(rows){
-      bodyEl.innerHTML = rows.map(r => {
-        const rc = r.result==='ok'?'res-ok':r.result==='fail'?'res-fail':'res-pending';
-        return '<tr><td>'+esc(new Date(r.at).toLocaleString())+'</td><td>'+esc(r.event)+'</td><td>'+esc(r.ip)+'</td><td>'+esc(r.serviceTag)+'</td><td>'+esc(r.model)+'</td><td>'+esc(r.health)+'</td><td class="'+rc+'">'+esc(r.result)+'</td><td>'+esc(r.detail)+'</td></tr>';
-      }).join('');
-    }
-    function renderStatus(s){
-      const ok = s.cloudConnected && s.authenticated;
-      badge.textContent = ok ? 'Connected' : (s.cloudConnected ? 'Auth failed' : 'Disconnected');
-      badge.className = 'badge ' + (ok ? 'ok' : 'bad');
-      document.getElementById('cloudMeta').innerHTML = 'Cloud URL: <code>'+esc(s.cloudUrl)+'</code><br/>WebSocket: <code>'+esc(s.wsUrl)+'</code><br/>'+(s.lastError ? 'Last error: '+esc(s.lastError) : '');
-      document.getElementById('agentMeta').innerHTML = 'Version: <code>'+esc(s.version)+'</code><br/>Tenant: <code>'+esc(s.tenantName || s.tenantId)+'</code><br/>Locked agent ID: <code>'+esc(s.agentId)+'</code><br/>Started: '+esc(new Date(s.startedAt).toLocaleString());
-    }
-    fetch('/api/snapshot').then(r=>r.json()).then(d=>{ renderStatus(d.snapshot); d.logs.forEach(appendLog); renderActivity(d.activity); });
-    const es = new EventSource('/api/logs/stream');
-    es.onmessage = ev => { try { appendLog(JSON.parse(ev.data)); } catch(_){} };
-    setInterval(()=> fetch('/api/snapshot').then(r=>r.json()).then(d=>{ renderStatus(d.snapshot); renderActivity(d.activity); }), 3000);
-  </script>
+  <footer>${CONZEX_COPYRIGHT_LINE}</footer>
 </body>
 </html>`;
 }
 function startLocalConsole(port = DEFAULT_PORT) {
-  const publicDir = resolveConsolePublicDir();
-  const uiUrl2 = `http://127.0.0.1:${port}`;
   const server = http3.createServer((req, res) => {
     const url2 = req.url?.split("?")[0] ?? "/";
     if (url2 === "/" || url2 === "/index.html") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(dashboardHtml(uiUrl2));
+      res.end(portalOnlyHtml());
       return;
-    }
-    if (url2 === "/api/snapshot") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          snapshot: getSnapshot(),
-          logs: getLogs().slice(-100),
-          activity: getActivityRows()
-        })
-      );
-      return;
-    }
-    if (url2 === "/api/logs/stream") {
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive"
-      });
-      res.write("\n");
-      const send = (entry) => {
-        res.write(`data: ${JSON.stringify(entry)}
-
-`);
-      };
-      getLogs().slice(-50).forEach(send);
-      const unsub = subscribeLogs(send);
-      req.on("close", () => unsub());
-      return;
-    }
-    const asset = url2 === "/logo.png" || url2 === "/favicon.png" ? url2.slice(1) : null;
-    if (asset) {
-      const file = path.join(publicDir, asset);
-      if (fs.existsSync(file)) {
-        res.writeHead(200, { "Content-Type": "image/png" });
-        fs.createReadStream(file).pipe(res);
-        return;
-      }
     }
     res.writeHead(404);
     res.end("Not found");
   });
   server.on("error", (err) => {
     pushLog("error", `Local console failed on port ${port}: ${err.message}`);
-    if (err.code === "EADDRINUSE") {
-      pushLog("warn", `Try UIDRAC_AGENT_UI_PORT=9743 or stop the process using port ${port}`);
-    }
   });
   server.listen(port, "127.0.0.1", () => {
-    console.log(`[edge-agent] Local console: http://127.0.0.1:${port}`);
-    pushLog("info", `Local console ready: ${uiUrl2}`);
+    console.log(`[edge-agent] Local stub (portal-only): http://127.0.0.1:${port}`);
   });
   return server;
-}
-function maybeOpenBrowser(url2) {
-  if (process.env.UIDRAC_AGENT_OPEN_UI === "0") return;
-  if (process.env.UIDRAC_AGENT_UI === "0") return;
-  import("child_process").then(({ spawn }) => {
-    if (process.platform === "win32") {
-      spawn("cmd", ["/c", "start", "", url2], { detached: true, stdio: "ignore", shell: true }).unref();
-    } else if (process.platform === "darwin") {
-      spawn("open", [url2], { detached: true, stdio: "ignore" }).unref();
-    } else {
-      spawn("xdg-open", [url2], { detached: true, stdio: "ignore" }).unref();
-    }
-  }).catch(() => {
-  });
 }
 
 // src/index.ts
@@ -27243,42 +27099,128 @@ function envFirst(...keys) {
   }
   return void 0;
 }
+function deriveWsUrl(cloudUrl) {
+  const base = cloudUrl.replace(/^https/, "wss").replace(/^http/, "ws").replace(/\/$/, "");
+  return `${base}/api/agent/ws`;
+}
+function isLoopbackUrl(url2) {
+  try {
+    const h = new URL(url2).hostname;
+    return h === "localhost" || h === "127.0.0.1";
+  } catch {
+    return /localhost|127\.0\.0\.1/.test(url2);
+  }
+}
+var DEFAULT_LOCAL_URL = "http://127.0.0.1:4000";
+var DEFAULT_LOCAL_WS = "ws://127.0.0.1:4000/api/agent/ws";
 function loadConfig() {
   const configPath = envFirst("UIDRAC_AGENT_CONFIG", "IDRAC_AGENT_CONFIG");
-  if (configPath && fs2.existsSync(configPath)) {
-    const raw = JSON.parse(fs2.readFileSync(configPath, "utf8"));
+  let agentId = "";
+  let agentSecret = "";
+  let tenantId;
+  let tenantName;
+  let primaryCloudUrl;
+  let primaryWsUrl;
+  let localUrl;
+  let localWsUrl;
+  let enableLocalFallback = true;
+  if (configPath && fs.existsSync(configPath)) {
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (raw.enableLocalFallback === false) enableLocalFallback = false;
     const schema = raw.schema;
     if (schema && !VALID_SCHEMAS.has(schema)) {
       console.error(`Unsupported agent bundle schema: ${schema}. Download a fresh bundle from Settings \u2192 Agent download.`);
       process.exit(1);
     }
-    const agentId2 = raw.agentId || raw.UIDRAC_AGENT_ID || raw.IDRAC_AGENT_ID;
-    const uniqueAgentId = raw.uniqueAgentId || agentId2;
-    if (agentId2 && uniqueAgentId && agentId2 !== uniqueAgentId) {
+    agentId = raw.agentId || raw.UIDRAC_AGENT_ID || raw.IDRAC_AGENT_ID;
+    const uniqueAgentId = raw.uniqueAgentId || agentId;
+    if (agentId && uniqueAgentId && agentId !== uniqueAgentId) {
       console.error("Invalid bundle: agentId and uniqueAgentId must match (tenant-locked credential).");
       process.exit(1);
     }
-    return {
-      agentId: agentId2,
-      agentSecret: raw.agentSecret || raw.UIDRAC_AGENT_SECRET || raw.IDRAC_AGENT_SECRET,
-      tenantId: raw.tenantId,
-      tenantName: raw.tenantName,
-      wsUrl: raw.wsUrl || raw.UIDRAC_AGENT_WS_URL || raw.IDRAC_AGENT_WS_URL,
-      cloudUrl: raw.cloudUrl || raw.UIDRAC_CLOUD_URL || raw.IDRAC_CLOUD_URL
-    };
+    agentSecret = raw.agentSecret || raw.UIDRAC_AGENT_SECRET || raw.IDRAC_AGENT_SECRET;
+    tenantId = raw.tenantId;
+    tenantName = raw.tenantName;
+    primaryCloudUrl = raw.cloudUrl || raw.UIDRAC_CLOUD_URL || raw.IDRAC_CLOUD_URL;
+    primaryWsUrl = raw.wsUrl || raw.UIDRAC_AGENT_WS_URL || raw.IDRAC_AGENT_WS_URL;
+    localUrl = raw.localUrl;
+    localWsUrl = raw.localWsUrl;
+    if (Array.isArray(raw.endpoints) && raw.endpoints.length > 0) {
+      const parsed = raw.endpoints.map((e) => {
+        const cloudUrl = e.cloudUrl || e.cloud;
+        if (!cloudUrl) return null;
+        const label = e.label || (isLoopbackUrl(cloudUrl) ? "local" : "cloud");
+        return {
+          cloudUrl,
+          wsUrl: e.wsUrl || deriveWsUrl(cloudUrl),
+          label
+        };
+      }).filter(Boolean);
+      if (parsed.length > 0) {
+        localUrl = envFirst("UIDRAC_LOCAL_URL") ?? localUrl;
+        localWsUrl = envFirst("UIDRAC_LOCAL_WS_URL") ?? localWsUrl;
+        const cloudOnly2 = process.env.UIDRAC_AGENT_CLOUD_ONLY === "1";
+        const endpoints2 = cloudOnly2 ? parsed.filter((e) => e.label !== "local" && !isLoopbackUrl(e.cloudUrl)) : parsed;
+        if (!cloudOnly2 && localUrl && !endpoints2.some((e) => isLoopbackUrl(e.cloudUrl))) {
+          endpoints2.unshift({
+            cloudUrl: localUrl,
+            wsUrl: localWsUrl || deriveWsUrl(localUrl),
+            label: "local"
+          });
+        }
+        return {
+          agentId,
+          agentSecret,
+          tenantId,
+          tenantName,
+          cloudUrl: primaryCloudUrl,
+          wsUrl: primaryWsUrl,
+          endpoints: endpoints2.length ? endpoints2 : parsed
+        };
+      }
+    }
+  } else {
+    agentId = envFirst("UIDRAC_AGENT_ID", "IDRAC_AGENT_ID") ?? "";
+    agentSecret = envFirst("UIDRAC_AGENT_SECRET", "IDRAC_AGENT_SECRET") ?? "";
+    if (!agentId || !agentSecret) {
+      console.error(
+        "Set UIDRAC_AGENT_CONFIG (or IDRAC_AGENT_CONFIG) or agent ID + secret env vars (download bundle from dashboard)."
+      );
+      process.exit(1);
+    }
+    primaryCloudUrl = envFirst("UIDRAC_CLOUD_URL", "IDRAC_CLOUD_URL");
+    primaryWsUrl = envFirst("UIDRAC_AGENT_WS_URL", "IDRAC_AGENT_WS_URL");
   }
-  const agentId = envFirst("UIDRAC_AGENT_ID", "IDRAC_AGENT_ID");
-  const agentSecret = envFirst("UIDRAC_AGENT_SECRET", "IDRAC_AGENT_SECRET");
-  if (!agentId || !agentSecret) {
-    console.error(
-      "Set UIDRAC_AGENT_CONFIG (or IDRAC_AGENT_CONFIG) or agent ID + secret env vars (download bundle from dashboard)."
-    );
-    process.exit(1);
+  localUrl = envFirst("UIDRAC_LOCAL_URL") ?? localUrl;
+  localWsUrl = envFirst("UIDRAC_LOCAL_WS_URL") ?? localWsUrl;
+  const cloudOnly = process.env.UIDRAC_AGENT_CLOUD_ONLY === "1";
+  if (!cloudOnly && enableLocalFallback && !localUrl && primaryCloudUrl && !isLoopbackUrl(primaryCloudUrl)) {
+    localUrl = DEFAULT_LOCAL_URL;
+    localWsUrl = DEFAULT_LOCAL_WS;
   }
-  let wsUrl = envFirst("UIDRAC_AGENT_WS_URL", "IDRAC_AGENT_WS_URL");
-  const cloudUrl = envFirst("UIDRAC_CLOUD_URL", "IDRAC_CLOUD_URL") ?? "http://localhost:4000";
-  if (!wsUrl) wsUrl = cloudUrl.replace(/^http/, "ws").replace(/\/$/, "") + "/api/agent/ws";
-  return { agentId, agentSecret, wsUrl, cloudUrl };
+  const endpoints = [];
+  if (localUrl && !cloudOnly) {
+    endpoints.push({
+      cloudUrl: localUrl,
+      wsUrl: localWsUrl || deriveWsUrl(localUrl),
+      label: "local"
+    });
+  }
+  const cloud = primaryCloudUrl ?? DEFAULT_LOCAL_URL;
+  endpoints.push({
+    cloudUrl: cloud,
+    wsUrl: primaryWsUrl || deriveWsUrl(cloud),
+    label: isLoopbackUrl(cloud) ? "local" : "cloud"
+  });
+  return {
+    agentId,
+    agentSecret,
+    tenantId,
+    tenantName,
+    cloudUrl: primaryCloudUrl,
+    wsUrl: primaryWsUrl,
+    endpoints
+  };
 }
 async function runProbe(ip, username, password) {
   let gen;
@@ -27304,8 +27246,10 @@ async function runProbe(ip, username, password) {
     });
   }
 }
+var currentEndpointIdx = 0;
 function connect(cfg2) {
-  const wsUrl = cfg2.wsUrl;
+  const ep = cfg2.endpoints[currentEndpointIdx];
+  const wsUrl = ep.wsUrl;
   let relayBound = false;
   const bindRelay = (ws2) => {
     if (relayBound) return;
@@ -27315,8 +27259,11 @@ function connect(cfg2) {
         ws2.send(JSON.stringify(payload));
       }
     });
+    relaySnapshotToCloud();
+    const snapshotTimer = setInterval(() => relaySnapshotToCloud(), 15e3);
+    ws2.on("close", () => clearInterval(snapshotTimer));
   };
-  pushLog("info", `Connecting to ${wsUrl} (${UIDRAC_AGENT_NAME} v${VERSION3})`);
+  pushLog("info", `Connecting to ${wsUrl} [${ep.label}] (${UIDRAC_AGENT_NAME} v${VERSION3})`);
   setCloudConnected(false);
   setAuthenticated(false);
   pushActivity({
@@ -27327,7 +27274,7 @@ function connect(cfg2) {
     generation: "\u2014",
     health: "\u2014",
     result: "pending",
-    detail: `Opening WebSocket to cloud`
+    detail: `Opening WebSocket to ${ep.label} (${ep.cloudUrl})`
   });
   const ws = new wrapper_default(wsUrl);
   ws.on("open", () => {
@@ -27392,6 +27339,45 @@ function connect(cfg2) {
       return;
     }
     if (msg.type === "pong") return;
+    if (msg.type === "adapter.invoke" && msg.id && msg.payload) {
+      const payload = msg.payload;
+      const { ip, username, password, method, args } = payload;
+      const generation = payload.generation ?? "9";
+      if (!ip || !username || !password || !method) {
+        ws.send(JSON.stringify({ id: msg.id, type: "adapter.invoke.result", ok: false, error: "invalid_invoke_payload" }));
+        return;
+      }
+      const rowId = pushActivity({
+        event: "invoke",
+        ip,
+        serviceTag: "\u2026",
+        model: method,
+        generation: String(generation),
+        health: "\u2026",
+        result: "pending",
+        detail: `Adapter ${method}`
+      }).id;
+      const adapter2 = getAdapter3(generation, { ip, username, password });
+      try {
+        await adapter2.connect();
+        const target = adapter2[method];
+        if (typeof target !== "function") {
+          throw new Error(`Unknown adapter method: ${method}`);
+        }
+        const data2 = await target.apply(adapter2, args ?? []);
+        updateActivity(rowId, { result: "ok", detail: `${method} OK` });
+        ws.send(JSON.stringify({ id: msg.id, type: "adapter.invoke.result", ok: true, data: data2 }));
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : "adapter invoke failed";
+        updateActivity(rowId, { result: "fail", detail: errMsg, health: "\u2014" });
+        pushLog("error", `Invoke ${method} failed ${ip}: ${errMsg}`);
+        ws.send(JSON.stringify({ id: msg.id, type: "adapter.invoke.result", ok: false, error: errMsg }));
+      } finally {
+        await adapter2.disconnect().catch(() => {
+        });
+      }
+      return;
+    }
     if (msg.type === "probe" && msg.id && msg.payload?.ip) {
       const { ip, username, password } = msg.payload;
       const rowId = pushActivity({
@@ -27428,7 +27414,10 @@ function connect(cfg2) {
   ws.on("close", (code) => {
     setCloudEventRelay(null);
     setCloudConnected(false);
-    pushLog("warn", `Disconnected (${code}), reconnecting in 5s\u2026`);
+    const nextIdx = (currentEndpointIdx + 1) % cfg2.endpoints.length;
+    const nextEp = cfg2.endpoints[nextIdx];
+    currentEndpointIdx = nextIdx;
+    pushLog("warn", `Disconnected (${code}), trying ${nextEp.label} (${nextEp.cloudUrl}) in 5s\u2026`);
     pushActivity({
       event: "disconnect",
       ip: "\u2014",
@@ -27437,12 +27426,12 @@ function connect(cfg2) {
       generation: "\u2014",
       health: "\u2014",
       result: "fail",
-      detail: `WebSocket closed (${code})`
+      detail: `WebSocket closed (${code}) \u2014 switching to ${nextEp.label}`
     });
     setTimeout(() => connect(cfg2), 5e3);
   });
   ws.on("error", (err) => {
-    pushLog("error", `Socket error: ${err.message}`);
+    pushLog("error", `Socket error [${ep.label}]: ${err.message}`);
     setCloudConnected(false);
   });
   setInterval(() => {
@@ -27455,22 +27444,20 @@ var cfg = loadConfig();
 var uiUrl = `http://127.0.0.1:${UI_PORT}`;
 initAgentState({
   version: VERSION3,
-  cloudUrl: cfg.cloudUrl ?? "",
-  wsUrl: cfg.wsUrl ?? "",
+  cloudUrl: cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(" | "),
+  wsUrl: cfg.endpoints.map((e) => `${e.wsUrl} [${e.label}]`).join(" | "),
   agentId: cfg.agentId,
   tenantId: cfg.tenantId ?? "",
   tenantName: cfg.tenantName ?? "",
   uiUrl
 });
-if (process.env.UIDRAC_AGENT_UI !== "0") {
+if (process.env.UIDRAC_AGENT_UI === "1") {
   startLocalConsole(UI_PORT);
-  if (process.stdin.isTTY || process.env.UIDRAC_AGENT_OPEN_UI === "1") {
-    setTimeout(() => maybeOpenBrowser(`http://127.0.0.1:${UI_PORT}`), 800);
-  }
 } else {
-  console.log("[edge-agent] Local console disabled (UIDRAC_AGENT_UI=0). Set UIDRAC_AGENT_UI=1 to enable http://127.0.0.1:9742");
+  console.log("[edge-agent] Agent console is portal-only (Agents \u2192 manage). Set UIDRAC_AGENT_UI=1 for local stub.");
 }
-pushLog("info", `${UIDRAC_AGENT_NAME} started \u2014 open ${uiUrl} for live logs and iDRAC activity`);
+pushLog("info", `${UIDRAC_AGENT_NAME} started \u2014 endpoints: ${cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(", ")}`);
+pushLog("info", "Use the portal Agents page for this connector\u2019s live console.");
 connect(cfg);
 /*! Bundled license information:
 

@@ -157,7 +157,7 @@ const sections: Array<{
       },
       {
         heading: 'macOS',
-        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS**, LAN access to iDRAC.\n\n**Recommended:** install **UidracAgent.pkg** (or Windows setup), then open the **local agent console** at [http://127.0.0.1:9742](http://127.0.0.1:9742) — Conzex logo, live logs, cloud connection status, and an **iDRAC activity table** (probes in realtime).\n\nForeground dev:\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG="$HOME/secure/${BUNDLE}-darwin.json"\ncd universal-idrac-console/apps/edge-agent && pnpm start\n# Browser opens http://127.0.0.1:9742\n\`\`\`\n\nVerify **Connected** on **Agents**.`,
+        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS**, LAN access to iDRAC.\n\n**Recommended:** install **UidracAgent.pkg** (or Windows setup), then open **Agents** in the portal — select your site connector to view the **UiDRAC Agent** console (cloud status, live log, iDRAC activity). The console is **portal-only** (not a separate local dashboard).\n\nForeground dev:\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG="$HOME/secure/${BUNDLE}-darwin.json"\ncd universal-idrac-console/apps/edge-agent && pnpm start\n\`\`\`\n\nVerify **Connected** on **Agents**.`,
       },
       {
         heading: 'Windows',

@@ -11,7 +11,7 @@ export type LogEntry = {
 export type IdracActivityRow = {
   id: string;
   at: string;
-  event: 'probe' | 'auth' | 'connect' | 'disconnect';
+  event: 'probe' | 'auth' | 'connect' | 'disconnect' | 'invoke';
   ip: string;
   serviceTag: string;
   model: string;
@@ -76,11 +76,13 @@ export function getSnapshot(): AgentSnapshot {
 export function setCloudConnected(connected: boolean) {
   snapshot.cloudConnected = connected;
   if (!connected) snapshot.authenticated = false;
+  relaySnapshotToCloud();
 }
 
 export function setAuthenticated(ok: boolean, error?: string) {
   snapshot.authenticated = ok;
   snapshot.lastError = ok ? null : error ?? snapshot.lastError;
+  relaySnapshotToCloud();
 }
 
 export function pushLog(level: LogLevel, message: string) {
@@ -112,8 +114,26 @@ export function pushActivity(row: Omit<IdracActivityRow, 'id' | 'at'> & { at?: s
   };
   rows.unshift(full);
   if (rows.length > MAX_ROWS) rows.pop();
-  cloudRelay?.({ type: 'agent.activity', ...full });
+  const { id: rowId, ...activityPayload } = full;
+  cloudRelay?.({ type: 'agent.activity', id: rowId, ...activityPayload });
   return full;
+}
+
+export function relaySnapshotToCloud() {
+  const s = getSnapshot();
+  cloudRelay?.({
+    type: 'agent.snapshot',
+    version: s.version,
+    cloudUrl: s.cloudUrl,
+    wsUrl: s.wsUrl,
+    agentId: s.agentId,
+    tenantId: s.tenantId,
+    tenantName: s.tenantName,
+    cloudConnected: s.cloudConnected,
+    authenticated: s.authenticated,
+    lastError: s.lastError,
+    startedAt: s.startedAt,
+  });
 }
 
 export function updateActivity(id: string, patch: Partial<IdracActivityRow>) {

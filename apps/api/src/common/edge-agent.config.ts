@@ -51,10 +51,30 @@ export function publicAppUrl(): string {
   return raw.replace(/\/api\/?$/, '').replace(/\/$/, '');
 }
 
-export function agentWebSocketUrl(): string {
-  const base = cloudPublicUrl();
-  const wsBase = base.replace(/^http/, 'ws');
+export function agentWebSocketUrl(baseUrl?: string): string {
+  const base = baseUrl ?? cloudPublicUrl();
+  const wsBase = base.replace(/^https/, 'wss').replace(/^http/, 'ws');
   return `${wsBase}/api/agent/ws`;
+}
+
+/** When the portal is opened on localhost, agent bundles should target the local API. */
+export function cloudPublicUrlFromRequest(originOrHost?: string): string | undefined {
+  if (!originOrHost) return undefined;
+  try {
+    const raw = originOrHost.includes('://') ? originOrHost : `http://${originOrHost}`;
+    const u = new URL(raw);
+    if (u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') return undefined;
+    const port = u.port && u.port !== '3000' ? u.port : '4000';
+    return `http://${u.hostname}:${port}`;
+  } catch {
+    return undefined;
+  }
+}
+
+export function shouldEmbedLocalAgentEndpoints(): boolean {
+  if (process.env.AGENT_BUNDLE_LOCAL_ENDPOINTS === 'false') return false;
+  if (process.env.NODE_ENV !== 'production') return true;
+  return /localhost|127\.0\.0\.1/.test(cloudPublicUrl());
 }
 
 export function requireEdgeAgent(): boolean {
