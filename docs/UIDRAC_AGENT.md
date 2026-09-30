@@ -33,7 +33,7 @@ sudo "/Library/Application Support/Conzex/UiDRAC Agent/install.sh" \
 
 Logs: `/Library/Logs/Conzex/uidrac-agent.log` · Label: `com.conzex.uidrac.agent`
 
-**Local console (all platforms):** While the agent runs, open **http://127.0.0.1:9742** in a browser — Conzex logo, streaming log, cloud status, and **iDRAC activity table** (each probe from the cloud portal in realtime).
+**UiDRAC Agent console (all platforms):** Sign in to the portal → **Agents** → select a site connector → **UiDRAC Agent console** for cloud status and **iDRAC activity** (LAN probes from the cloud in realtime).
 
 Uninstall: `sudo "/Library/Application Support/Conzex/UiDRAC Agent/uninstall.sh"`
 

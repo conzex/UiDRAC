@@ -33,4 +33,4 @@ launchctl bootstrap system "$PLIST"
 launchctl kickstart -k "system/$LABEL"
 
 echo "Agent restarted with local API fallback (127.0.0.1:4000)."
-echo "Check http://127.0.0.1:9742 and Agents in the portal."
+echo "Check Agents in the portal (UiDRAC Agent console)."

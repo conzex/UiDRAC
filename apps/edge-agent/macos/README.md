@@ -35,7 +35,7 @@ sudo ./install.sh --config "$HOME/Downloads/uidrac-agent-darwin.json"
 3. Check logs: `/Library/Logs/Conzex/uidrac-agent.log`
 4. Confirm **Connected** under **Agents** in the portal.
 
-**Local console:** http://127.0.0.1:9742 (logo, live logs, iDRAC table)
+**Console:** Portal → Agents → UiDRAC Agent console
 
 ## Uninstall
 

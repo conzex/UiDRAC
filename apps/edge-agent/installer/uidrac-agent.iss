@@ -44,10 +44,7 @@ Source: "..\windows\install.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\windows\uninstall.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "legal\CONZEX-EULA.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "legal\COPYRIGHT.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\console\public\*"; DestDir: "{app}\console\public"; Flags: ignoreversion recursesubdirs
-
 [Icons]
-Name: "{group}\Open Agent Console"; Filename: "http://127.0.0.1:9742"
 Name: "{group}\Configure UiDRAC Agent (README)"; Filename: "{app}\COPYRIGHT.txt"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{app}\uninstall.ps1"
 

@@ -2266,7 +2266,7 @@ var require_websocket = __commonJS({
     "use strict";
     var EventEmitter2 = require("events");
     var https3 = require("https");
-    var http4 = require("http");
+    var http3 = require("http");
     var net = require("net");
     var tls = require("tls");
     var { randomBytes, createHash } = require("crypto");
@@ -2808,7 +2808,7 @@ var require_websocket = __commonJS({
       }
       const defaultPort = isSecure ? 443 : 80;
       const key = randomBytes(16).toString("base64");
-      const request = isSecure ? https3.request : http4.request;
+      const request = isSecure ? https3.request : http3.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -3304,7 +3304,7 @@ var require_websocket_server = __commonJS({
   "../../node_modules/.pnpm/ws@8.21.3/node_modules/ws/lib/websocket-server.js"(exports2, module2) {
     "use strict";
     var EventEmitter2 = require("events");
-    var http4 = require("http");
+    var http3 = require("http");
     var { Duplex } = require("stream");
     var { createHash } = require("crypto");
     var extension2 = require_extension();
@@ -3385,8 +3385,8 @@ var require_websocket_server = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http4.createServer((req, res) => {
-            const body = http4.STATUS_CODES[426];
+          this._server = http3.createServer((req, res) => {
+            const body = http3.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -3675,7 +3675,7 @@ var require_websocket_server = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http4.STATUS_CODES[code];
+      message = message || http3.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -3684,7 +3684,7 @@ var require_websocket_server = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http4.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http3.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -13657,7 +13657,7 @@ var require_form_data = __commonJS({
     var CombinedStream = require_combined_stream();
     var util5 = require("util");
     var path = require("path");
-    var http4 = require("http");
+    var http3 = require("http");
     var https3 = require("https");
     var parseUrl2 = require("url").parse;
     var fs2 = require("fs");
@@ -13932,7 +13932,7 @@ var require_form_data = __commonJS({
       if (options.protocol === "https:") {
         request = https3.request(options);
       } else {
-        request = http4.request(options);
+        request = http3.request(options);
       }
       this.getLength(function(err, length) {
         if (err && err !== "Unknown stream") {
@@ -15210,7 +15210,7 @@ var require_follow_redirects = __commonJS({
   "../../node_modules/.pnpm/follow-redirects@1.16.0/node_modules/follow-redirects/index.js"(exports2, module2) {
     var url2 = require("url");
     var URL2 = url2.URL;
-    var http4 = require("http");
+    var http3 = require("http");
     var https3 = require("https");
     var Writable = require("stream").Writable;
     var assert = require("assert");
@@ -15711,7 +15711,7 @@ var require_follow_redirects = __commonJS({
     function escapeRegex(regex) {
       return regex.replace(/[\]\\/()*+?.$]/g, "\\$&");
     }
-    module2.exports = wrap({ http: http4, https: https3 });
+    module2.exports = wrap({ http: http3, https: https3 });
     module2.exports.wrap = wrap;
   }
 });
@@ -20029,7 +20029,6 @@ var PRODUCT_RELEASES = release_history_default.releases;
 var PRODUCT_NAME = "Universal iDRAC Console";
 var UIDRAC_AGENT_NAME = "UiDRAC Agent";
 var UIDRAC_AGENT_CONSOLE_TAGLINE = `${PRODUCT_NAME} \u2014 LAN bridge`;
-var CONZEX_COPYRIGHT_LINE = "Copyright \xA9 2026 Conzex Global Private Limited";
 var UIDRAC_AGENT_BUNDLE_SCHEMA = "uidrac-edge-agent/v1";
 var UIDRAC_AGENT_BUNDLE_SCHEMA_LEGACY = "idrac-edge-agent/v1";
 
@@ -26932,9 +26931,9 @@ function getAdapter3(generation, creds) {
   }
 }
 async function probeGeneration(ip, username, password) {
-  const http4 = createHttpClient(ip, 4e3);
+  const http3 = createHttpClient(ip, 4e3);
   try {
-    const res = await http4.get("/redfish/v1/", { timeout: 4e3, auth: { username, password } });
+    const res = await http3.get("/redfish/v1/", { timeout: 4e3, auth: { username, password } });
     if (res.status === 200) {
       const version = res.data?.RedfishVersion ?? "";
       return version >= "1.6" ? "9" : "8";
@@ -26942,12 +26941,12 @@ async function probeGeneration(ip, username, password) {
   } catch {
   }
   try {
-    const res = await http4.get("/data?get=version", { timeout: 3e3, auth: { username, password } });
+    const res = await http3.get("/data?get=version", { timeout: 3e3, auth: { username, password } });
     if (res.status === 200) return "7";
   } catch {
   }
   try {
-    const res = await http4.get("/cgi-bin/webcgi/login", { timeout: 3e3 });
+    const res = await http3.get("/cgi-bin/webcgi/login", { timeout: 3e3 });
     if (res.status === 200) return "6";
   } catch {
   }
@@ -26955,9 +26954,7 @@ async function probeGeneration(ip, username, password) {
 }
 
 // src/agent-state.ts
-var MAX_LOGS = 500;
 var MAX_ROWS = 200;
-var logs = [];
 var rows = [];
 var snapshot = {
   version: "",
@@ -26969,10 +26966,8 @@ var snapshot = {
   cloudConnected: false,
   authenticated: false,
   lastError: null,
-  startedAt: (/* @__PURE__ */ new Date()).toISOString(),
-  uiUrl: "http://127.0.0.1:9742"
+  startedAt: (/* @__PURE__ */ new Date()).toISOString()
 };
-var logListeners = /* @__PURE__ */ new Set();
 var cloudRelay = null;
 function setCloudEventRelay(relay) {
   cloudRelay = relay;
@@ -26997,15 +26992,12 @@ function setAuthenticated(ok, error) {
   relaySnapshotToCloud();
 }
 function pushLog(level, message) {
-  const entry = { id: id(), at: (/* @__PURE__ */ new Date()).toISOString(), level, message };
-  logs.push(entry);
-  if (logs.length > MAX_LOGS) logs.shift();
+  const at = (/* @__PURE__ */ new Date()).toISOString();
   const line = `[edge-agent] ${message}`;
   if (level === "error") console.error(line);
   else if (level === "warn") console.warn(line);
   else console.log(line);
-  cloudRelay?.({ type: "agent.log", level, message, at: entry.at });
-  for (const fn of logListeners) fn(entry);
+  cloudRelay?.({ type: "agent.log", level, message, at });
 }
 function pushActivity(row) {
   const full = {
@@ -27040,57 +27032,8 @@ function updateActivity(id2, patch) {
   if (i >= 0) rows[i] = { ...rows[i], ...patch };
 }
 
-// src/local-console.ts
-var http3 = __toESM(require("http"));
-var DEFAULT_PORT = 9742;
-function portalOnlyHtml() {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>${UIDRAC_AGENT_NAME}</title>
-  <style>
-    body { margin:0; font-family: system-ui, sans-serif; background:#f4f6f8; color:#1a1a1a; min-height:100vh; display:flex; flex-direction:column; }
-    main { flex:1; max-width:32rem; margin:auto; padding:2rem 1.5rem; text-align:center; }
-    h1 { font-size:1.25rem; margin:0 0 0.5rem; }
-    p { font-size:0.9rem; color:#5c6b7a; line-height:1.5; }
-    footer { font-size:0.7rem; color:#8b9cb3; padding:1rem; text-align:center; border-top:1px solid #dde3ea; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>${UIDRAC_AGENT_NAME}</h1>
-    <p>${UIDRAC_AGENT_CONSOLE_TAGLINE}</p>
-    <p style="margin-top:1.25rem">Live logs and iDRAC activity are available in the <strong>portal only</strong> \u2014 open <strong>Agents</strong>, select this site connector, and use the agent console.</p>
-  </main>
-  <footer>${CONZEX_COPYRIGHT_LINE}</footer>
-</body>
-</html>`;
-}
-function startLocalConsole(port = DEFAULT_PORT) {
-  const server = http3.createServer((req, res) => {
-    const url2 = req.url?.split("?")[0] ?? "/";
-    if (url2 === "/" || url2 === "/index.html") {
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(portalOnlyHtml());
-      return;
-    }
-    res.writeHead(404);
-    res.end("Not found");
-  });
-  server.on("error", (err) => {
-    pushLog("error", `Local console failed on port ${port}: ${err.message}`);
-  });
-  server.listen(port, "127.0.0.1", () => {
-    console.log(`[edge-agent] Local stub (portal-only): http://127.0.0.1:${port}`);
-  });
-  return server;
-}
-
 // src/index.ts
 var VERSION3 = APP_VERSION;
-var UI_PORT = parseInt(process.env.UIDRAC_AGENT_UI_PORT ?? "9742", 10);
 var VALID_SCHEMAS = /* @__PURE__ */ new Set([UIDRAC_AGENT_BUNDLE_SCHEMA, UIDRAC_AGENT_BUNDLE_SCHEMA_LEGACY, "uidrac-edge-agent/v1"]);
 function envFirst(...keys) {
   for (const k of keys) {
@@ -27441,23 +27384,15 @@ function connect(cfg2) {
   }, 3e4);
 }
 var cfg = loadConfig();
-var uiUrl = `http://127.0.0.1:${UI_PORT}`;
 initAgentState({
   version: VERSION3,
   cloudUrl: cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(" | "),
   wsUrl: cfg.endpoints.map((e) => `${e.wsUrl} [${e.label}]`).join(" | "),
   agentId: cfg.agentId,
   tenantId: cfg.tenantId ?? "",
-  tenantName: cfg.tenantName ?? "",
-  uiUrl
+  tenantName: cfg.tenantName ?? ""
 });
-if (process.env.UIDRAC_AGENT_UI === "1") {
-  startLocalConsole(UI_PORT);
-} else {
-  console.log("[edge-agent] Agent console is portal-only (Agents \u2192 manage). Set UIDRAC_AGENT_UI=1 for local stub.");
-}
 pushLog("info", `${UIDRAC_AGENT_NAME} started \u2014 endpoints: ${cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(", ")}`);
-pushLog("info", "Use the portal Agents page for this connector\u2019s live console.");
 connect(cfg);
 /*! Bundled license information:
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { AgentConsolePanel } from '@/components/agent/agent-console-panel';
 import AppPageHeader from '@/components/layout/app-page-header';
 import { UIDRAC_AGENT_NAME } from '@idrac/shared';
@@ -15,7 +14,7 @@ export default function AgentConsolePage() {
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <AppPageHeader
         title={`${UIDRAC_AGENT_NAME} console`}
-        description="Per-agent cloud connection, live log, and iDRAC activity (portal only)"
+        description="Per-agent cloud connection and iDRAC LAN activity"
         className="mb-4 shrink-0"
         actions={
           <button
@@ -27,11 +26,8 @@ export default function AgentConsolePage() {
           </button>
         }
       />
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {id && <AgentConsolePanel agentId={id} />}
-        <p className="text-center text-xs text-text-secondary mt-4">
-          <Link href="/agents" className="text-dell-blue font-semibold hover:underline">Back to Agents</Link>
-        </p>
+      <div className="flex-1 min-h-0 flex flex-col">
+        {id && <AgentConsolePanel agentId={id} fullPage />}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-/** In-memory agent status for local console (logs + iDRAC activity table). */
+/** In-memory agent status relayed to the portal UiDRAC Agent console. */
 export type LogLevel = 'info' | 'warn' | 'error';
 
 export type LogEntry = {
@@ -32,13 +32,10 @@ export type AgentSnapshot = {
   authenticated: boolean;
   lastError: string | null;
   startedAt: string;
-  uiUrl: string;
 };
 
-const MAX_LOGS = 500;
 const MAX_ROWS = 200;
 
-const logs: LogEntry[] = [];
 const rows: IdracActivityRow[] = [];
 let snapshot: AgentSnapshot = {
   version: '',
@@ -51,10 +48,7 @@ let snapshot: AgentSnapshot = {
   authenticated: false,
   lastError: null,
   startedAt: new Date().toISOString(),
-  uiUrl: 'http://127.0.0.1:9742',
 };
-
-const logListeners = new Set<(entry: LogEntry) => void>();
 let cloudRelay: ((payload: Record<string, unknown>) => void) | null = null;
 
 export function setCloudEventRelay(relay: ((payload: Record<string, unknown>) => void) | null) {
@@ -86,24 +80,12 @@ export function setAuthenticated(ok: boolean, error?: string) {
 }
 
 export function pushLog(level: LogLevel, message: string) {
-  const entry: LogEntry = { id: id(), at: new Date().toISOString(), level, message };
-  logs.push(entry);
-  if (logs.length > MAX_LOGS) logs.shift();
+  const at = new Date().toISOString();
   const line = `[edge-agent] ${message}`;
   if (level === 'error') console.error(line);
   else if (level === 'warn') console.warn(line);
   else console.log(line);
-  cloudRelay?.({ type: 'agent.log', level, message, at: entry.at });
-  for (const fn of logListeners) fn(entry);
-}
-
-export function subscribeLogs(fn: (entry: LogEntry) => void) {
-  logListeners.add(fn);
-  return () => logListeners.delete(fn);
-}
-
-export function getLogs(): LogEntry[] {
-  return [...logs];
+  cloudRelay?.({ type: 'agent.log', level, message, at });
 }
 
 export function pushActivity(row: Omit<IdracActivityRow, 'id' | 'at'> & { at?: string }) {
@@ -141,6 +123,3 @@ export function updateActivity(id: string, patch: Partial<IdracActivityRow>) {
   if (i >= 0) rows[i] = { ...rows[i], ...patch };
 }
 
-export function getActivityRows(): IdracActivityRow[] {
-  return [...rows];
-}

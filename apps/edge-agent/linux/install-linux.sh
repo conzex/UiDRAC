@@ -23,5 +23,5 @@ sudo sed -i "s|/opt/conzex/uidrac-agent|$INSTALL_ROOT|g" /etc/systemd/system/uid
 sudo systemctl daemon-reload
 sudo systemctl enable uidrac-agent
 sudo systemctl restart uidrac-agent
-echo "UiDRAC agent installed. Local console: http://127.0.0.1:9742"
+echo "UiDRAC agent installed. Console: portal → Agents → UiDRAC Agent console."
 echo "Cloud: $(node -pe "JSON.parse(require('fs').readFileSync('$CONFIG','utf8')).cloudUrl" 2>/dev/null || echo 'see credentials.json')"

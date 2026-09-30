@@ -45,4 +45,4 @@ Every API route under `/api/agents` validates `Authenticated User â†’ tenantId â
 
 ## Local agent console
 
-After install, operators may open `http://127.0.0.1:9742` on the **agent host** for live logs (not served from Docker).
+After install, operators use the portal **UiDRAC Agent console** per site connector (not a local HTTP dashboard on the agent host).

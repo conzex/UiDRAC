@@ -44,13 +44,6 @@ else
       chmod 755 "$INSTALL_DIR/$f" 2>/dev/null || true
     fi
   done
-  if [[ -d "$SCRIPT_DIR/console/public" ]]; then
-    mkdir -p "$INSTALL_DIR/console/public"
-    cp -f "$SCRIPT_DIR/console/public/"* "$INSTALL_DIR/console/public/" 2>/dev/null || true
-  elif [[ -d "$SCRIPT_DIR/../console/public" ]]; then
-    mkdir -p "$INSTALL_DIR/console/public"
-    cp -f "$SCRIPT_DIR/../console/public/"* "$INSTALL_DIR/console/public/" 2>/dev/null || true
-  fi
   AGENT_BIN="$INSTALL_DIR/uidrac-agent"
 fi
 
@@ -131,10 +124,6 @@ cat >"$PLIST" <<EOF
     <string>$DATA_DIR/agent.json</string>
     <key>IDRAC_AGENT_CONFIG</key>
     <string>$DATA_DIR/agent.json</string>
-    <key>UIDRAC_AGENT_UI</key>
-    <string>0</string>
-    <key>UIDRAC_AGENT_CONSOLE_DIR</key>
-    <string>$INSTALL_DIR/console/public</string>
 $(if [[ -n "$LOCAL_URL_ENV" ]]; then
   echo "    <key>UIDRAC_LOCAL_URL</key>"
   echo "    <string>$LOCAL_URL_ENV</string>"

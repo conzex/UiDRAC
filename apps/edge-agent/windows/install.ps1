@@ -78,7 +78,7 @@ if (-not (Test-Path -LiteralPath $AgentExe)) {
   $bundle = Join-Path $InstallDir 'agent-bundle.cjs'
   $runCmd = Join-Path $InstallDir 'run-uidrac-agent.cmd'
   if ((Test-Path -LiteralPath $bundle) -and (Test-Path -LiteralPath $runCmd)) {
-    Write-Host "Using bundled agent (Node 20+): agent-bundle.cjs + local console http://127.0.0.1:9742"
+    Write-Host "Using bundled agent (Node 20+): agent-bundle.cjs"
     $ServiceApp = $env:ComSpec
     $ServiceArgs = "/c `"$runCmd`""
   } else {
@@ -126,12 +126,11 @@ if ($ServiceArgs) {
 
 $envBlock = @(
   "UIDRAC_AGENT_CONFIG=$AgentConfigDest",
-  "IDRAC_AGENT_CONFIG=$AgentConfigDest",
-  "UIDRAC_AGENT_CONSOLE_DIR=$InstallDir\console\public"
+  "IDRAC_AGENT_CONFIG=$AgentConfigDest"
 ) -join "`n"
 & $Nssm set $ServiceName AppEnvironmentExtra $envBlock
 
 & $Nssm start $ServiceName
 Write-Host "Service '$ServiceDisplay' started. Logs: $LogDir"
-Write-Host "Local agent console (logo, logs, iDRAC table): http://127.0.0.1:9742"
-Write-Host "Verify Connected in cloud portal -> Settings -> UiDRAC agent."
+Write-Host "UiDRAC Agent console: portal -> Agents -> UiDRAC Agent console."
+Write-Host "Verify Connected in the portal Agents list."

@@ -298,16 +298,7 @@ export function AgentManagePanel({ agentId, onChanged, onDeleted }: Props) {
         )}
       </div>
 
-      <div className="mt-5 pt-4 border-t border-border-card space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Agent console</p>
-          <a
-            href={`/agents/${agentId}/console`}
-            className="text-xs font-semibold text-dell-blue hover:underline"
-          >
-            Open full page
-          </a>
-        </div>
+      <div className="mt-5 pt-4 border-t border-border-card">
         <AgentConsolePanel agentId={agentId} compact />
       </div>
 

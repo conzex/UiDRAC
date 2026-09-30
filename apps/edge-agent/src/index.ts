@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * @idrac/edge-agent — Tenant-bound LAN bridge for Universal iDRAC Console (cloud).
- * Optional local stub: http://127.0.0.1:9742 (portal-only message; disabled unless UIDRAC_AGENT_UI=1)
+ * Operator UI: portal → Agents → UiDRAC Agent console (per site connector).
  * Copyright (c) 2026 Conzex Global Private Limited
  */
 import * as fs from 'fs';
@@ -20,10 +20,8 @@ import {
   setCloudEventRelay,
   relaySnapshotToCloud,
 } from './agent-state';
-import { startLocalConsole } from './local-console';
 
 const VERSION = APP_VERSION;
-const UI_PORT = parseInt(process.env.UIDRAC_AGENT_UI_PORT ?? '9742', 10);
 
 type Endpoint = { cloudUrl: string; wsUrl: string; label: string };
 
@@ -430,7 +428,6 @@ function connect(cfg: Config) {
 }
 
 const cfg = loadConfig();
-const uiUrl = `http://127.0.0.1:${UI_PORT}`;
 
 initAgentState({
   version: VERSION,
@@ -439,15 +436,7 @@ initAgentState({
   agentId: cfg.agentId,
   tenantId: cfg.tenantId ?? '',
   tenantName: cfg.tenantName ?? '',
-  uiUrl,
 });
 
-if (process.env.UIDRAC_AGENT_UI === '1') {
-  startLocalConsole(UI_PORT);
-} else {
-  console.log('[edge-agent] Agent console is portal-only (Agents → manage). Set UIDRAC_AGENT_UI=1 for local stub.');
-}
-
 pushLog('info', `${UIDRAC_AGENT_NAME} started — endpoints: ${cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(', ')}`);
-pushLog('info', 'Use the portal Agents page for this connector’s live console.');
 connect(cfg);

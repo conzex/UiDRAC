@@ -27,6 +27,6 @@ for (const out of outs) {
   console.log('[edge-agent] bundle:', out);
 }
 
-const winCmd = `@echo off\r\nset UIDRAC_AGENT_CONSOLE_DIR=%~dp0console\\public\r\ncd /d "%~dp0"\r\nnode "%~dp0agent-bundle.cjs"\r\n`;
+const winCmd = `@echo off\r\ncd /d "%~dp0"\r\nnode "%~dp0agent-bundle.cjs"\r\n`;
 fs.writeFileSync(path.join(root, 'windows', 'run-uidrac-agent.cmd'), winCmd, 'utf8');
 console.log('[edge-agent] windows launcher: run-uidrac-agent.cmd');

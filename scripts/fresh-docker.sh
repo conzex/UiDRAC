@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remove all uidrac containers and volumes, rebuild, bootstrap agent JSON, start local console on :9742
+# Remove all uidrac containers and volumes, rebuild, bootstrap agent JSON, start edge agent
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -42,14 +42,12 @@ curl -sf "http://localhost:4000/api/agent/download?platform=darwin&format=json" 
 echo "=== Building local macOS agent binary ==="
 pnpm --filter @idrac/edge-agent run build:mac-exe
 
-echo "=== Starting UiDRAC agent (local console http://127.0.0.1:9742) ==="
+echo "=== Starting UiDRAC edge agent ==="
 pkill -f "apps/edge-agent/macos/agent-bundle.cjs" 2>/dev/null || true
 pkill -f "edge-agent/macos/uidrac-agent" 2>/dev/null || true
 sleep 1
 
 export UIDRAC_AGENT_CONFIG="$AGENT_JSON"
-export UIDRAC_AGENT_CONSOLE_DIR="$ROOT/apps/edge-agent/console/public"
-export UIDRAC_AGENT_OPEN_UI=0
 
 # Detached start so the agent survives after this script exits (Cursor/sandbox shells may SIGHUP job children).
 if command -v setsid >/dev/null 2>&1; then
@@ -62,23 +60,22 @@ disown "$AGENT_PID" 2>/dev/null || true
 echo "$AGENT_PID" >"$ROOT/tmp/uidrac-agent.pid"
 
 for i in $(seq 1 30); do
-  if curl -sf http://127.0.0.1:9742/ >/dev/null 2>&1 && kill -0 "$AGENT_PID" 2>/dev/null; then
+  if kill -0 "$AGENT_PID" 2>/dev/null && curl -sf http://127.0.0.1:4000/api/health >/dev/null 2>&1; then
     echo ""
     echo "=== Ready ==="
-    echo "  Portal:        http://localhost:3000  (login: admin / admin)"
-    echo "  API:           http://localhost:4000/api"
-    echo "  Agent console: http://127.0.0.1:9742"
-    echo "  Agent config:  $AGENT_JSON"
-    echo "  Agent log:     $ROOT/tmp/uidrac-agent.log"
+    echo "  Portal:              http://localhost:3000  (login: admin / admin)"
+    echo "  API:                 http://localhost:4000/api"
+    echo "  UiDRAC Agent console: Agents → manage → UiDRAC Agent console"
+    echo "  Agent config:        $AGENT_JSON"
+    echo "  Agent log:           $ROOT/tmp/uidrac-agent.log"
     echo ""
-    echo "  If :9742 stops working, run in Terminal.app (keeps process alive):"
-    echo "    $ROOT/scripts/start-local-agent.sh"
+    echo "  Restart agent: $ROOT/scripts/start-local-agent.sh"
     docker compose ps
     exit 0
   fi
   sleep 1
 done
 
-echo "Agent console not responding on :9742. Log:"
+echo "Agent or API not ready. Log:"
 tail -30 "$ROOT/tmp/uidrac-agent.log" || true
 exit 1

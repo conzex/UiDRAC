@@ -79,10 +79,6 @@ Linux:
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/uninstall.sh'), 'uninstall.sh');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/uidrac-agent'), 'uidrac-agent');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/agent-bundle.cjs'), 'agent-bundle.cjs');
-    const consoleDir = repoPath('apps/edge-agent/console/public');
-    if (existsSync(join(consoleDir, 'logo.png'))) {
-      archive.directory(consoleDir, 'console/public');
-    }
     archive.append(
       `#!/bin/bash
 set -euo pipefail
@@ -93,18 +89,9 @@ if [[ -f "$DIR/UidracAgent.pkg" ]]; then
 fi
 sudo "$DIR/install.sh" --config "$DIR/credentials.json"
 echo "Portal → Agents → refresh until Connected."
-echo "Agent console (live log & iDRAC activity) is in the portal only."
+echo "UiDRAC Agent console: portal → Agents → UiDRAC Agent console."
 `,
       { name: 'Install-UiDRAC-Agent.command', mode: 0o755 },
-    );
-    archive.append(
-      `#!/bin/bash
-cd "$(dirname "$0")"
-export UIDRAC_AGENT_CONFIG="$PWD/credentials.json"
-export UIDRAC_AGENT_CONSOLE_DIR="$PWD/console/public"
-exec ./uidrac-agent 2>/dev/null || node ./agent-bundle.cjs
-`,
-      { name: 'Run-Agent-Console.command', mode: 0o755 },
     );
   } else if (platform === 'win') {
     const setup = resolveAgentSetupExePath();
@@ -114,10 +101,6 @@ exec ./uidrac-agent 2>/dev/null || node ./agent-bundle.cjs
     const winDir = repoPath('apps/edge-agent/windows');
     for (const f of ['agent-bundle.cjs', 'run-uidrac-agent.cmd', 'install.ps1', 'uninstall.ps1', 'nssm.exe']) {
       addFileIfExists(archive, join(winDir, f), f);
-    }
-    const consoleDir = repoPath('apps/edge-agent/console/public');
-    if (existsSync(join(consoleDir, 'logo.png'))) {
-      archive.directory(consoleDir, 'console/public');
     }
     archive.append(
       `$ErrorActionPreference = 'Stop'
@@ -135,10 +118,6 @@ Write-Host "Agent console: sign in to the portal → Agents → manage this conn
     addFileIfExists(archive, repoPath('apps/edge-agent/linux/install-linux.sh'), 'install-linux.sh');
     addFileIfExists(archive, repoPath('apps/edge-agent/linux/uidrac-agent.service'), 'uidrac-agent.service');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/agent-bundle.cjs'), 'agent-bundle.cjs');
-    const consoleDir = repoPath('apps/edge-agent/console/public');
-    if (existsSync(consoleDir)) {
-      archive.directory(consoleDir, 'console/public');
-    }
   }
 
   await archive.finalize();

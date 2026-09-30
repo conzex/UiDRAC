@@ -8,7 +8,6 @@ Type=simple
 WorkingDirectory=/opt/conzex/uidrac-agent
 Environment=UIDRAC_AGENT_CONFIG=/opt/conzex/uidrac-agent/credentials.json
 Environment=UIDRAC_AGENT_CONSOLE_DIR=/opt/conzex/uidrac-agent/console/public
-Environment=UIDRAC_AGENT_UI=1
 ExecStart=/usr/bin/node /opt/conzex/uidrac-agent/agent-bundle.cjs
 Restart=always
 RestartSec=5
