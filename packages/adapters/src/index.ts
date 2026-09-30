@@ -5,3 +5,4 @@ export { LegacyCgiAdapter } from './legacy-cgi-adapter';
 export { getAdapter, probeGeneration } from './factory';
 export { encrypt, decrypt } from './encryption';
 export { createHttpClient } from './http-client';
+export { runAdapterBatch, type AdapterBatchCall } from './adapter-batch';

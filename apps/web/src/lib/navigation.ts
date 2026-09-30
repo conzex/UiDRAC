@@ -62,7 +62,7 @@ export function docsNavLabel(role?: string | null): string {
 
 export const PUBLIC_LOGGED_OUT_LINKS: PublicNavLink[] = [
   { href: '/docs', label: 'Docs', Icon: BookOpen },
-  { href: '/contact', label: 'Contact', Icon: Mail },
+  { href: '/contact', label: 'Contact us', Icon: Mail },
 ];
 
 export function visibleAppNavItems(user: StoredUser | null): AppNavItem[] {

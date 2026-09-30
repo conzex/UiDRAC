@@ -11,11 +11,15 @@ export function FleetAgentHeader({
   className = '',
   showActions = true,
   description,
+  showBulkImport = true,
+  addServerOnServersPage = false,
 }: {
   title?: string;
   className?: string;
   showActions?: boolean;
   description?: string;
+  showBulkImport?: boolean;
+  addServerOnServersPage?: boolean;
 }) {
   const { status, loading, error } = useAgentStatus();
 
@@ -24,7 +28,11 @@ export function FleetAgentHeader({
       <AppPageHeader
         title={title || 'Server fleet'}
         description={description}
-        actions={showActions ? <FleetActionButtons /> : undefined}
+        actions={
+          showActions ? (
+            <FleetActionButtons showBulkImport={showBulkImport} addServerOnServersPage={addServerOnServersPage} />
+          ) : undefined
+        }
       />
       <AgentStatusBanner status={status} loading={loading} error={error} />
     </div>

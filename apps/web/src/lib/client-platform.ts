@@ -1,5 +1,10 @@
 /** Detect visitor OS for agent download recommendations (browser). */
 import type { AgentPlatform } from '@/lib/agents-client';
+import {
+  AGENT_CDN_BASE_URL,
+  agentCdnInstallerFilename,
+  agentCdnInstallerUrl,
+} from '@idrac/shared';
 
 export function detectClientPlatform(): AgentPlatform {
   if (typeof navigator === 'undefined') return 'linux';
@@ -31,51 +36,66 @@ export type AgentInstallGuide = {
   headline: string;
   steps: string[];
   commands: string[];
+  installerUrl: string;
+  installerName: string;
   note?: string;
 };
 
-export function getAgentInstallGuide(platform: AgentPlatform): AgentInstallGuide {
+export function getAgentInstallGuide(platform: AgentPlatform, cdnBase = AGENT_CDN_BASE_URL): AgentInstallGuide {
+  const installerUrl = agentCdnInstallerUrl(platform, cdnBase);
+  const installerName = agentCdnInstallerFilename(platform);
+  const creds = './credentials.json';
+
   if (platform === 'darwin') {
     return {
-      headline: 'Install on macOS (Terminal)',
+      headline: 'macOS — PKG + credentials',
+      installerUrl,
+      installerName,
       steps: [
-        'Unzip the macOS ZIP on the Mac that will run the agent (keep only one folder in Downloads).',
-        'In Terminal, cd into that folder (use the exact folder name from Finder).',
-        'Run the three commands below — each line is safe to paste as-is after you cd.',
-        'Confirm Connected on the Agents page in the portal.',
+        'Download tenant credentials.json from this page (bound to your agent).',
+        'Run the commands below in Terminal (installer is fetched from Conzex CDN).',
+        'In the portal, open Agents and confirm Connected.',
       ],
       commands: [
-        'cd ~/Downloads/REPLACE_WITH_YOUR_UNZIPPED_FOLDER',
-        'sudo installer -pkg "$PWD/UidracAgent.pkg" -target /',
-        'sudo "$PWD/install.sh" --config "$PWD/credentials.json"',
+        `curl -fsSL -o ${installerName} "${installerUrl}"`,
+        `sudo installer -pkg ${installerName} -target /`,
+        `sudo "/Library/Application Support/Conzex/UiDRAC Agent/install.sh" --config "$(pwd)/${creds}"`,
       ],
-      note:
-        'Replace the cd path with your unzipped folder name if different. Easiest: double-click Install-UiDRAC-Agent.command in the ZIP.',
+      note: 'Or double-click the PKG in Finder, then run install.sh with your credentials.json path.',
     };
   }
   if (platform === 'win') {
     return {
-      headline: 'Install on Windows (PowerShell as Administrator)',
+      headline: 'Windows — EXE + credentials',
+      installerUrl,
+      installerName,
       steps: [
-        'Download and unzip the Windows ZIP on the server that will run the agent.',
-        'Open PowerShell as Administrator in that folder.',
-        'Run the command below, then confirm Connected under Agents.',
+        'Download credentials.json from this page.',
+        'Run PowerShell as Administrator and paste the commands below.',
+        'Confirm Connected under Agents.',
       ],
-      commands: ['powershell -ExecutionPolicy Bypass -File .\\Install-UiDRAC-Agent.ps1'],
-      note: 'You can also run UidracAgentSetup.exe from the ZIP, then point it at credentials.json.',
+      commands: [
+        `curl.exe -fsSL -o ${installerName} "${installerUrl}"`,
+        `Start-Process -Wait -FilePath ".\\${installerName}"`,
+        'powershell -ExecutionPolicy Bypass -File "$env:ProgramFiles\\Conzex\\UiDRAC Agent\\install.ps1" -Config "$(pwd)\\credentials.json"',
+      ],
+      note: 'Place credentials.json in the same folder before running install.ps1, or pass the full path to -Config.',
     };
   }
   return {
-    headline: 'Install on Linux (root shell)',
+    headline: 'Linux — install script + credentials',
+    installerUrl,
+    installerName,
     steps: [
-      'Download and unzip the Linux ZIP on the host.',
-      'Install Node.js 20+ if needed, then run the install script as root.',
-      'Confirm Connected under Agents in the portal.',
+      'Download credentials.json from this page.',
+      'On the agent host, run the commands below (Node.js 20+ required).',
+      'Confirm Connected under Agents.',
     ],
     commands: [
-      'cd ~/Downloads/UidracAgent-linux-YOURFOLDER',
-      'sudo bash install-linux.sh',
+      `curl -fsSL -o ${installerName} "${installerUrl}"`,
+      `chmod +x ${installerName}`,
+      `sudo ./${installerName} --config "$(pwd)/${creds}"`,
     ],
-    note: 'The agent runs as a systemd service (uidrac-agent).',
+    note: 'The install script registers a systemd service (uidrac-agent).',
   };
 }

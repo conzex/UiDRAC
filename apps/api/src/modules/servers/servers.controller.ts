@@ -34,9 +34,6 @@ export class ServersController {
   @Get()
   async findAll(@Req() req: any, @Query() query: any) { return this.servers.findAll(await this.tenantId(req), query); }
 
-  @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req: any) { return this.servers.findOne(id, await this.tenantId(req)); }
-
   @Post()
   @Roles('OPERATOR')
   async create(@Body() body: any, @Req() req: any) {
@@ -280,4 +277,10 @@ export class ServersController {
 
   @Get(':id/console-url')
   async getConsoleUrl(@Param('id') id: string, @Req() req: any) { return this.servers.getConsoleUrl(id, await this.tenantId(req)); }
+
+  /** Must be last — otherwise it shadows nested GET routes until the API process reloads. */
+  @Get(':id')
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    return this.servers.findOne(id, await this.tenantId(req));
+  }
 }

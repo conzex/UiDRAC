@@ -54,13 +54,12 @@ Copyright (c) 2026 Conzex Global Private Limited
 
 credentials.json is bound to YOUR account only. Do not share.
 
-macOS:
-  1. Unzip on your Mac (keep only one folder in Downloads).
-  2. Easiest: double-click Install-UiDRAC-Agent.command
-  3. Or Terminal — cd into the unzipped folder, then:
-     sudo installer -pkg "$PWD/UidracAgent.pkg" -target /
-     sudo "$PWD/install.sh" --config "$PWD/credentials.json"
-  4. Portal → Agents → refresh until Connected
+macOS (one Terminal command):
+  1. Unzip the download on your Mac.
+  2. cd into the unzipped folder, then run:
+     sudo ./install-macos-agent.sh
+  (Uses credentials.json in the folder; installs PKG if present, registers boot service.)
+  3. Portal → Agents → refresh until Connected
 
 Windows:
   1. Run Install-UiDRAC-Agent.ps1 as Administrator
@@ -75,21 +74,17 @@ Linux:
   if (platform === 'darwin') {
     const pkg = resolveAgentMacosPkgPath();
     if (pkg) addFileIfExists(archive, pkg, 'UidracAgent.pkg');
+    addFileIfExists(archive, repoPath('apps/edge-agent/macos/install-macos-agent.sh'), 'install-macos-agent.sh');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/install.sh'), 'install.sh');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/uninstall.sh'), 'uninstall.sh');
+    addFileIfExists(archive, repoPath('apps/edge-agent/macos/repair-local-connection.sh'), 'repair-local-connection.sh');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/uidrac-agent'), 'uidrac-agent');
     addFileIfExists(archive, repoPath('apps/edge-agent/macos/agent-bundle.cjs'), 'agent-bundle.cjs');
     archive.append(
       `#!/bin/bash
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-echo "Conzex UiDRAC Agent install (tenant-locked credentials)"
-if [[ -f "$DIR/UidracAgent.pkg" ]]; then
-  sudo installer -pkg "$DIR/UidracAgent.pkg" -target /
-fi
-sudo "$DIR/install.sh" --config "$DIR/credentials.json"
-echo "Portal → Agents → refresh until Connected."
-echo "UiDRAC Agent console: portal → Agents → UiDRAC Agent console."
+exec "$DIR/install-macos-agent.sh"
 `,
       { name: 'Install-UiDRAC-Agent.command', mode: 0o755 },
     );

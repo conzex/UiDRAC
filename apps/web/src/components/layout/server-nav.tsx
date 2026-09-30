@@ -1,15 +1,17 @@
 /** server-nav.tsx — Server detail navigation with power actions and info tooltip. */
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Server, HardDrive, Settings, Wrench, Shield, Monitor,
-  Power, ChevronDown, Zap, RotateCw, PowerOff, AlertTriangle, Info,
+  Power, ChevronDown, Zap, RotateCw, PowerOff, AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 import { readStoredUser } from '@/lib/auth-client';
 import { canMutateServers } from '@/lib/rbac';
+import { clearSessionSummaryForServer } from '@/lib/server-summary-session-cache';
 
 const tabs = [
   { label: 'Dashboard', path: 'dashboard', Icon: LayoutDashboard },
@@ -17,6 +19,7 @@ const tabs = [
   { label: 'Storage', path: 'storage', Icon: HardDrive },
   { label: 'Configuration', path: 'configuration', Icon: Settings },
   { label: 'Maintenance', path: 'maintenance', Icon: Wrench },
+  { label: 'Power', path: 'power', Icon: Power },
   { label: 'iDRAC Settings', path: 'idrac', Icon: Shield },
   { label: 'Console', path: 'console', Icon: Monitor },
 ];
@@ -25,7 +28,7 @@ const powerActions = [
   { action: 'on', label: 'Power On', Icon: Power, color: 'text-green-600 hover:bg-green-50' },
   { action: 'graceful-shutdown', label: 'Graceful Shutdown', Icon: PowerOff, color: 'text-amber-600 hover:bg-amber-50' },
   { action: 'reset', label: 'Reset System', Icon: RotateCw, color: 'text-blue-600 hover:bg-blue-50' },
-  { action: 'power-cycle', label: 'Power Cycle', Icon: Zap, color: 'text-orange-600 hover:bg-orange-50' },
+  { action: 'cycle', label: 'Power Cycle', Icon: Zap, color: 'text-orange-600 hover:bg-orange-50' },
   { action: 'nmi', label: 'NMI (Debug)', Icon: AlertTriangle, color: 'text-red-600 hover:bg-red-50' },
 ];
 
@@ -33,7 +36,6 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
   const pathname = usePathname();
   const [powerOpen, setPowerOpen] = useState(false);
   const [powerMsg, setPowerMsg] = useState('');
-  const [showInfo, setShowInfo] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
     setPowerOpen(false);
     try {
       await api.post(`/servers/${serverId}/power`, { action });
+      clearSessionSummaryForServer(serverId);
       setPowerMsg(`${label} command sent successfully`);
     } catch (err: any) {
       setPowerMsg(`Failed: ${err?.response?.data?.message || err?.message || 'Unknown error'}`);
@@ -57,7 +60,6 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
     setTimeout(() => setPowerMsg(''), 4000);
   };
 
-  const genLabel = server?.generation?.replace('GEN', 'iDRAC ') ?? 'iDRAC';
   const canPower = canMutateServers(readStoredUser()?.role);
 
   return (
@@ -68,43 +70,18 @@ export default function ServerNav({ serverId, server }: { serverId: string; serv
             const href = `/servers/${serverId}/${tab.path}`;
             const isActive = pathname === href || pathname?.startsWith(`${href}/`);
             return (
-              <a key={tab.path} href={href} className={cn(
+              <Link key={tab.path} href={href} className={cn(
                 'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap',
                 isActive ? 'border-dell-blue text-dell-blue' : 'border-transparent text-text-secondary hover:text-dell-blue hover:border-dell-blue/30'
               )}>
                 <tab.Icon className="w-3.5 h-3.5" />
                 {tab.label}
-              </a>
+              </Link>
             );
           })}
         </div>
 
-        {/* Right side: Info + Power */}
         <div className="flex items-center gap-1.5 shrink-0 px-2">
-          {/* Info tooltip */}
-          <div className="relative">
-            <button
-              onMouseEnter={() => setShowInfo(true)}
-              onMouseLeave={() => setShowInfo(false)}
-              className="p-1.5 text-text-secondary hover:text-dell-blue transition-colors rounded hover:bg-gray-100"
-              title="Connection Information"
-            >
-              <Info className="w-4 h-4" />
-            </button>
-            {showInfo && server && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-border-card rounded shadow-lg p-3 w-56 z-50 text-xs">
-                <div className="font-semibold text-text-primary mb-2">Connection Information</div>
-                <div className="space-y-1.5 text-text-secondary">
-                  <div className="flex justify-between"><span>Server</span><span className="font-medium text-text-primary">{server.name}</span></div>
-                  <div className="flex justify-between"><span>iDRAC IP</span><span className="font-mono text-text-primary">{server.ip}</span></div>
-                  <div className="flex justify-between"><span>Generation</span><span className="font-medium text-text-primary">{genLabel}</span></div>
-                  <div className="flex justify-between"><span>Health</span><span className="font-medium text-text-primary capitalize">{server.health?.toLowerCase()}</span></div>
-                  {server.serviceTag && <div className="flex justify-between"><span>Service Tag</span><span className="font-mono text-text-primary">{server.serviceTag}</span></div>}
-                </div>
-              </div>
-            )}
-          </div>
-
           {canPower && (
           <div className="relative" ref={menuRef}>
             <button

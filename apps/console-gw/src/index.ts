@@ -36,7 +36,7 @@ app.use(express.json());
 app.get('/', (_req, res) => {
   res.json({
     name: 'Universal iDRAC Console Gateway',
-    version: process.env.npm_package_version ?? '1.2.0',
+    version: process.env.npm_package_version ?? '1.3.2',
     status: 'running',
     timestamp: new Date().toISOString(),
     health: '/health',

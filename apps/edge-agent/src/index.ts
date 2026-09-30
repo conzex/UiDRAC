@@ -7,7 +7,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import WebSocket from 'ws';
-import { getAdapter, probeGeneration } from '@idrac/adapters';
+import { getAdapter, probeGeneration, runAdapterBatch, type AdapterBatchCall } from '@idrac/adapters';
 import type { IdracGeneration } from '@idrac/shared';
 import { APP_VERSION, UIDRAC_AGENT_NAME, UIDRAC_AGENT_BUNDLE_SCHEMA, UIDRAC_AGENT_BUNDLE_SCHEMA_LEGACY } from '@idrac/shared';
 import {
@@ -19,7 +19,17 @@ import {
   updateActivity,
   setCloudEventRelay,
   relaySnapshotToCloud,
+  setLocalLanIp,
 } from './agent-state';
+import { getPrimaryLanIPv4 } from './local-network';
+import { enqueueIdracOp } from './idrac-queue';
+import { withPooledIdracAdapter } from './idrac-session-pool';
+import {
+  closeIdracWsRelay,
+  openIdracWsRelay,
+  relayIdracHttp,
+  sendIdracWsRelay,
+} from './idrac-console-relay';
 
 const VERSION = APP_VERSION;
 
@@ -225,8 +235,12 @@ function connect(cfg: Config) {
         ws.send(JSON.stringify(payload));
       }
     });
-    relaySnapshotToCloud();
-    const snapshotTimer = setInterval(() => relaySnapshotToCloud(), 15_000);
+    const pushSnapshot = () => {
+      setLocalLanIp(getPrimaryLanIPv4());
+      relaySnapshotToCloud();
+    };
+    pushSnapshot();
+    const snapshotTimer = setInterval(pushSnapshot, 15_000);
     ws.on('close', () => clearInterval(snapshotTimer));
   };
   pushLog('info', `Connecting to ${wsUrl} [${ep.label}] (${UIDRAC_AGENT_NAME} v${VERSION})`);
@@ -258,6 +272,7 @@ function connect(cfg: Config) {
         hostname: os.hostname(),
         os: process.platform,
         arch: process.arch,
+        hostLanIp: getPrimaryLanIPv4(),
       }),
     );
   });
@@ -315,6 +330,138 @@ function connect(cfg: Config) {
       return;
     }
     if (msg.type === 'pong') return;
+    if (msg.type === 'console.relay.http' && msg.id && msg.payload) {
+      const payload = msg.payload as {
+        ip?: string;
+        token?: string;
+        path?: string;
+        method?: string;
+        headers?: Record<string, string>;
+        bodyBase64?: string;
+      };
+      const reqId = msg.id;
+      if (!payload.ip || !payload.path || !payload.method) {
+        ws.send(JSON.stringify({ id: reqId, type: 'console.relay.http.result', ok: false, error: 'invalid_relay_payload' }));
+        return;
+      }
+      void relayIdracHttp({
+        ip: payload.ip,
+        token: payload.token ?? '',
+        path: payload.path,
+        method: payload.method,
+        headers: payload.headers,
+        bodyBase64: payload.bodyBase64,
+      })
+        .then((data) => {
+          ws.send(JSON.stringify({ id: reqId, type: 'console.relay.http.result', ok: true, data }));
+        })
+        .catch((err: unknown) => {
+          const errMsg = err instanceof Error ? err.message : 'console relay failed';
+          ws.send(JSON.stringify({ id: reqId, type: 'console.relay.http.result', ok: false, error: errMsg }));
+        });
+      return;
+    }
+    if (msg.type === 'console.ws.open' && msg.id && msg.payload) {
+      const payload = msg.payload as { relayId?: string; ip?: string; path?: string; token?: string };
+      const reqId = msg.id;
+      const relayId = payload.relayId;
+      if (!relayId || !payload.ip || !payload.path) {
+        ws.send(JSON.stringify({ id: reqId, type: 'console.ws.open.result', ok: false, error: 'invalid_ws_payload' }));
+        return;
+      }
+      try {
+        openIdracWsRelay(
+          relayId,
+          payload.ip,
+          payload.path,
+          payload.token ?? '',
+          () => {
+            if (ws.readyState !== ws.OPEN) return;
+            ws.send(JSON.stringify({ id: reqId, type: 'console.ws.open.result', ok: true, data: { relayId } }));
+          },
+          (data, isBinary) => {
+            if (ws.readyState !== ws.OPEN) return;
+            ws.send(
+              JSON.stringify({
+                type: 'console.ws.frame',
+                relayId,
+                data: data.toString('base64'),
+                binary: isBinary,
+              }),
+            );
+          },
+          (code, reason) => {
+            if (ws.readyState !== ws.OPEN) return;
+            ws.send(JSON.stringify({ type: 'console.ws.closed', relayId, code, reason }));
+          },
+        );
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : 'ws open failed';
+        ws.send(JSON.stringify({ id: reqId, type: 'console.ws.open.result', ok: false, error: errMsg }));
+      }
+      return;
+    }
+    if (msg.type === 'console.ws.send' && msg.payload) {
+      const payload = msg.payload as { relayId?: string; data?: string; binary?: boolean };
+      if (payload.relayId && payload.data) {
+        sendIdracWsRelay(payload.relayId, Buffer.from(payload.data, 'base64'), Boolean(payload.binary));
+      }
+      return;
+    }
+    if (msg.type === 'console.ws.close' && msg.payload) {
+      const relayId = (msg.payload as { relayId?: string }).relayId;
+      if (relayId) closeIdracWsRelay(relayId);
+      return;
+    }
+    if (msg.type === 'adapter.invoke.batch' && msg.id && msg.payload) {
+      const payload = msg.payload as {
+        generation?: string;
+        ip?: string;
+        username?: string;
+        password?: string;
+        calls?: AdapterBatchCall[];
+        parallel?: boolean;
+      };
+      const { ip, username, password, calls, parallel } = payload;
+      const generation = (payload.generation ?? '9') as IdracGeneration;
+      const reqId = msg.id;
+      if (!ip || !username || !password || !calls?.length) {
+        ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.batch.result', ok: false, error: 'invalid_batch_payload' }));
+        return;
+      }
+      const label = calls.map((c) => c.method).join(', ');
+      const rowId = pushActivity({
+        event: 'invoke',
+        ip,
+        serviceTag: '…',
+        model: 'batch',
+        generation: String(generation),
+        health: '…',
+        result: 'pending',
+        detail: `Batch: ${label}`,
+      }).id;
+      enqueueIdracOp(ip, async () => {
+        try {
+          const data = await withPooledIdracAdapter(
+            generation,
+            { ip, username, password },
+            async (adapter) => runAdapterBatch(adapter, calls, Boolean(parallel), true),
+          );
+          updateActivity(rowId, { result: 'ok', detail: `Batch OK (${calls.length})` });
+          ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.batch.result', ok: true, data }));
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'adapter batch failed';
+          updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
+          pushLog('error', `Batch invoke failed ${ip}: ${errMsg}`);
+          ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.batch.result', ok: false, error: errMsg }));
+        }
+      }).catch((err: unknown) => {
+        const errMsg = err instanceof Error ? err.message : 'queue rejected';
+        updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
+        ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.batch.result', ok: false, error: errMsg }));
+      });
+      return;
+    }
     if (msg.type === 'adapter.invoke' && msg.id && msg.payload) {
       const payload = msg.payload as {
         generation?: string;
@@ -326,8 +473,9 @@ function connect(cfg: Config) {
       };
       const { ip, username, password, method, args } = payload;
       const generation = (payload.generation ?? '9') as IdracGeneration;
+      const reqId = msg.id;
       if (!ip || !username || !password || !method) {
-        ws.send(JSON.stringify({ id: msg.id, type: 'adapter.invoke.result', ok: false, error: 'invalid_invoke_payload' }));
+        ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.result', ok: false, error: 'invalid_invoke_payload' }));
         return;
       }
       const rowId = pushActivity({
@@ -340,28 +488,37 @@ function connect(cfg: Config) {
         result: 'pending',
         detail: `Adapter ${method}`,
       }).id;
-      const adapter = getAdapter(generation, { ip, username, password });
-      try {
-        await adapter.connect();
-        const target = (adapter as Record<string, unknown>)[method];
-        if (typeof target !== 'function') {
-          throw new Error(`Unknown adapter method: ${method}`);
+      enqueueIdracOp(ip, async () => {
+        try {
+          const data = await withPooledIdracAdapter(
+            generation,
+            { ip, username, password },
+            async (adapter) => {
+              const target = (adapter as unknown as Record<string, unknown>)[method];
+              if (typeof target !== 'function') {
+                throw new Error(`Unknown adapter method: ${method}`);
+              }
+              return (target as (...a: unknown[]) => Promise<unknown>).apply(adapter, args ?? []);
+            },
+          );
+          updateActivity(rowId, { result: 'ok', detail: `${method} OK` });
+          ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.result', ok: true, data }));
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'adapter invoke failed';
+          updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
+          pushLog('error', `Invoke ${method} failed ${ip}: ${errMsg}`);
+          ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.result', ok: false, error: errMsg }));
         }
-        const data = await (target as (...a: unknown[]) => Promise<unknown>).apply(adapter, args ?? []);
-        updateActivity(rowId, { result: 'ok', detail: `${method} OK` });
-        ws.send(JSON.stringify({ id: msg.id, type: 'adapter.invoke.result', ok: true, data }));
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : 'adapter invoke failed';
+      }).catch((err: unknown) => {
+        const errMsg = err instanceof Error ? err.message : 'queue rejected';
         updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
-        pushLog('error', `Invoke ${method} failed ${ip}: ${errMsg}`);
-        ws.send(JSON.stringify({ id: msg.id, type: 'adapter.invoke.result', ok: false, error: errMsg }));
-      } finally {
-        await adapter.disconnect().catch(() => {});
-      }
+        ws.send(JSON.stringify({ id: reqId, type: 'adapter.invoke.result', ok: false, error: errMsg }));
+      });
       return;
     }
     if (msg.type === 'probe' && msg.id && msg.payload?.ip) {
       const { ip, username, password } = msg.payload;
+      const reqId = msg.id;
       const rowId = pushActivity({
         event: 'probe',
         ip,
@@ -373,24 +530,31 @@ function connect(cfg: Config) {
         detail: 'Probing iDRAC on LAN',
       }).id;
       pushLog('info', `Probe requested for iDRAC ${ip}`);
-      try {
-        const result = await runProbe(ip, username!, password!);
-        updateActivity(rowId, {
-          serviceTag: result.serviceTag ?? '—',
-          model: result.model ?? '—',
-          generation: result.generation ?? '—',
-          health: result.health ?? '—',
-          result: 'ok',
-          detail: `Firmware ${result.firmwareVersion ?? '—'}`,
-        });
-        pushLog('info', `Probe OK ${ip} · ${result.serviceTag} · ${result.model} · health ${result.health}`);
-        ws.send(JSON.stringify({ id: msg.id, type: 'probe.result', ok: true, data: result }));
-      } catch (err: any) {
-        const errMsg = err?.message || 'probe failed';
+      enqueueIdracOp(ip, async () => {
+        try {
+          const result = await runProbe(ip, username!, password!);
+          updateActivity(rowId, {
+            serviceTag: result.serviceTag ?? '—',
+            model: result.model ?? '—',
+            generation: result.generation ?? '—',
+            health: result.health ?? '—',
+            result: 'ok',
+            detail: `Firmware ${result.firmwareVersion ?? '—'}`,
+          });
+          pushLog('info', `Probe OK ${ip} · ${result.serviceTag} · ${result.model} · health ${result.health}`);
+          ws.send(JSON.stringify({ id: reqId, type: 'probe.result', ok: true, data: result }));
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : 'probe failed';
+          updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
+          pushLog('error', `Probe failed ${ip}: ${errMsg}`);
+          ws.send(JSON.stringify({ id: reqId, type: 'probe.result', ok: false, error: errMsg }));
+        }
+      }).catch((err: unknown) => {
+        const errMsg = err instanceof Error ? err.message : 'queue rejected';
         updateActivity(rowId, { result: 'fail', detail: errMsg, health: '—' });
-        pushLog('error', `Probe failed ${ip}: ${errMsg}`);
-        ws.send(JSON.stringify({ id: msg.id, type: 'probe.result', ok: false, error: errMsg }));
-      }
+        ws.send(JSON.stringify({ id: reqId, type: 'probe.result', ok: false, error: errMsg }));
+      });
+      return;
     }
   });
 
@@ -436,6 +600,7 @@ initAgentState({
   agentId: cfg.agentId,
   tenantId: cfg.tenantId ?? '',
   tenantName: cfg.tenantName ?? '',
+  localLanIp: getPrimaryLanIPv4(),
 });
 
 pushLog('info', `${UIDRAC_AGENT_NAME} started — endpoints: ${cfg.endpoints.map((e) => `${e.cloudUrl} [${e.label}]`).join(', ')}`);

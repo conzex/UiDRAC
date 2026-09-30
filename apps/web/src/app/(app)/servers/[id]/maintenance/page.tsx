@@ -1,9 +1,12 @@
 /** Maintenance page — Firmware, Sensors, Logs, Power Control, Thermal, Power Readings. */
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Info, AlertTriangle, AlertOctagon, RefreshCw, Thermometer, Zap, Wind, Power } from 'lucide-react';
 import api from '@/lib/api';
+import { getSessionSummary, setSessionSummary } from '@/lib/server-summary-session-cache';
+import { ServerTabPreloader } from '@/components/servers/server-tab-preloader';
+import { ServerTabError } from '@/components/servers/server-tab-error';
 
 const sevIcons: Record<string, any> = { informational: Info, warning: AlertTriangle, critical: AlertOctagon };
 
@@ -19,29 +22,85 @@ export default function MaintenancePage() {
   const [thermal, setThermal] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagLoaded, setDiagLoaded] = useState(false);
   const [powerMsg, setPowerMsg] = useState('');
   const [powerCapInput, setPowerCapInput] = useState('');
+  const fetchGenRef = useRef(0);
 
-  const fetchData = async () => {
-    setLoading(true); setError('');
-    const results = await Promise.allSettled([
-      api.get(`/servers/${id}/firmware`),
-      api.get(`/servers/${id}/logs`),
-      api.get(`/servers/${id}/sensors`),
-      api.get(`/servers/${id}/power/readings`),
-      api.get(`/servers/${id}/thermal`),
-    ]);
-    if (results[0].status === 'fulfilled') setFirmware(results[0].value.data);
-    if (results[1].status === 'fulfilled') { const d = results[1].value.data; setLogs(Array.isArray(d) ? d : []); }
-    if (results[2].status === 'fulfilled') { const d = results[2].value.data; setSensors(Array.isArray(d) ? d : []); }
-    if (results[3].status === 'fulfilled') setPowerReadings(results[3].value.data);
-    if (results[4].status === 'fulfilled') setThermal(results[4].value.data);
-    const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
-    if (firstErr && !firmware && logs.length === 0) setError(firstErr.reason?.response?.data?.message || 'Unable to load maintenance data.');
-    setLoading(false);
-  };
+  const fetchDiagnostics = useCallback(async (refresh = false) => {
+    if (!refresh && (diagLoaded || diagLoading)) return;
+    const path = `/servers/${id}/summary/maintenance/diagnostics`;
+    if (!refresh) {
+      const hit = getSessionSummary<any>(path);
+      if (hit) {
+        setSensors(Array.isArray(hit.sensors) ? hit.sensors : []);
+        setPowerReadings(hit.powerReadings);
+        setThermal(hit.thermal);
+        setDiagLoaded(true);
+        return;
+      }
+    }
+    setDiagLoading(true);
+    try {
+      const { data } = await api.get(refresh ? `${path}?refresh=true` : path);
+      setSessionSummary(path, data);
+      setSensors(Array.isArray(data.sensors) ? data.sensors : []);
+      setPowerReadings(data.powerReadings);
+      setThermal(data.thermal);
+      setDiagLoaded(true);
+    } catch {
+      /* partial UI still usable */
+    } finally {
+      setDiagLoading(false);
+    }
+  }, [id, diagLoaded, diagLoading]);
 
-  useEffect(() => { fetchData(); }, [id]);
+  const fetchData = useCallback(async (refresh = false) => {
+    const gen = ++fetchGenRef.current;
+    const path = `/servers/${id}/summary/maintenance`;
+    if (!refresh) {
+      const hit = getSessionSummary<any>(path);
+      if (hit) {
+        setFirmware(hit.firmware);
+        setLogs(Array.isArray(hit.logs) ? hit.logs : []);
+        setLoading(false);
+        setError('');
+        return;
+      }
+    }
+    setLoading(true);
+    setError('');
+    if (refresh) {
+      setDiagLoaded(false);
+      setSensors([]);
+      setPowerReadings(null);
+      setThermal(null);
+    }
+    try {
+      const { data } = await api.get(refresh ? `${path}?refresh=true` : path);
+      setSessionSummary(path, data);
+      if (gen !== fetchGenRef.current) return;
+      setFirmware(data.firmware);
+      setLogs(Array.isArray(data.logs) ? data.logs : []);
+    } catch (e: any) {
+      if (gen !== fetchGenRef.current) return;
+      setError(e?.response?.data?.message || 'Unable to load maintenance data.');
+    } finally {
+      if (gen === fetchGenRef.current) setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void fetchData();
+    return () => {
+      fetchGenRef.current += 1;
+    };
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (tab === 'sensors' || tab === 'power' || tab === 'thermal') void fetchDiagnostics();
+  }, [tab, fetchDiagnostics]);
 
   const handlePower = async (action: string) => {
     setPowerMsg('');
@@ -65,19 +124,17 @@ export default function MaintenancePage() {
     ['logs', Info, 'Event Log'], ['power', Power, 'Power'], ['thermal', Wind, 'Thermal'],
   ];
 
-  if (loading) return <div className="animate-pulse space-y-4"><div className="h-12 bg-gray-200 rounded" /><div className="h-64 bg-gray-200 rounded" /></div>;
+  if (loading) return <ServerTabPreloader tab="maintenance" />;
 
-  if (error && !firmware && logs.length === 0 && sensors.length === 0) return (
-    <div className="bg-red-50 border border-red-200 rounded p-8 text-center">
-      <AlertTriangle className="w-10 h-10 text-red-critical mx-auto mb-3" />
-      <h2 className="text-lg font-semibold text-text-primary mb-2">Unable to Load Maintenance Data</h2>
-      <p className="text-sm text-text-secondary mb-4 max-w-md mx-auto">{error}</p>
-      <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Retry</button>
-    </div>
-  );
+  if (error && !firmware && logs.length === 0) {
+    return <ServerTabError message={error} onRetry={() => void fetchData(true)} />;
+  }
 
   return (
     <div className="space-y-4">
+      {diagLoading && (tab === 'sensors' || tab === 'power' || tab === 'thermal') && (
+        <ServerTabPreloader tab="maintenance" label="Loading sensors, power, and thermal…" />
+      )}
       {/* Sub-tabs */}
       <div className="flex gap-0 bg-white border border-border-card rounded-t overflow-hidden">
         {tabs.map(([t, Icon, label]) => (

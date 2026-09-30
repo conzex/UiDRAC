@@ -22,15 +22,12 @@ import {
 import {
   CONZEX_CONTACT_EMAIL,
   CONZEX_WEB_URL,
-  CONZEX_CLOUD_PRODUCTION_URL,
   PRODUCT_NAME,
   UIDRAC_AGENT_NAME,
-  UIDRAC_AGENT_BUNDLE_PREFIX,
 } from '@idrac/shared';
 import { filterDocSections, type DocsAudience } from '@/lib/docs-audience';
 
 const AGENT = UIDRAC_AGENT_NAME;
-const BUNDLE = UIDRAC_AGENT_BUNDLE_PREFIX;
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -92,7 +89,7 @@ const sections: Array<{
       },
       {
         heading: 'Password reset',
-        body: `When an administrator resets a user password, the system emails a **temporary password** only to the **email address stored on that user account**. Reset details are not shown in the browser and cannot be sent to any other address.\n\nConfigure **SMTP_** variables on the Conzex cloud API so delivery works in production (${CONZEX_CLOUD_PRODUCTION_URL}).`,
+        body: `When an administrator resets a user password, the system emails a **temporary password** only to the **email address on that user account**. Reset details are not shown in the browser and cannot be sent to any other address.\n\nOutbound email for your tenant is configured by Conzex operations. If mail does not arrive, please raise a support ticket.`,
       },
       {
         heading: 'Primary platform account',
@@ -102,6 +99,16 @@ const sections: Array<{
         heading: 'Agent quota management',
         body: `Admins can configure agent and server quotas per tenant from the Admin panel:\n\n- **Max agents per user** — Default is 1 for standard users (admins have unlimited)\n- **Max servers per site** — Default is 3 on the Starter plan\n- **Override limits** — Admins can grant specific users higher quotas\n\nWhen a non-admin user attempts to register an agent beyond their quota, they see an upgrade request dialog with plan pricing. The request is logged and forwarded to the support team.`,
       },
+      {
+        heading: 'Licensed Docker hosting (operators)',
+        body:
+          'Some customers run **Conzex cloud mode** on their own VM under license. Deployment steps, TLS, and environment setup are provided in your **Conzex delivery package** — not in this public Docs section.\n\n' +
+          'Please work with Conzex support for upgrades, backups, and agent requirements. Operators still use the same portal URL and **Agents** flow as fully hosted cloud.',
+      },
+      {
+        heading: 'Troubleshooting API and agents',
+        body: `| Symptom | What to check |\n|--------|----------------|\n| Network error / cannot load servers | Portal can reach the API; try signing out and in again |\n| Errors on server tabs | ${AGENT} shows **Connected**; iDRAC reachable from the agent LAN |\n| Empty agents list | You are signed in to the correct organisation |\n\nAfter agent credential rotation, install the fresh bundle from **Agents** and confirm **Connected** before probing servers.`,
+      },
     ],
   },
   {
@@ -109,15 +116,15 @@ const sections: Array<{
     content: [
       {
         heading: 'Product overview',
-        body: `${PRODUCT_NAME} is enterprise software from **Conzex Global Private Limited**. It gives your team one secure web console for Dell PowerEdge servers with **iDRAC 6 through 9**, without Java plugins or legacy browser requirements on operator workstations.\n\n${PRODUCT_NAME} is a **fully cloud-hosted** Conzex service. Use this guide after Conzex has provisioned your tenant—it describes **day-to-day operation**, not infrastructure installation.`,
+        body: `${PRODUCT_NAME} is enterprise software from **Conzex Global Private Limited**. It gives your team one secure web console for Dell PowerEdge servers with **iDRAC 6 through 9**, without Java plugins on operator PCs.\n\n${PRODUCT_NAME} is **fully cloud-hosted** by Conzex. Use this guide after your tenant is ready — it covers **day-to-day use**, not datacentre installation.`,
       },
       {
         heading: 'Before you begin',
-        body: `Confirm the following with your Conzex onboarding contact:\n\n- You have a valid sign-in and know your **organization name**\n- Your workstation can reach the **Conzex-provided URL** over HTTPS (modern Chrome, Edge, or Firefox recommended)\n- The **${AGENT}** for your site shows **Connected** under **Settings** before you add servers on that LAN\n\niDRAC management traffic is initiated from Conzex cloud (via your site ${AGENT}) to each iDRAC management address—typically HTTPS on port 443.`,
+        body: `Please confirm with your Conzex onboarding contact:\n\n- You have a valid sign-in and know your **organisation name**\n- Your PC can open the **Conzex URL** in a modern browser (Chrome, Edge, or Firefox)\n- **Agents** shows **Connected** for your site before you add servers on that LAN\n\niDRAC traffic goes from Conzex cloud through your **${AGENT}** to each iDRAC address (usually HTTPS on port 443).`,
       },
       {
         heading: 'Sign in and navigation',
-        body: `1. Open the URL supplied by Conzex and select **Sign in**.\n2. Enter your email and password. After 15 minutes of inactivity you will be prompted to stay signed in or log out again.\n3. Use the top bar and application menu:\n   - **Dashboard** — fleet summary and server cards\n   - **Docs** — this product guide (also in the top bar when signed in)\n   - **Servers** — inventory and server tasks\n4. Open any server card to reach that system's **detail dashboard** (health, power, console, storage, BIOS, maintenance, and iDRAC settings).\n\nFirst-time organization setup is performed by Conzex during onboarding.`,
+        body: `1. Open the URL supplied by Conzex and select **Sign in**.\n2. Enter your email and password. After 15 minutes of inactivity you will be prompted to stay signed in or log out again.\n3. Use the top bar and application menu:\n   - **Operations Center** — fleet metrics and charts\n   - **Servers** — inventory, bulk CSV import, and **Add Server**\n   - **Agents** — download and monitor the **${AGENT}** (must be Connected before probes)\n   - **Docs** — this product guide\n4. Open a server to use tabs for dashboard, system, storage, configuration, maintenance, iDRAC settings, console, and power.\n\nFirst-time organization setup is performed by Conzex during onboarding.`,
       },
       {
         heading: 'Recommended workflows',
@@ -125,11 +132,11 @@ const sections: Array<{
       },
       {
         heading: 'How Conzex cloud works',
-        body: `The web application and API run on **Conzex-managed cloud infrastructure**. Your operators sign in over HTTPS; no application servers are installed in your data center.\n\nBecause iDRAC addresses live on your **private LAN**, each tenant runs a lightweight **${AGENT}** on a host inside your network. The agent registers to your organization over a secure WebSocket and carries iDRAC probe and management traffic on your behalf.\n\nInstall and verify the agent under **Agents** before adding servers at that site. Full steps for **Windows, Linux, and macOS** are in the **${AGENT}** section of this guide.\n\nDo not share iDRAC credentials outside approved credential-storage modes. Contact Conzex if agent status is disconnected or probes fail consistently.`,
+        body: `The web application and API run on **Conzex-managed cloud infrastructure**. Your operators sign in over HTTPS; no application servers are installed in your data center.\n\nBecause iDRAC addresses live on your **private LAN**, each tenant runs a lightweight **${AGENT}** on a host inside your network. The agent registers to your organization over a secure WebSocket and carries iDRAC probe and management traffic on your behalf.\n\nInstall and verify the agent under **Agents** before adding servers at that site. Full steps for **Windows, Linux, and macOS** are in the **${AGENT}** section of this guide.\n\nDo not share iDRAC credentials outside approved credential-storage modes. Contact us if agent status is disconnected or probes fail consistently.`,
       },
       {
         heading: 'Support, releases, and trust',
-        body: `For licensing, outages, or escalation, contact Conzex:\n\n- [Contact page](/contact)\n- [${CONZEX_WEB_URL.replace('https://', '')}](${CONZEX_WEB_URL})\n- ${CONZEX_CONTACT_EMAIL}\n\nWhen opening a ticket, include your **organization name**, **product version** (footer or [version manager](/versions)), and whether the **${AGENT}** shows **Connected**.\n\nSecurity highlights: argon2id passwords, AES-256-GCM for stored iDRAC credentials, tenant isolation, and encrypted sessions managed by Conzex cloud.`,
+        body: `For licensing, outages, or escalation, [Contact us](/contact):\n\n- [${CONZEX_WEB_URL.replace('https://', '')}](${CONZEX_WEB_URL})\n- ${CONZEX_CONTACT_EMAIL}\n\nWhen opening a ticket, include your **organization name**, **product version** (footer or [version manager](/versions)), and whether the **${AGENT}** shows **Connected**.\n\nSecurity highlights: argon2id passwords, AES-256-GCM for stored iDRAC credentials, tenant isolation, and encrypted sessions managed by Conzex cloud.`,
       },
     ],
   },
@@ -144,24 +151,12 @@ const sections: Array<{
         body: `${PRODUCT_NAME} is hosted by Conzex in the cloud—the central platform **cannot** reach private iDRAC HTTPS on your LAN without a connector.\n\nEvery **tenant** receives one ${AGENT} identity. Run the agent on a host that can reach **every iDRAC IP** you manage at that site (typically TCP **443** to the iDRAC management interface).`,
       },
       {
-        heading: 'Download your configuration (all platforms)',
-        body: `1. Sign in and open [**Agents**](/agents).\n2. Review the fleet status banner (Connected / Offline).\n3. Select an agent, platform, and **Download ZIP** (tenant-locked \`credentials.json\`).\n\nTreat each bundle like a password—store only on the agent host. Contact Conzex if you need credential rotation after a leak.`,
+        heading: 'Install agent (portal steps)',
+        body: `1. Open [**Agents**](/agents) and select your site connector.\n2. Download the **tenant credential bundle** (portal only — treat it like a password).\n3. Download the **installer** for macOS, Windows, or Linux from the same page.\n4. Follow the on-screen steps, or use **Manual / Terminal install** on that page.\n\nPublic installers do not contain your tenant secret. Never share the credential bundle in email or chat.`,
       },
       {
-        heading: 'Configuration file contents',
-        body: 'Every bundle uses schema `idrac-edge-agent/v1` and includes:\n\n- `agentId` / `uniqueAgentId` — public agent identifier for your tenant\n- `agentSecret` — shared secret used for WebSocket authentication\n- `cloudUrl` — your Conzex console URL (HTTPS)\n- `wsUrl` — secure WebSocket endpoint (typically `wss://…/api/agent/ws`)\n- `enrollmentToken` / `enrollmentSignature` — additional enrollment validation\n- `platform` — `linux`, `darwin`, or `win`\n\nYou can run the agent either with **`IDRAC_AGENT_CONFIG=/path/to/bundle.json`** or with the explicit environment variables listed in the bundle under `run.env`.',
-      },
-      {
-        heading: 'Linux',
-        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS** to your Conzex URL, LAN access to iDRAC.\n\n**Option A — install helper (recommended)**\n\n\`\`\`bash\nexport CLOUD_URL="https://your-console.example.com"\ncurl -fsSL "$CLOUD_URL/api/agent/install.sh" | bash -s -- --config ${BUNDLE}-linux.json\n\`\`\`\n\n**Option B — manual run**\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG=/secure/path/${BUNDLE}-linux.json\nnpx @idrac/edge-agent\n\`\`\`\n\n(\`IDRAC_AGENT_CONFIG\` is still accepted for compatibility.)\n\nRun under **systemd**, **supervisor**, or your standard service manager so the agent restarts after reboot. Confirm **Connected** on **Agents** before adding servers.`,
-      },
-      {
-        heading: 'macOS',
-        body: `**Requirements:** Node.js **20+**, outbound **HTTPS/WSS**, LAN access to iDRAC.\n\n**Recommended:** install **UidracAgent.pkg** (or Windows setup), then open **Agents** in the portal — select your site connector to view the **UiDRAC Agent** console (cloud status, live log, iDRAC activity). The console is **portal-only** (not a separate local dashboard).\n\nForeground dev:\n\n\`\`\`bash\nexport UIDRAC_AGENT_CONFIG="$HOME/secure/${BUNDLE}-darwin.json"\ncd universal-idrac-console/apps/edge-agent && pnpm start\n\`\`\`\n\nVerify **Connected** on **Agents**.`,
-      },
-      {
-        heading: 'Windows',
-        body: `**Requirements:** Node.js **20+** LTS, outbound **HTTPS/WSS** through corporate proxy if applicable, LAN access to iDRAC.\n\n1. Save your downloaded \`${BUNDLE}-win.json\` to a protected folder (e.g. \`C:\\ProgramData\\Conzex\\uidrac-agent\\\`).\n2. Set environment variables from the bundle (System or service account):\n   - \`UIDRAC_AGENT_CONFIG\` → full path to the JSON file, **or**\n   - \`UIDRAC_AGENT_ID\`, \`UIDRAC_AGENT_SECRET\`, \`UIDRAC_CLOUD_URL\`, \`UIDRAC_AGENT_WS_URL\` (legacy \`IDRAC_*\` names also work)\n3. Start the agent:\n\n\`\`\`powershell\nnpx @idrac/edge-agent\n\`\`\`\n\nRegister as a **Windows Service** (NSSM, WinSW, or your IT standard) under a dedicated service account. After reboot, confirm **Connected** on **Agents**.`,
+        heading: 'Linux, macOS, and Windows',
+        body: `**Requirements:** Outbound **HTTPS/WSS** to Conzex, and LAN access to every iDRAC you will manage.\n\nUse the copy-paste commands on **Agents** for your OS. After install, open **Agents** and check **Connected** with a recent time stamp.\n\nIf you use multiple sites, install one agent per site (or as advised during onboarding) so every iDRAC stays reachable.`,
       },
       {
         heading: 'Verify, probe, and troubleshoot',
@@ -169,7 +164,7 @@ const sections: Array<{
       },
       {
         heading: 'Rotate credentials',
-        body: `Organization **Owners** and **Admins** can **revoke, reactivate, or rotate** agents from [**Agents**](/agents) when a bundle may have been exposed. Revoking invalidates the current secret immediately.\n\nAfter rotation or reactivation:\n1. Download a fresh ZIP for each host still in use.\n2. Update the agent host configuration and restart the service.\n3. Confirm **Connected** before decommissioning old configs.\n\nPlan changes during a maintenance window—existing connections drop when credentials change.`,
+        body: `Organisation **Owners** and **Admins** can **revoke, reactivate, or rotate** agents from [**Agents**](/agents) if a bundle may have leaked. Revoking stops the old secret straight away.\n\nAfter rotation:\n1. Download a fresh bundle for each host.\n2. Re-run install or update steps on the agent machine.\n3. Confirm **Connected** before you remove the old setup.\n\nPlease plan this in a maintenance window — active sessions may drop when credentials change.`,
       },
       {
         heading: 'Platform settings (Conzex operations)',
@@ -190,7 +185,7 @@ const sections: Array<{
   {
     id: 'server-management', icon: Server, title: 'Server Management', subtitle: 'Adding, editing, and removing servers',
     content: [
-      { heading: 'Adding a Server', body: '1. Navigate to **Dashboard** then click **Add Server**\n2. Enter the iDRAC IP address and credentials\n3. Click **Probe Server** -- the system auto-detects the iDRAC generation\n4. Review detected information (model, service tag, health status)\n5. Name your server and choose credential storage mode:\n   - **Session Only** -- credentials kept in memory for 30 minutes\n   - **Save Encrypted** -- credentials stored with AES-256-GCM encryption' },
+      { heading: 'Adding a Server', body: '1. Ensure **Agents → Connected** for the site LAN.\n2. **Dashboard → Add Server** — iDRAC IP and credentials.\n3. **Probe Server** — auto-detects generation (6–9).\n4. Name the system; choose **Save Encrypted** for recurring access (required for **Virtual Console** in cloud mode).\n5. After add, all server tabs **warm** in the background; use **Sync from iDRAC** on the dashboard for a full refresh with progress (%).' },
       { heading: 'Editing a Server', body: 'From the server list or detail page, click the edit button to modify:\n\n- Server display name\n- Tags for organization\n- Credential storage mode\n\nChanges are saved immediately and logged in the audit trail.' },
       { heading: 'Deleting a Server', body: 'Servers can be deleted from the server list or detail page. Deletion is permanent and removes:\n\n- Server record and all associated data\n- Console session history\n- Server-specific audit log entries (via cascade)\n\nA confirmation dialog prevents accidental deletion.' },
       { heading: 'Auto-Detection', body: 'When probing a server, the adapter factory tries protocols in order:\n\n1. **Redfish** (`/redfish/v1/`) -- if RedfishVersion >= 1.6 then iDRAC 9, else iDRAC 8\n2. **Legacy XML** (`/data?get=version`) -- iDRAC 7\n3. **Legacy CGI** (`/cgi-bin/webcgi/login`) -- iDRAC 6\n\nIf none respond, an error is returned with connectivity troubleshooting guidance.' },
@@ -240,8 +235,8 @@ const sections: Array<{
   {
     id: 'console', icon: Monitor, title: 'Virtual Console', subtitle: 'Remote console access for all generations',
     content: [
-      { heading: 'Console Types', body: `**HTML5 Console (iDRAC 8/9):**\nModern iDRAC controllers include a built-in HTML5 console. The console page opens the native iDRAC console in a new browser window with no plugins required.\n\n**noVNC Bridge (iDRAC 6/7):**\nLegacy iDRAC controllers require Java-based viewers. ${PRODUCT_NAME} runs the Java viewer inside a Docker container and streams the video via WebSocket using noVNC, eliminating client-side Java dependencies.` },
-      { heading: 'Console Features', body: '- **Fullscreen Mode** -- Expand the console to fill the entire screen\n- **Reconnect** -- Quickly re-establish a dropped connection\n- **Send Keys** -- Send special key combinations (Ctrl+Alt+Del, etc.)\n- **Connection Info** -- Hover the info icon to view server name, IP, generation, and console type\n- **New Window** -- Open the console in a separate browser window' },
+      { heading: 'Console Types', body: `**HTML5 Console (iDRAC 8/9):**\nRuns **inline on the Console tab** in the portal. In Conzex cloud, KVM is carried through the ${AGENT} because your browser cannot open private iDRAC IPs directly. With saved credentials, you usually do not need a separate iDRAC login.\n\n**noVNC (iDRAC 6/7):**\nHosted viewer streamed to your browser — no Java on your PC.` },
+      { heading: 'Console Features', body: '- **Inline viewer** — Console tab (no pop-up window)\n- **Fullscreen / Reconnect / Disconnect** — toolbar on the Console tab\n- **Auto-launch** — when saved credentials exist\n- **Connection info** — hover the info icon for server IP, generation, and console type' },
     ],
   },
   {
@@ -249,7 +244,7 @@ const sections: Array<{
     content: [
       { heading: 'Authentication', body: '**Login flow:**\n1. You sign in with email and password over HTTPS.\n2. Conzex issues a short-lived access token and a refresh token stored in a secure cookie.\n3. Your session stays active while you use the product; after **15 minutes** of inactivity a reminder appears before sign-out.\n\nUse a strong password and sign out on shared workstations.' },
       { heading: 'Data protection', body: 'Passwords are stored with **argon2id**. Saved iDRAC credentials use **AES-256-GCM** encryption. Each customer organization is isolated in Conzex cloud; iDRAC traffic from your sites uses your **UiDRAC agent** on your LAN only.' },
-      { heading: 'Activity history', body: 'Sign-in events and significant server operations are retained for your organization’s operational and compliance needs. Contact Conzex if you need export or retention details for your contract.' },
+      { heading: 'Activity history', body: 'Sign-in events and significant server operations are retained for your organization’s operational and compliance needs. Contact us if you need export or retention details for your contract.' },
     ],
   },
   {
@@ -263,8 +258,8 @@ const sections: Array<{
         body: `${PRODUCT_NAME} uses **semantic versioning** (major.minor.patch). Each release documents **core implementation** highlights—platform features shipped in that build.\n\n- **Major** — platform milestones\n- **Minor** — new capabilities (${AGENT}, fleet features, console improvements)\n- **Patch** — maintenance and fixes (patch builds update the running version but are not listed on the public version manager)\n\nOpen the [version manager](/versions) for major and minor milestones.`,
       },
       {
-        heading: 'Current release line (1.2.x)',
-        body: `The 1.2 line adds cloud **${AGENT}** registration, tenant-isolated LAN probing, and Conzex-branded product surfaces. Patch releases under 1.2.x continue stability and UI improvements.\n\nYour footer and API health endpoints report the running build (for example \`GET /api/health\`).`,
+        heading: 'Current release line (1.3.x)',
+        body: `**v1.3.2** adds inline HTML5 console tunneling, **Sync from iDRAC** with progress, simpler **Agents** downloads, and clearer Docs.\n\nSign in on your **portal URL** (lab Docker: port **3000**). The API health check is for monitoring only — it is not the web UI.`,
       },
     ],
   },

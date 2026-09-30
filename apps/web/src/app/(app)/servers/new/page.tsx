@@ -2,17 +2,14 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAddServerModal } from '@/components/servers/add-server-modal-context';
 
-/** Legacy route — opens add-server modal and returns to dashboard. */
+/** Deep link — open add-server flow on the Servers page. */
 export default function AddServerRedirectPage() {
   const router = useRouter();
-  const { openAddServer } = useAddServerModal();
 
   useEffect(() => {
-    openAddServer();
-    router.replace('/dashboard');
-  }, [openAddServer, router]);
+    router.replace('/servers?add=1');
+  }, [router]);
 
   return null;
 }

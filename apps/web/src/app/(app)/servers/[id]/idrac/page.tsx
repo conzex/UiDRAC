@@ -1,9 +1,12 @@
 /** iDRAC Settings page — Network, Users, Virtual Media, Certificates, Licenses, Jobs. */
 'use client';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Network, Users, Disc, ShieldCheck, Key, Briefcase, Download, Plus, Trash2, RefreshCw, AlertTriangle, Save } from 'lucide-react';
 import api from '@/lib/api';
+import { getSessionSummary, setSessionSummary } from '@/lib/server-summary-session-cache';
+import { ServerTabPreloader } from '@/components/servers/server-tab-preloader';
+import { ServerTabError } from '@/components/servers/server-tab-error';
 
 type Tab = 'network' | 'users' | 'vmedia' | 'certs' | 'licenses' | 'jobs';
 
@@ -17,31 +20,87 @@ export default function IdracPage() {
   const [licenses, setLicenses] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [advancedLoading, setAdvancedLoading] = useState(false);
+  const [advancedLoaded, setAdvancedLoaded] = useState(false);
   const [error, setError] = useState('');
   const [actionMsg, setActionMsg] = useState('');
+  const fetchGenRef = useRef(0);
 
-  const fetchData = async () => {
-    setLoading(true); setError('');
-    const results = await Promise.allSettled([
-      api.get(`/servers/${id}/idrac-network`),
-      api.get(`/servers/${id}/idrac-users`),
-      api.get(`/servers/${id}/virtual-media`),
-      api.get(`/servers/${id}/certificates`),
-      api.get(`/servers/${id}/licenses`),
-      api.get(`/servers/${id}/lc-jobs`),
-    ]);
-    if (results[0].status === 'fulfilled') setNetwork(results[0].value.data);
-    if (results[1].status === 'fulfilled') setUsers(results[1].value.data || []);
-    if (results[2].status === 'fulfilled') setVmedia(results[2].value.data);
-    if (results[3].status === 'fulfilled') setCerts(results[3].value.data || []);
-    if (results[4].status === 'fulfilled') setLicenses(results[4].value.data || []);
-    if (results[5].status === 'fulfilled') setJobs(results[5].value.data || []);
-    const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
-    if (firstErr && !network && users.length === 0) setError(firstErr.reason?.response?.data?.message || 'Unable to load iDRAC settings.');
-    setLoading(false);
-  };
+  const fetchData = useCallback(async (refresh = false) => {
+    const gen = ++fetchGenRef.current;
+    const path = `/servers/${id}/summary/idrac-settings`;
+    if (!refresh) {
+      const hit = getSessionSummary<any>(path);
+      if (hit) {
+        setNetwork(hit.network);
+        setUsers(hit.users || []);
+        setVmedia(hit.vmedia);
+        setLoading(false);
+        setError('');
+        return;
+      }
+    }
+    setLoading(true);
+    setError('');
+    if (refresh) {
+      setAdvancedLoaded(false);
+      setCerts([]);
+      setLicenses([]);
+      setJobs([]);
+    }
+    try {
+      const { data } = await api.get(refresh ? `${path}?refresh=true` : path);
+      setSessionSummary(path, data);
+      if (gen !== fetchGenRef.current) return;
+      setNetwork(data.network);
+      setUsers(data.users || []);
+      setVmedia(data.vmedia);
+    } catch (e: any) {
+      if (gen !== fetchGenRef.current) return;
+      setError(e?.response?.data?.message || 'Unable to load iDRAC settings.');
+    } finally {
+      if (gen === fetchGenRef.current) setLoading(false);
+    }
+  }, [id]);
 
-  useEffect(() => { fetchData(); }, [id]);
+  const fetchAdvanced = useCallback(async (refresh = false) => {
+    if (!refresh && (advancedLoaded || advancedLoading)) return;
+    const path = `/servers/${id}/summary/idrac-settings/advanced`;
+    if (!refresh) {
+      const hit = getSessionSummary<any>(path);
+      if (hit) {
+        setCerts(hit.certificates || []);
+        setLicenses(hit.licenses || []);
+        setJobs(hit.jobs || []);
+        setAdvancedLoaded(true);
+        return;
+      }
+    }
+    setAdvancedLoading(true);
+    try {
+      const { data } = await api.get(refresh ? `${path}?refresh=true` : path);
+      setSessionSummary(path, data);
+      setCerts(data.certificates || []);
+      setLicenses(data.licenses || []);
+      setJobs(data.jobs || []);
+      setAdvancedLoaded(true);
+    } catch {
+      /* core tabs still work */
+    } finally {
+      setAdvancedLoading(false);
+    }
+  }, [id, advancedLoaded, advancedLoading]);
+
+  useEffect(() => {
+    void fetchData();
+    return () => {
+      fetchGenRef.current += 1;
+    };
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (tab === 'certs' || tab === 'licenses' || tab === 'jobs') void fetchAdvanced();
+  }, [tab, fetchAdvanced]);
 
   // Virtual Media
   const [mountUrl, setMountUrl] = useState('');
@@ -109,10 +168,22 @@ export default function IdracPage() {
     ['certs', ShieldCheck, 'Certificates'], ['licenses', Key, 'Licenses'], ['jobs', Briefcase, 'Job Queue'],
   ];
 
-  if (loading) return <div className="animate-pulse space-y-4"><div className="h-12 bg-gray-200 rounded" /><div className="h-64 bg-gray-200 rounded" /></div>;
+  if (loading) return <ServerTabPreloader tab="idrac" />;
+
+  if (error && !network && users.length === 0) {
+    return <ServerTabError message={error} onRetry={() => void fetchData()} />;
+  }
+
+  const showAdvancedPreloader =
+    advancedLoading && (tab === 'certs' || tab === 'licenses' || tab === 'jobs');
 
   return (
     <div className="space-y-4">
+      {showAdvancedPreloader && (
+        <div className="min-h-[200px] flex items-center justify-center border border-border-card rounded bg-white">
+          <ServerTabPreloader tab="idrac" label="Loading certificates, licenses, and jobs…" />
+        </div>
+      )}
       {/* Sub-tabs */}
       <div className="flex gap-0 bg-white border border-border-card rounded-t overflow-hidden">
         {tabs.map(([t, Icon, label]) => (
@@ -276,7 +347,7 @@ export default function IdracPage() {
             <h2 className="text-[13px] font-bold uppercase tracking-wide">Lifecycle Controller Job Queue</h2>
             <div className="flex gap-2">
               <button onClick={handleClearJobs} className="px-3 py-1 bg-red-50 text-red-critical text-xs rounded hover:bg-red-100 flex items-center gap-1"><Trash2 className="w-3 h-3" /> Clear All</button>
-              <button onClick={fetchData} className="px-3 py-1 bg-gray-100 text-text-primary text-xs rounded hover:bg-gray-200 flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Refresh</button>
+              <button type="button" onClick={() => void fetchData(true)} className="px-3 py-1 bg-gray-100 text-text-primary text-xs rounded hover:bg-gray-200 flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Refresh</button>
             </div>
           </div>
           {jobs.length > 0 ? (

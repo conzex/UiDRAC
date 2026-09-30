@@ -1,45 +1,33 @@
 /** Configuration page — BIOS Settings, Boot Order, Hardware Inventory. */
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Settings, HardDrive, Cpu, MemoryStick, Monitor, Search, Save, AlertTriangle, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '@/lib/api';
+import { ServerTabPreloader } from '@/components/servers/server-tab-preloader';
+import { ServerTabError } from '@/components/servers/server-tab-error';
+import { useServerSummary } from '@/lib/use-server-summary';
 
 type Tab = 'bios' | 'boot' | 'inventory';
 
 export default function ConfigurationPage() {
   const { id } = useParams() as { id: string };
   const [tab, setTab] = useState<Tab>('bios');
-  const [bios, setBios] = useState<any>(null);
-  const [cpus, setCpus] = useState<any[]>([]);
-  const [memory, setMemory] = useState<any[]>([]);
-  const [pcie, setPcie] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, error, reload } = useServerSummary<{
+    bios: any;
+    cpus: any[];
+    memory: any[];
+    pcie: any[];
+  }>(id ? `/servers/${id}/summary/configuration` : null);
+  const bios = data?.bios;
+  const cpus = data?.cpus || [];
+  const memory = data?.memory || [];
+  const pcie = data?.pcie || [];
   const [search, setSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [editedAttrs, setEditedAttrs] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
-
-  const fetchData = async () => {
-    setLoading(true); setError('');
-    const results = await Promise.allSettled([
-      api.get(`/servers/${id}/bios`),
-      api.get(`/servers/${id}/cpus`),
-      api.get(`/servers/${id}/memory`),
-      api.get(`/servers/${id}/pcie`),
-    ]);
-    if (results[0].status === 'fulfilled') setBios(results[0].value.data);
-    if (results[1].status === 'fulfilled') setCpus(results[1].value.data || []);
-    if (results[2].status === 'fulfilled') setMemory(results[2].value.data || []);
-    if (results[3].status === 'fulfilled') setPcie(results[3].value.data || []);
-    const firstErr = results.find((r) => r.status === 'rejected') as PromiseRejectedResult | undefined;
-    if (firstErr && !bios) setError(firstErr.reason?.response?.data?.message || 'Unable to load configuration from iDRAC.');
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchData(); }, [id]);
 
   const toggleGroup = (group: string) => {
     const next = new Set(expandedGroups);
@@ -54,7 +42,7 @@ export default function ConfigurationPage() {
       await api.patch(`/servers/${id}/bios`, { attributes: editedAttrs });
       setSaveMsg('Changes submitted. A reboot is required to apply BIOS changes.');
       setEditedAttrs({});
-      fetchData();
+      reload();
     } catch (err: any) {
       setSaveMsg(err?.response?.data?.message || 'Failed to apply BIOS changes.');
     } finally { setSaving(false); }
@@ -71,16 +59,9 @@ export default function ConfigurationPage() {
     ? Object.fromEntries(Object.entries(biosGroups).map(([g, attrs]) => [g, (attrs as any[]).filter((a) => a.name.toLowerCase().includes(search.toLowerCase()) || a.value?.toLowerCase()?.includes(search.toLowerCase()))]).filter(([, attrs]) => (attrs as any[]).length > 0))
     : biosGroups;
 
-  if (loading) return <div className="animate-pulse space-y-4"><div className="h-12 bg-gray-200 rounded" /><div className="h-64 bg-gray-200 rounded" /></div>;
+  if (loading && !data) return <ServerTabPreloader tab="configuration" />;
 
-  if (error && !bios) return (
-    <div className="bg-red-50 border border-red-200 rounded p-8 text-center">
-      <AlertTriangle className="w-10 h-10 text-red-critical mx-auto mb-3" />
-      <h2 className="text-lg font-semibold text-text-primary mb-2">Unable to Load Configuration</h2>
-      <p className="text-sm text-text-secondary mb-4 max-w-md mx-auto">{error}</p>
-      <button onClick={fetchData} className="px-5 py-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover inline-flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Retry</button>
-    </div>
-  );
+  if (error && !bios) return <ServerTabError message={error} onRetry={reload} />;
 
   return (
     <div className="space-y-4">

@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import ServerNav from '@/components/layout/server-nav';
+import { ServerWarmBanner } from '@/components/servers/server-warm-banner';
+import { ServerSyncProvider } from '@/components/servers/server-sync-context';
 import api from '@/lib/api';
+import { warmServerSummaries } from '@/lib/server-summary-prefetch';
 
 export default function ServerLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
@@ -14,10 +17,15 @@ export default function ServerLayout({ children }: { children: React.ReactNode }
     if (id) api.get(`/servers/${id}`).then((r) => setServer(r.data)).catch(() => {});
   }, [id]);
 
+  useEffect(() => {
+    if (!id) return;
+    void warmServerSummaries(id, false);
+  }, [id]);
+
   const genColors: Record<string, string> = { GEN6: 'bg-gray-500', GEN7: 'bg-amber-warning', GEN8: 'bg-blue-500', GEN9: 'bg-dell-blue' };
 
   return (
-    <>
+    <ServerSyncProvider serverId={id}>
       {server && (
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-xl font-bold text-text-primary">{server.name}</h1>
@@ -28,7 +36,8 @@ export default function ServerLayout({ children }: { children: React.ReactNode }
         </div>
       )}
       <ServerNav serverId={id} server={server} />
+      <ServerWarmBanner serverId={id} />
       {children}
-    </>
+    </ServerSyncProvider>
   );
 }

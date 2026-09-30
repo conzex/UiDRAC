@@ -45,7 +45,7 @@ export default function SiteTopBar({
   };
 
   return (
-    <header className="h-[52px] bg-dell-blue flex items-center text-white shrink-0 sticky top-0 z-50 shadow-md">
+    <header className="h-[52px] bg-dell-blue flex items-center text-white shrink-0">
       <div className={`${PAGE_CONTAINER_CLASS} flex items-center justify-between gap-2 min-w-0 ${innerClassName}`}>
         <Link
           href="/dashboard"

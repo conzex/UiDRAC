@@ -5,21 +5,19 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useAgentsList,
   useAgentDownloadMeta,
-  downloadAgentForId,
   registerNewAgent,
   statusBadgeClass,
   STATUS_LABEL,
-  type AgentPlatform,
+  displayAgentName,
 } from '@/lib/agents-client';
-import { detectClientArch, detectClientPlatform } from '@/lib/client-platform';
-import { AgentPlatformPicker } from '@/components/agent/agent-platform-picker';
+import { AgentDownloadPanel } from '@/components/agent/agent-download-panel';
 import { AgentManageModal } from '@/components/agent/agent-manage-modal';
 import ConfirmModal from '@/components/ui/confirm-modal';
 import AppModal from '@/components/ui/app-modal';
 import AppPageHeader from '@/components/layout/app-page-header';
 import AppPreloader from '@/components/layout/app-preloader';
 import { UIDRAC_AGENT_NAME } from '@idrac/shared';
-import { Download, Loader2, Plus, RefreshCw, Trash2, Ban, RotateCcw, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, Trash2, Ban, RotateCcw, ExternalLink } from 'lucide-react';
 import { readStoredUser } from '@/lib/auth-client';
 import api from '@/lib/api';
 
@@ -34,17 +32,13 @@ function cardHeader(title: string) {
 function AgentsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { agents, loading, error, refresh, lastRefreshAt } = useAgentsList(5_000);
+  const { agents, loading, error, refresh, lastRefreshAt } = useAgentsList(10_000);
   const meta = useAgentDownloadMeta();
   const role = readStoredUser()?.role;
   const isAdmin = role === 'ADMIN' || role === 'OWNER';
   const canManage = isAdmin || role === 'OPERATOR';
 
-  const [platform, setPlatform] = useState<AgentPlatform>('linux');
-  const [arch, setArch] = useState('x64');
   const [selectedAgentId, setSelectedAgentId] = useState('');
-  const [downloadBusy, setDownloadBusy] = useState(false);
-  const [downloadError, setDownloadError] = useState('');
   const [registerBusy, setRegisterBusy] = useState(false);
   const [manageAgentId, setManageAgentId] = useState<string | null>(null);
 
@@ -57,16 +51,9 @@ function AgentsPageContent() {
   const [bulkConfirmAction, setBulkConfirmAction] = useState<'revoke' | 'delete' | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
   const manageAgent = agents.find((a) => a.id === manageAgentId);
   const connectedCount = agents.filter((a) => a.status === 'connected').length;
   const revokedCount = agents.filter((a) => a.status === 'revoked').length;
-
-  useEffect(() => {
-    const p = detectClientPlatform();
-    setPlatform(p);
-    setArch(detectClientArch(p));
-  }, []);
 
   useEffect(() => {
     const active = agents.filter((a) => a.status !== 'revoked');
@@ -89,26 +76,6 @@ function AgentsPageContent() {
   const closeManage = () => {
     setManageAgentId(null);
     router.replace('/agents', { scroll: false });
-  };
-
-  const archOptions = useMemo(() => {
-    return meta?.platforms.find((x) => x.id === platform)?.architectures ?? ['x64'];
-  }, [meta, platform]);
-
-  const onDownload = async () => {
-    if (!selectedAgentId || selectedAgent?.status === 'revoked') {
-      setDownloadError('Select an active agent or open a revoked row to reactivate.');
-      return;
-    }
-    setDownloadBusy(true);
-    setDownloadError('');
-    try {
-      await downloadAgentForId(selectedAgentId, platform, arch);
-    } catch (e: unknown) {
-      setDownloadError(e instanceof Error ? e.message : 'Download failed');
-    } finally {
-      setDownloadBusy(false);
-    }
   };
 
   const onRegister = async () => {
@@ -242,46 +209,15 @@ function AgentsPageContent() {
         {/* Sidebar — download installer */}
         <aside className="lg:col-span-4 flex flex-col min-h-0 gap-3">
           <section className="bg-white border border-border-card rounded flex flex-col min-h-0 overflow-hidden">
-            {cardHeader('Download installer')}
-            <div className="p-4 space-y-2 overflow-y-auto min-h-0">
-              <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Agent</label>
-              <select
-                value={selectedAgentId}
-                onChange={(e) => setSelectedAgentId(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-border-card rounded bg-white"
-              >
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id} disabled={a.status === 'revoked'}>
-                    {a.isPrimary ? 'Master-Agent (Default)' : a.name}
-                  </option>
-                ))}
-              </select>
-              {selectedAgent && (
-                <p className="text-[10px] text-text-secondary break-all line-clamp-2">
-                  <span className="font-semibold">Agent ID: </span>
-                  <span className="font-mono">{selectedAgent.publicId}</span>
-                </p>
-              )}
-              <AgentPlatformPicker value={platform} onChange={setPlatform} />
-              <select
-                value={arch}
-                onChange={(e) => setArch(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-border-card rounded bg-white"
-              >
-                {archOptions.map((a) => (
-                  <option key={a} value={a}>{a}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={!canManage || downloadBusy}
-                onClick={onDownload}
-                className="w-full py-2 flex items-center justify-center gap-2 bg-dell-blue text-white text-sm font-semibold rounded disabled:opacity-50"
-              >
-                {downloadBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Download ZIP
-              </button>
-              {downloadError && <p className="text-xs text-red-600">{downloadError}</p>}
+            {cardHeader('Install agent')}
+            <div className="overflow-y-auto min-h-0">
+              <AgentDownloadPanel
+                agents={agents}
+                selectedAgentId={selectedAgentId}
+                onSelectAgentId={setSelectedAgentId}
+                canManage={canManage}
+                cdnBaseUrl={meta?.cdnBaseUrl}
+              />
             </div>
           </section>
         </aside>
@@ -314,7 +250,7 @@ function AgentsPageContent() {
           {loading && agents.length === 0 ? (
             <p className="p-6 text-sm text-text-secondary">Loading…</p>
           ) : agents.length === 0 ? (
-            <p className="p-6 text-sm text-text-secondary">No agents yet. Click &quot;Add agent&quot; and download an installer ZIP.</p>
+            <p className="p-6 text-sm text-text-secondary">No agents yet. Click &quot;Add agent&quot;, then install using credentials.json + the CDN installer.</p>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto">
               <table className="w-full text-sm">
@@ -353,9 +289,14 @@ function AgentsPageContent() {
                       )}
                       <td className="p-3 font-medium">
                         {a.isPrimary ? (
-                          <>Master-Agent <span className="text-[10px] font-semibold text-dell-blue bg-row-hover px-1.5 py-0.5 rounded">(Default)</span></>
+                          <>
+                            Master-Agent{' '}
+                            <span className="text-[10px] font-semibold text-dell-blue bg-row-hover px-1.5 py-0.5 rounded">
+                              (Default)
+                            </span>
+                          </>
                         ) : (
-                          a.name
+                          displayAgentName(a)
                         )}
                       </td>
                       <td className="p-3">
@@ -426,7 +367,7 @@ function AgentsPageContent() {
 
       <AgentManageModal
         agentId={manageAgentId}
-        agentName={manageAgent ? (manageAgent.isPrimary ? 'Master-Agent (Default)' : manageAgent.name) : undefined}
+        agentName={manageAgent ? displayAgentName(manageAgent) : undefined}
         onClose={closeManage}
         onChanged={refresh}
       />

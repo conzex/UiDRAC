@@ -22,6 +22,7 @@ export class RedfishAdapter implements IdracAdapter {
   private password: string;
   private http: AxiosInstance;
   private token: string | null = null;
+  private sessionPath: string | null = null;
 
   constructor(ip: string, username: string, password: string, generation: IdracGeneration = '9') {
     this.ip = ip;
@@ -32,14 +33,56 @@ export class RedfishAdapter implements IdracAdapter {
   }
 
   async connect(): Promise<void> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        await this.connectOnce();
+        return;
+      } catch (err: unknown) {
+        lastErr = err;
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if ((status === 503 || status === 429) && attempt < 3) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
+  }
+
+  private async connectOnce(): Promise<void> {
     const res = await this.http.post(REDFISH_PATHS.SESSIONS, {
       UserName: this.username, Password: this.password,
     });
-    this.token = res.headers['x-auth-token'] as string;
+    this.token = (res.headers['x-auth-token'] ?? res.headers['X-Auth-Token']) as string;
+    const location = (res.headers['location'] ?? res.headers['Location']) as string | undefined;
+    const odataId = (res.data as { '@odata.id'?: string })?.['@odata.id'];
+    if (location) {
+      this.sessionPath = location.startsWith('http')
+        ? new URL(location).pathname
+        : location.startsWith('/')
+          ? location
+          : `/${location}`;
+    } else if (odataId) {
+      this.sessionPath = odataId.startsWith('/') ? odataId : `/${odataId}`;
+    } else {
+      this.sessionPath = null;
+    }
     this.http.defaults.headers.common['X-Auth-Token'] = this.token;
   }
 
   async disconnect(): Promise<void> {
+    if (this.token && this.sessionPath) {
+      try {
+        await this.http.delete(this.sessionPath, {
+          headers: { 'X-Auth-Token': this.token },
+        });
+      } catch {
+        /* session may already be expired */
+      }
+    }
+    this.sessionPath = null;
     this.token = null;
     delete this.http.defaults.headers.common['X-Auth-Token'];
   }
@@ -83,10 +126,8 @@ export class RedfishAdapter implements IdracAdapter {
   // ── Health ──
 
   async getHealth(): Promise<HealthInfo> {
-    const [sysRes, chassisRes] = await Promise.all([
-      this.http.get(REDFISH_PATHS.SYSTEMS),
-      this.http.get(REDFISH_PATHS.CHASSIS).catch(() => ({ data: {} })),
-    ]);
+    const sysRes = await this.http.get(REDFISH_PATHS.SYSTEMS);
+    const chassisRes = await this.http.get(REDFISH_PATHS.CHASSIS).catch(() => ({ data: {} }));
     const sys = sysRes.data;
     const chassis = chassisRes.data;
     const overall = this.mapHealth(sys.Status?.Health);
@@ -330,7 +371,16 @@ export class RedfishAdapter implements IdracAdapter {
   // ── Console ──
 
   async getConsoleUrl(): Promise<ConsoleLaunch> {
-    return { type: 'html5', url: `https://${this.ip}/restgui/start.html`, generation: this.generation };
+    const base = `https://${this.ip}/restgui/start.html`;
+    const url = this.token
+      ? `${base}#${encodeURIComponent(this.token)}`
+      : base;
+    return {
+      type: 'html5',
+      url,
+      generation: this.generation,
+      authenticated: Boolean(this.token),
+    };
   }
 
   // ── Virtual Media ──

@@ -15,7 +15,8 @@ Two code lines share history but different distribution. **Do not publish Conzex
 |------|----------------|----------|
 | Edge agent | Yes | Removed |
 | Branding / contact | Conzex | Sumit Kumawat / MIT |
-| Customer docs | Usage guide in app; no public GitHub install | Self-host README |
+| Customer docs | [docs/KB-INDEX.md](docs/KB-INDEX.md) + in-app Docs | [docs/KB-INDEX.md](../uidrac/docs/KB-INDEX.md) |
+| Agent CDN | `cdn.conzex.com/uidrac/agent/` | N/A (Conzex product) |
 
 ## After shared feature work
 

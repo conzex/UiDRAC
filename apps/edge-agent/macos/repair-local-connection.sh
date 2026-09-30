@@ -8,6 +8,7 @@ if [[ "$(id -u)" -ne 0 ]]; then
 fi
 
 INSTALL_DIR="/Library/Application Support/Conzex/UiDRAC Agent"
+DATA_DIR="/Library/Application Support/Conzex/UiDRAC"
 PLIST="/Library/LaunchDaemons/com.conzex.uidrac.agent.plist"
 LABEL="com.conzex.uidrac.agent"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +17,11 @@ if [[ -f "$SCRIPT_DIR/agent-bundle.cjs" ]]; then
   cp -f "$SCRIPT_DIR/agent-bundle.cjs" "$INSTALL_DIR/agent-bundle.cjs"
   chmod 755 "$INSTALL_DIR/agent-bundle.cjs"
   echo "Updated agent-bundle.cjs"
+fi
+
+if [[ -f "$SCRIPT_DIR/install.sh" ]] && [[ -f "$DATA_DIR/agent.json" ]]; then
+  "$SCRIPT_DIR/install.sh" --config "$DATA_DIR/agent.json"
+  exit 0
 fi
 
 if [[ -f "$SCRIPT_DIR/install.sh" ]]; then

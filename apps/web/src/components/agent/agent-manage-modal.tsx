@@ -1,7 +1,8 @@
 'use client';
 
 import AppModal from '@/components/ui/app-modal';
-import { AgentManagePanel } from './agent-manage-panel';
+import { AgentSitePanel } from './agent-site-panel';
+import { PRIMARY_AGENT_DISPLAY_NAME } from '@idrac/shared';
 
 type Props = {
   agentId: string | null;
@@ -10,24 +11,17 @@ type Props = {
   onChanged: () => void;
 };
 
-export function AgentManageModal({ agentId, agentName, onClose, onChanged }: Props) {
+export function AgentManageModal({ agentId, agentName, onClose }: Props) {
   return (
     <AppModal
       open={Boolean(agentId)}
       onClose={onClose}
-      title={agentName ? `Manage · ${agentName}` : 'Manage agent'}
-      subtitle="Status, credentials, and installation"
+      title={agentName ?? PRIMARY_AGENT_DISPLAY_NAME}
       maxWidthClass="max-w-6xl"
       maxHeightClass="max-h-[98vh]"
       bodyScroll
     >
-      {agentId && (
-        <AgentManagePanel
-          agentId={agentId}
-          onChanged={onChanged}
-          onDeleted={onClose}
-        />
-      )}
+      {agentId && <AgentSitePanel agentId={agentId} />}
     </AppModal>
   );
 }

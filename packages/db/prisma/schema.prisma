@@ -41,7 +41,7 @@ model Tenant {
 model EdgeAgent {
   id                 String    @id @default(uuid()) @db.Uuid
   tenantId           String    @map("tenant_id") @db.Uuid
-  name               String    @default("Site agent") @db.VarChar(120)
+  name               String    @default("Master-Agent (Default)") @db.VarChar(120)
   publicId           String    @unique @map("public_id") @db.VarChar(64)
   secretHash         String    @map("secret_hash") @db.VarChar(255)
   secretEncrypted    Bytes     @map("secret_encrypted")
@@ -129,6 +129,7 @@ model Server {
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   consoleSessions ConsoleSession[]
   auditLogs       AuditLog[]
+  idracCaches     ServerIdracCache[]
 
   @@unique([tenantId, ip])
   @@index([tenantId])
@@ -159,6 +160,20 @@ enum HealthStatus {
   UNKNOWN
 
   @@map("health_status")
+}
+
+// ── Server iDRAC cache ──
+// Persisted tab snapshots — served without re-querying iDRAC until refresh or mutation.
+model ServerIdracCache {
+  serverId String   @map("server_id") @db.Uuid
+  slice    String   @db.VarChar(64)
+  payload  Json
+  syncedAt DateTime @map("synced_at")
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@id([serverId, slice])
+  @@map("server_idrac_cache")
 }
 
 // ── Session ──

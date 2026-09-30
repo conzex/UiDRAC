@@ -4,6 +4,43 @@
   "versioningPolicy": "Semantic versioning (major.minor.patch). Patch builds update the running version automatically; the public version manager lists major and minor milestones only.",
   "releases": [
     {
+      "version": "1.3.2",
+      "released": "2026-09-30",
+      "kind": "minor",
+      "title": "Console tunnel, sync, and agent downloads",
+      "coreImplementation": [
+        "Inline HTML5 virtual console in the portal with secure tunneling through the site agent in cloud mode",
+        "Sync from iDRAC with progress indicator and background warm-up of server tabs after add",
+        "Agent install flow with public OS installers and tenant credential bundle from the Agents page",
+        "Clear separation of portal URL versus API health; refreshed operator knowledge base in Docs",
+        "Fleet and API reliability improvements for agents, probes, and server summaries"
+      ]
+    },
+    {
+      "version": "1.2.2",
+      "released": "2026-09-30",
+      "kind": "patch",
+      "title": "Operations Center & fleet import",
+      "coreImplementation": [
+        "Operations Center dashboard with live agent status bars, health charts, reach-time graphs, and model/generation pies",
+        "Bulk CSV server import wizard with sample download and sequential iDRAC probe/register",
+        "Batched per-tab iDRAC summaries, tab preloaders, dedicated Power tab, and improved agent queue performance",
+        "Unified UiDRAC Agent console (header + iDRAC activity); primary agent always Master-Agent (Default)",
+        "Fleet metrics API for realtime operations monitoring"
+      ]
+    },
+    {
+      "version": "1.2.1",
+      "released": "2026-09-28",
+      "kind": "patch",
+      "title": "Portal performance & console reliability",
+      "coreImplementation": [
+        "Adapter batching and tolerant partial loads for slow iDRAC endpoints",
+        "Server tab summary routes and console launch hardening",
+        "Agent activity queue and session pooling on the edge agent"
+      ]
+    },
+    {
       "version": "1.2.0",
       "released": "2026-09-24",
       "kind": "minor",

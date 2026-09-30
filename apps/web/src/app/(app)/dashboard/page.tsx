@@ -1,143 +1,202 @@
-/** Dashboard — Fleet overview with server cards grid. */
+/** Operations dashboard — agents, reach time, fleet health (no server grid). */
 'use client';
-import { useState, useEffect } from 'react';
-import { PlusCircle, Search, ServerCrash, AlertTriangle, RefreshCw } from 'lucide-react';
-import api from '@/lib/api';
-import { readStoredUser } from '@/lib/auth-client';
-import { canMutateServers } from '@/lib/rbac';
+
+import Link from 'next/link';
+import { AlertTriangle, RefreshCw, Server, Radio, Activity } from 'lucide-react';
 import { FleetAgentHeader } from '@/components/agent/fleet-agent-header';
 import AppPageHeader from '@/components/layout/app-page-header';
-import { useAddServerModal } from '@/components/servers/add-server-modal-context';
+import { readStoredUser } from '@/lib/auth-client';
+import { canMutateServers } from '@/lib/rbac';
+import { useFleetMetrics } from '@/lib/use-fleet-metrics';
+import {
+  ChartCard,
+  HorizontalBarChart,
+  LineReachChart,
+  PieChartWithLegend,
+  topModelSlices,
+} from '@/components/dashboard/chart-primitives';
+import AppPreloader from '@/components/layout/app-preloader';
+import { APP_VERSION_LABEL, PRODUCT_NAME } from '@idrac/shared';
 
-const healthColors: Record<string, string> = { HEALTHY: 'bg-green-healthy', WARNING: 'bg-amber-warning', CRITICAL: 'bg-red-critical', UNKNOWN: 'bg-gray-400' };
-const genColors: Record<string, string> = { GEN6: 'bg-gray-500', GEN7: 'bg-amber-warning', GEN8: 'bg-blue-500', GEN9: 'bg-dell-blue' };
+const AGENT_GROUP_COLORS: Record<string, string> = {
+  Connected: '#22C55E',
+  Pending: '#F59E0B',
+  Stopped: '#64748B',
+  Blocked: '#EF4444',
+};
+
+const HEALTH_COLORS: Record<string, string> = {
+  HEALTHY: '#22C55E',
+  WARNING: '#F59E0B',
+  CRITICAL: '#EF4444',
+  UNKNOWN: '#94A3B8',
+};
+
+function agentBarItems(byStatus: Record<string, number>) {
+  const pending =
+    (byStatus.connecting ?? 0) +
+    (byStatus.updating ?? 0) +
+    (byStatus.never_connected ?? 0);
+  const stopped =
+    (byStatus.disconnected ?? 0) + (byStatus.offline ?? 0) + (byStatus.error ?? 0);
+  const blocked = (byStatus.disabled ?? 0) + (byStatus.revoked ?? 0);
+  return [
+    { label: 'Connected (running)', value: byStatus.connected ?? 0, color: AGENT_GROUP_COLORS.Connected },
+    { label: 'Pending / starting', value: pending, color: AGENT_GROUP_COLORS.Pending },
+    { label: 'Stopped / offline', value: stopped, color: AGENT_GROUP_COLORS.Stopped },
+    { label: 'Disabled / revoked', value: blocked, color: AGENT_GROUP_COLORS.Blocked },
+  ];
+}
 
 export default function DashboardPage() {
-  const [servers, setServers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const canManage = canMutateServers(readStoredUser()?.role);
+  const { metrics, history, error, loading, refresh } = useFleetMetrics(8_000);
 
-  const fetchServers = () => {
-    setLoading(true);
-    setError('');
-    api.get('/servers')
-      .then((r) => { setServers(r.data.data || []); setLoading(false); })
-      .catch((err) => { setError(err.response?.data?.message || 'Failed to load servers. Check your connection.'); setLoading(false); });
-  };
-
-  useEffect(() => { fetchServers(); }, []);
-
-  const filtered = servers.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.ip.includes(search));
-  const stats = { total: servers.length, healthy: servers.filter((s) => s.health === 'HEALTHY').length, warning: servers.filter((s) => s.health === 'WARNING').length, critical: servers.filter((s) => s.health === 'CRITICAL').length };
-  const canAdd = canMutateServers(readStoredUser()?.role);
-  const { openAddServer } = useAddServerModal();
+  const headerDescription = `Live fleet operations — agent connectors, API reach time, and server health. ${PRODUCT_NAME} ${APP_VERSION_LABEL}`;
 
   return (
     <>
-      {canAdd ? (
+      {canManage ? (
         <FleetAgentHeader
-          title="Server fleet"
-          description="Monitor health and open any server for power, console, and configuration tasks."
+          title="Operations Center"
+          description={headerDescription}
           className="mb-6"
+          showBulkImport={false}
+          addServerOnServersPage
         />
       ) : (
-        <AppPageHeader
-          title="Server fleet"
-          description="Monitor health and open any server for power, console, and configuration tasks."
-          className="mb-6"
-        />
+        <AppPageHeader title="Operations Center" description={headerDescription} className="mb-6" />
       )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-critical text-sm p-4 rounded mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" /> {error}</div>
-          <button onClick={fetchServers} className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-xs font-medium transition-colors flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
+          </div>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-xs font-medium flex items-center gap-1"
+          >
             <RefreshCw className="w-3 h-3" /> Retry
           </button>
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Servers', value: stats.total, color: 'text-dell-blue' },
-          { label: 'Healthy', value: stats.healthy, color: 'text-green-healthy' },
-          { label: 'Warning', value: stats.warning, color: 'text-amber-warning' },
-          { label: 'Critical', value: stats.critical, color: 'text-red-critical' },
-        ].map((s) => (
-          <div key={s.label} className="bg-white p-4 rounded border border-border-card">
-            <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-sm text-text-secondary mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {servers.length > 0 && (
-        <div className="mb-4 relative w-full">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or IP address..."
-            className="w-full pl-9 pr-3 py-2 border border-border-card rounded text-sm focus:outline-none focus:ring-2 focus:ring-dell-blue" />
+      {loading && !metrics ? (
+        <div className="py-16 flex justify-center">
+          <AppPreloader fullScreen={false} label="Loading fleet metrics…" />
         </div>
-      )}
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <div key={i} className="bg-white rounded border border-border-card p-6 animate-pulse"><div className="h-4 bg-gray-200 rounded w-2/3 mb-3" /><div className="h-3 bg-gray-200 rounded w-1/2" /></div>)}
-        </div>
-      ) : servers.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded border border-border-card">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dell-blue/10 mb-4">
-            <ServerCrash className="w-8 h-8 text-dell-blue" />
+      ) : metrics ? (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+            {[
+              {
+                label: 'UiDRAC agents',
+                value: metrics.agents.total,
+                sub: `${metrics.agents.byStatus.connected ?? 0} connected`,
+                icon: Radio,
+                color: 'text-dell-blue',
+              },
+              {
+                label: 'Registered servers',
+                value: metrics.servers.total,
+                sub: 'Manage in Servers tab',
+                icon: Server,
+                color: 'text-text-primary',
+              },
+              {
+                label: 'Healthy servers',
+                value: metrics.servers.byHealth.HEALTHY ?? 0,
+                sub: `${metrics.servers.byHealth.CRITICAL ?? 0} critical`,
+                icon: Activity,
+                color: 'text-green-healthy',
+              },
+              {
+                label: 'Fleet API reach',
+                value: `${metrics.reach.fleetDbMs}ms`,
+                sub:
+                  metrics.reach.consoleGatewayMs != null
+                    ? `Console gw ${metrics.reach.consoleGatewayMs}ms`
+                    : 'Console gw n/a',
+                icon: Activity,
+                color: 'text-amber-600',
+              },
+            ].map((k) => (
+              <div key={k.label} className="bg-white p-4 rounded border border-border-card shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className={`text-2xl font-bold tabular-nums ${k.color}`}>{k.value}</div>
+                    <div className="text-sm font-medium text-text-primary mt-1">{k.label}</div>
+                    <div className="text-[11px] text-text-secondary mt-0.5">{k.sub}</div>
+                  </div>
+                  <k.icon className="w-5 h-5 text-text-secondary/60 shrink-0" />
+                </div>
+              </div>
+            ))}
           </div>
-          <h2 className="text-lg font-semibold text-text-primary mb-2">No servers yet</h2>
-          <p className="text-sm text-text-secondary mb-6 max-w-sm mx-auto">
-            Download and install the agent above, then add your first server.
+
+          <div className="grid lg:grid-cols-2 gap-4 mb-4">
+            <ChartCard title="Agent connectors" subtitle="Realtime status groups (8s refresh)">
+              <HorizontalBarChart items={agentBarItems(metrics.agents.byStatus)} />
+            </ChartCard>
+            <ChartCard title="Server health" subtitle="Last known iDRAC health from inventory">
+              <HorizontalBarChart
+                items={['HEALTHY', 'WARNING', 'CRITICAL', 'UNKNOWN'].map((h) => ({
+                  label: h.charAt(0) + h.slice(1).toLowerCase(),
+                  value: metrics.servers.byHealth[h] ?? 0,
+                  color: HEALTH_COLORS[h],
+                }))}
+              />
+            </ChartCard>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-4 mb-4">
+            <ChartCard title="Reach time" subtitle="Fleet API & virtual console gateway (rolling window)">
+              <LineReachChart history={history} />
+            </ChartCard>
+            <ChartCard title="Server models" subtitle="Pie chart by hardware model">
+              <PieChartWithLegend slices={topModelSlices(metrics.servers.byModel)} />
+            </ChartCard>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-4">
+            <ChartCard title="iDRAC generation" subtitle="Count per generation" className="lg:col-span-1">
+              <PieChartWithLegend
+                slices={Object.entries(metrics.servers.byGeneration).map(([label, value]) => ({
+                  label: label.replace('GEN', 'iDRAC '),
+                  value,
+                }))}
+              />
+            </ChartCard>
+            <div className="lg:col-span-2 bg-gradient-to-br from-dell-blue/5 to-white border border-border-card rounded p-6 flex flex-col justify-center">
+              <h2 className="text-lg font-bold text-text-primary mb-2">Fleet management</h2>
+              <p className="text-sm text-text-secondary mb-4 max-w-lg">
+                Server inventory, search, tags, bulk CSV import, and per-server dashboards live under{' '}
+                <strong>Servers</strong>.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/servers"
+                  className="h-10 px-5 inline-flex items-center gap-2 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover"
+                >
+                  <Server className="w-4 h-4" /> Open servers
+                </Link>
+                <Link
+                  href="/agents"
+                  className="h-10 px-5 inline-flex items-center gap-2 border border-dell-blue text-dell-blue text-sm font-semibold rounded hover:bg-dell-blue/5"
+                >
+                  <Radio className="w-4 h-4" /> Agent connectors
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-text-secondary text-right mt-3">
+            Last sample: {new Date(metrics.sampledAt).toLocaleString()}
           </p>
-          {canAdd && (
-            <button
-              type="button"
-              onClick={openAddServer}
-              className="inline-flex px-5 py-2.5 bg-dell-blue text-white text-sm font-semibold rounded hover:bg-dell-blue-hover transition-colors items-center gap-1.5"
-            >
-              <PlusCircle className="w-4 h-4" /> Add Your First Server
-            </button>
-          )}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-text-secondary">
-          <Search className="w-8 h-8 mx-auto mb-3 opacity-40" />
-          <p className="text-lg mb-2">No servers match your search</p>
-          <p className="text-sm">Try adjusting your search query</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((server) => (
-            <a key={server.id} href={`/servers/${server.id}/dashboard`} className="bg-white rounded border border-border-card hover:border-dell-blue hover:shadow-md transition-all p-5 block group">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold text-text-primary group-hover:text-dell-blue">{server.name}</h3>
-                  <p className="text-sm text-text-secondary mt-0.5">{server.ip}</p>
-                </div>
-                <span className={`text-[10px] font-bold text-white px-2 py-0.5 rounded ${genColors[server.generation] || 'bg-gray-400'}`}>
-                  {server.generation?.replace('GEN', 'iDRAC ')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full ${healthColors[server.health] || 'bg-gray-400'}`} />
-                  <span className="text-xs text-text-secondary capitalize">{server.health?.toLowerCase()}</span>
-                </div>
-                <span className="text-xs text-text-secondary">{server.model || 'PowerEdge'}</span>
-              </div>
-              {server.tags?.length > 0 && (
-                <div className="flex gap-1 mt-3 flex-wrap">
-                  {server.tags.map((tag: string) => <span key={tag} className="text-[10px] bg-bg-body text-text-secondary px-1.5 py-0.5 rounded">{tag}</span>)}
-                </div>
-              )}
-            </a>
-          ))}
-        </div>
-      )}
+        </>
+      ) : null}
     </>
   );
 }

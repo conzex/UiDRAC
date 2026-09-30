@@ -1,0 +1,17 @@
+# SaaS production overlay for Conzex cloud (UiDRAC agent required).
+# Usage:
+#   cp .env.saas.example .env
+#   bash scripts/generate-keys.sh --write
+#   docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml up -d --build
+
+services:
+  u-api:
+    environment:
+      DEPLOYMENT_MODE: cloud
+      REQUIRE_EDGE_AGENT: "true"
+      CONSOLE_GATEWAY_URL: http://u-console-gw:6080
+      PUBLIC_CONSOLE_URL: ${NEXT_PUBLIC_CONSOLE_URL:-http://localhost:6080}
+
+  u-web:
+    environment:
+      NODE_ENV: production

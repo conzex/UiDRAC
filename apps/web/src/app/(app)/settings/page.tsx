@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { useAgentStatus } from '@/lib/agent-client';
 import { STATUS_LABEL } from '@/lib/agents-client';
 import AppPageHeader from '@/components/layout/app-page-header';
-import { UIDRAC_AGENT_NAME } from '@idrac/shared';
+import { CLOUD_SAAS_PRODUCT, PRODUCT_NAME, UIDRAC_AGENT_NAME } from '@idrac/shared';
 
 export default function SettingsPage() {
   const [tenant, setTenant] = useState<{ name?: string; plan?: string; slug?: string } | null>(null);
@@ -32,7 +32,14 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppPageHeader title="Settings" description="Organization profile and team access." />
+      <AppPageHeader
+        title="Settings"
+        description={
+          CLOUD_SAAS_PRODUCT
+            ? 'Organization profile, team access, and UiDRAC agent connectors.'
+            : `${PRODUCT_NAME} — organization profile, team roles, and LAN API deployment settings. Installers and ${UIDRAC_AGENT_NAME} connectors are managed on Agents.`
+        }
+      />
 
       {loadError && (
         <div className="mb-4 px-4 py-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">{loadError}</div>

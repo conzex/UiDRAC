@@ -23,7 +23,7 @@ const FAQ = [
   },
   {
     q: 'How do I get access?',
-    a: `Contact Conzex for licensing and tenant provisioning. After onboarding you receive your organization URL, credentials, and steps to install the ${UIDRAC_AGENT_NAME} on your LAN.`,
+    a: `Contact us for licensing and tenant provisioning. After onboarding you receive your organization URL, credentials, and steps to install the ${UIDRAC_AGENT_NAME} on your LAN.`,
   },
   {
     q: `What is the ${UIDRAC_AGENT_NAME}?`,
@@ -43,7 +43,7 @@ const FAQ = [
   },
   {
     q: 'How do version upgrades work?',
-    a: 'Releases follow semantic versioning (major.minor.patch). See the version manager for release notes and core implementation details for each build, including the current v1.2.x line.',
+    a: 'Releases follow semantic versioning (major.minor.patch). See the version manager for release notes, including the current v1.3.x line (v1.3.2).',
   },
   {
     q: 'What support channels are available?',
@@ -69,7 +69,7 @@ export default function ContactPage() {
 
   return (
     <PublicChrome mainClassName="py-8 sm:py-10">
-      <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-1">Contact Conzex</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-1">Contact us</h1>
       <p className="text-sm text-text-secondary mb-2 max-w-2xl leading-relaxed">
         {PRODUCT_NAME} is a product of <strong className="text-text-primary">Conzex Global Private Limited</strong>.
         Reach out for licensing, support, or partnership inquiries.

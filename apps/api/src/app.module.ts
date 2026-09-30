@@ -13,6 +13,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthController } from './modules/health/health.controller';
 import { MailService } from './common/mail.service';
 
@@ -30,6 +31,7 @@ import { MailService } from './common/mail.service';
     TenantModule,
     AgentModule,
     AdminModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
   providers: [PrismaService, RedisService, MailService],

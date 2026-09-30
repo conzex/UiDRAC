@@ -53,6 +53,7 @@ services:
       - sh
       - -c
       - |
+        apk add --no-cache openssl libc6-compat >/dev/null 2>&1 || true
         export COREPACK_HOME=/corepack-cache
         cd /app
         /app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js generate --schema=packages/db/prisma/schema.prisma 2>/dev/null || true
@@ -70,6 +71,8 @@ services:
       REQUIRE_EDGE_AGENT: ${REQUIRE_EDGE_AGENT:-true}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:4000}
+      CONSOLE_GATEWAY_URL: http://u-console-gw:6080
+      PUBLIC_CONSOLE_URL: ${NEXT_PUBLIC_CONSOLE_URL:-http://localhost:6080}
       AGENT_SIGNING_SECRET: ${AGENT_SIGNING_SECRET:-${JWT_SECRET:-dev-agent-signing}}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -80,6 +83,12 @@ services:
     volumes:
       - .:/app
       - ~/.cache/node/corepack:/corepack-cache:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:4000/api/health >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 25s
     depends_on:
       u-postgres:
         condition: service_healthy
@@ -109,7 +118,8 @@ services:
     volumes:
       - .:/app
     depends_on:
-      - u-api
+      u-api:
+        condition: service_healthy
     networks:
       - u-net
 

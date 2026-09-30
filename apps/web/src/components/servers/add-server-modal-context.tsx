@@ -6,17 +6,25 @@ type AddServerModalContextValue = {
   open: boolean;
   openAddServer: () => void;
   closeAddServer: () => void;
+  bulkOpen: boolean;
+  openBulkImport: () => void;
+  closeBulkImport: () => void;
 };
 
 const AddServerModalContext = createContext<AddServerModalContextValue | null>(null);
 
 export function AddServerModalProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const openAddServer = useCallback(() => setOpen(true), []);
   const closeAddServer = useCallback(() => setOpen(false), []);
+  const openBulkImport = useCallback(() => setBulkOpen(true), []);
+  const closeBulkImport = useCallback(() => setBulkOpen(false), []);
 
   return (
-    <AddServerModalContext.Provider value={{ open, openAddServer, closeAddServer }}>
+    <AddServerModalContext.Provider
+      value={{ open, openAddServer, closeAddServer, bulkOpen, openBulkImport, closeBulkImport }}
+    >
       {children}
     </AddServerModalContext.Provider>
   );

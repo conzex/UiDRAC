@@ -32,6 +32,7 @@ export type AgentSnapshot = {
   authenticated: boolean;
   lastError: string | null;
   startedAt: string;
+  localLanIp?: string | null;
 };
 
 const MAX_ROWS = 200;
@@ -61,6 +62,10 @@ function id() {
 
 export function initAgentState(partial: Partial<AgentSnapshot>) {
   snapshot = { ...snapshot, ...partial, startedAt: new Date().toISOString() };
+}
+
+export function setLocalLanIp(ip: string | null) {
+  snapshot.localLanIp = ip;
 }
 
 export function getSnapshot(): AgentSnapshot {
@@ -115,6 +120,7 @@ export function relaySnapshotToCloud() {
     authenticated: s.authenticated,
     lastError: s.lastError,
     startedAt: s.startedAt,
+    localLanIp: s.localLanIp ?? null,
   });
 }
 

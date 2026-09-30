@@ -44,8 +44,10 @@ export default function AuthenticatedChrome({
     >
       {showWarning && <SessionTimeoutModal remainingSeconds={remainingSeconds} onStayLoggedIn={resetTimer} />}
 
-      <SiteTopBar email={user?.email} role={user?.role} />
-      <AppSecondaryNav user={user} />
+      <div className="sticky top-0 z-50 shrink-0 shadow-sm">
+        <SiteTopBar email={user?.email} role={user?.role} />
+        <AppSecondaryNav user={user} />
+      </div>
 
       <main
         className={cn(
@@ -62,7 +64,7 @@ export default function AuthenticatedChrome({
         )}
       </main>
 
-      {showFooter && <PublicFooter />}
+      {showFooter && !lockViewport && <PublicFooter />}
     </div>
   );
 }

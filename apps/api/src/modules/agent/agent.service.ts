@@ -20,11 +20,13 @@ import {
 import {
   APP_VERSION,
   type AgentConnectionState,
+  PRIMARY_AGENT_DISPLAY_NAME,
+  resolveAgentHostIp,
   UIDRAC_AGENT_BUNDLE_PREFIX,
   UIDRAC_AGENT_BUNDLE_SCHEMA,
 } from '@idrac/shared';
 import { AgentBridgeService } from './agent-bridge.service';
-import { AgentConsoleStore } from './agent-console.store';
+import { AgentConsoleStore, type AgentConsoleSnapshot } from './agent-console.store';
 import { buildAgentInstallerZip } from './agent-installer.service';
 import { aggregateTenantConnectionState, computeAgentConnectionState } from './agent-connection.util';
 
@@ -107,8 +109,16 @@ export class AgentService implements OnModuleInit {
     const existing = await this.prisma.edgeAgent.findFirst({
       where: { tenantId, isPrimary: true },
     });
-    if (existing) return existing;
-    return this.createAgentRecord(tenantId, { name: 'Master-Agent (Default)', isPrimary: true });
+    if (existing) {
+      if (existing.name !== PRIMARY_AGENT_DISPLAY_NAME) {
+        return this.prisma.edgeAgent.update({
+          where: { id: existing.id },
+          data: { name: PRIMARY_AGENT_DISPLAY_NAME },
+        });
+      }
+      return existing;
+    }
+    return this.createAgentRecord(tenantId, { name: PRIMARY_AGENT_DISPLAY_NAME, isPrimary: true });
   }
 
   async createAgent(
@@ -188,7 +198,7 @@ export class AgentService implements OnModuleInit {
     return {
       id: record.id,
       publicId: record.publicId,
-      name: record.name,
+      name: record.isPrimary ? PRIMARY_AGENT_DISPLAY_NAME : record.name,
       tenantId: tenant.id,
       tenantName: tenant.name,
       tenantSlug: tenant.slug,
@@ -351,30 +361,106 @@ export class AgentService implements OnModuleInit {
     return buildAgentInstallerZip(platform, credentialsJson, tenant.slug, record.publicId);
   }
 
-  async getAgentConsoleView(tenantId: string, agentId: string) {
-    const row = await this.assertAgentOwned(tenantId, agentId);
-    const agent = await this.toAgentDto(row);
-    const remote = await this.consoleStore.getConsoleData(row.publicId);
-    const startedAt =
-      agent.firstRegisteredAt ?? agent.lastConnectedAt ?? new Date().toISOString();
-    const fallbackSnapshot = {
-      version: agent.agentVersion ?? APP_VERSION,
-      cloudUrl: agent.cloudUrl,
-      wsUrl: agent.wsUrl,
-      agentId: agent.publicId,
-      tenantId: agent.tenantId,
-      tenantName: agent.tenantName,
-      cloudConnected: agent.connected,
-      authenticated: agent.connected,
-      lastError: null as string | null,
-      startedAt,
-    };
+  private async agentRowWithTenant(tenantId: string, agentId: string) {
+    const row = await this.prisma.edgeAgent.findFirst({
+      where: { id: agentId, tenantId },
+      include: { tenant: { select: { id: true, name: true, slug: true } } },
+    });
+    if (!row) throw new NotFoundException('Agent not found');
+    return row;
+  }
+
+  private buildConsoleSnapshot(
+    agent: AgentDto,
+    remote: AgentConsoleSnapshot | null,
+  ): AgentConsoleSnapshot {
+    const startedAt = agent.firstRegisteredAt ?? agent.lastConnectedAt ?? new Date().toISOString();
+    return (
+      remote ?? {
+        version: agent.agentVersion ?? APP_VERSION,
+        cloudUrl: agent.cloudUrl,
+        wsUrl: agent.wsUrl,
+        agentId: agent.publicId,
+        tenantId: agent.tenantId,
+        tenantName: agent.tenantName,
+        cloudConnected: agent.connected,
+        authenticated: agent.connected,
+        lastError: null,
+        startedAt,
+        localLanIp: null,
+      }
+    );
+  }
+
+  private async toAgentDtoFromRow(
+    record: Awaited<ReturnType<typeof this.agentRowWithTenant>>,
+  ): Promise<AgentDto> {
+    const tenant = record.tenant;
+    const socketOpen = this.bridge.isAgentSocketOpen(record.publicId);
+    const status = computeAgentConnectionState(record, { socketOpen });
     return {
-      agent,
-      snapshot: remote.snapshot ?? fallbackSnapshot,
-      logs: remote.logs,
-      activity: remote.activity,
+      id: record.id,
+      publicId: record.publicId,
+      name: record.isPrimary ? PRIMARY_AGENT_DISPLAY_NAME : record.name,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      tenantSlug: tenant.slug,
+      lockedToTenant: true,
+      isPrimary: record.isPrimary,
+      status,
+      connected: status === 'connected',
+      os: record.os,
+      arch: record.arch,
+      hostname: record.hostname,
+      agentVersion: record.agentVersion,
+      releaseAgentVersion: APP_VERSION,
+      installState: record.installState,
+      updateState: record.updateState,
+      lastConnectedAt: record.lastConnectedAt?.toISOString() ?? null,
+      lastHeartbeatAt: record.lastHeartbeatAt?.toISOString() ?? null,
+      firstRegisteredAt: record.firstRegisteredAt?.toISOString() ?? null,
+      lastSeenIp: record.lastSeenIp,
+      credentialsRotatedAt: record.rotatedAt?.toISOString() ?? null,
+      revokedAt: record.revokedAt?.toISOString() ?? null,
+      disabledAt: record.disabledAt?.toISOString() ?? null,
+      wsUrl: agentWebSocketUrl(),
+      cloudUrl: cloudPublicUrl(),
     };
+  }
+
+  async getAgentConsoleSummary(tenantId: string, agentId: string) {
+    const row = await this.agentRowWithTenant(tenantId, agentId);
+    const agent = await this.toAgentDtoFromRow(row);
+    let remoteSnapshot: AgentConsoleSnapshot | null = null;
+    try {
+      remoteSnapshot = await this.consoleStore.getSnapshot(row.publicId);
+    } catch {
+      remoteSnapshot = null;
+    }
+    const snapshot = this.buildConsoleSnapshot(agent, remoteSnapshot);
+    const hostIp = resolveAgentHostIp(snapshot.localLanIp, agent.lastSeenIp);
+    return {
+      agent: { ...agent, hostIp },
+      snapshot,
+    };
+  }
+
+  async getAgentConsoleActivity(tenantId: string, agentId: string, limit = 50) {
+    const row = await this.agentRowWithTenant(tenantId, agentId);
+    try {
+      const activity = await this.consoleStore.getActivity(row.publicId, limit);
+      return { activity };
+    } catch {
+      return { activity: [] };
+    }
+  }
+
+  async getAgentConsoleView(tenantId: string, agentId: string) {
+    const [summary, activityPayload] = await Promise.all([
+      this.getAgentConsoleSummary(tenantId, agentId),
+      this.getAgentConsoleActivity(tenantId, agentId),
+    ]);
+    return { ...summary, logs: [], activity: activityPayload.activity };
   }
 
   async getConsoleView(tenantId: string) {
@@ -391,17 +477,19 @@ export class AgentService implements OnModuleInit {
   async markConnected(
     publicId: string,
     ip: string,
-    meta?: { version?: string; hostname?: string; os?: string; arch?: string },
+    meta?: { version?: string; hostname?: string; os?: string; arch?: string; hostLanIp?: string },
   ) {
     const now = new Date();
     const existing = await this.prisma.edgeAgent.findUnique({ where: { publicId } });
     if (!existing) return;
+    const lastSeenIp =
+      resolveAgentHostIp(meta?.hostLanIp, ip, existing.lastSeenIp) ?? existing.lastSeenIp;
     await this.prisma.edgeAgent.update({
       where: { publicId },
       data: {
         lastConnectedAt: now,
         lastHeartbeatAt: now,
-        lastSeenIp: ip.slice(0, 45),
+        lastSeenIp: lastSeenIp?.slice(0, 45) ?? null,
         agentVersion: meta?.version?.slice(0, 32) ?? existing.agentVersion,
         hostname: meta?.hostname?.slice(0, 255) ?? existing.hostname,
         os: meta?.os?.slice(0, 32) ?? existing.os,
@@ -525,7 +613,7 @@ export class AgentService implements OnModuleInit {
   }
 
   async registerNewAgent(tenantId: string, name?: string) {
-    return this.createAgent(tenantId, { name: name ?? 'New site agent', isPrimary: false });
+    return this.createAgent(tenantId, { name: name ?? 'Site connector', isPrimary: false });
   }
 
   getPublicConfig() {

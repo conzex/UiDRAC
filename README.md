@@ -25,8 +25,9 @@ Licensed users: open **Docs** and **Version manager** in the web application for
 |-------|----------|
 | Feature guide | **Docs** in the app |
 | Releases | **/versions** · [docs/VERSIONING.md](docs/VERSIONING.md) |
-| UiDRAC agent (LAN connector) | **Settings** in the app · [docs/UIDRAC_AGENT.md](docs/UIDRAC_AGENT.md) |
-| Operations runbooks | Supplied under your license (e.g. [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
+| UiDRAC agent (LAN connector) | **Agents** in the app · [docs/UIDRAC_AGENT.md](docs/UIDRAC_AGENT.md) |
+| Knowledge base index | [docs/KB-INDEX.md](docs/KB-INDEX.md) |
+| Operations runbooks | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · **SaaS Docker:** [docs/SAAS-DOCKER.md](docs/SAAS-DOCKER.md) |
 
 Dual-repo engineering notes (Conzex vs open-source fork): [REPOS.md](REPOS.md) — Conzex staff only.
 

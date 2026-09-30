@@ -443,21 +443,42 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[
-              { label: 'Organizations', value: tenants.length, color: 'text-dell-blue' },
-              { label: 'Users', value: users.length, color: 'text-green-healthy' },
-              { label: 'Servers', value: isSuperAdmin ? serverInv.length : servers.length, color: 'text-amber-warning' },
-              { label: 'Sessions', value: sessions.length, color: 'text-purple-600' },
+              {
+                label: 'Organizations',
+                value: tenants.length,
+                Icon: Building2,
+                color: 'text-dell-blue',
+                bg: 'bg-dell-blue/10',
+              },
+              { label: 'Users', value: users.length, Icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
+              {
+                label: 'Servers',
+                value: isSuperAdmin ? serverInv.length : servers.length,
+                Icon: Server,
+                color: 'text-amber-600',
+                bg: 'bg-amber-50',
+              },
+              { label: 'Sessions', value: sessions.length, Icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
               {
                 label: isSuperAdmin ? 'Agents (all tenants)' : 'Agents (org)',
                 value: agentProvisioned,
                 sub: agentConnected > 0 ? `${agentConnected} active` : undefined,
+                Icon: Activity,
                 color: 'text-dell-blue',
+                bg: 'bg-dell-blue/10',
               },
             ].map((s) => (
-              <div key={s.label} className="bg-white p-4 rounded border border-border-card">
-                <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                <div className="text-xs sm:text-sm text-text-secondary mt-1 leading-snug">{s.label}</div>
-                {'sub' in s && s.sub && <div className="text-[11px] text-green-700 mt-0.5">{s.sub}</div>}
+              <div key={s.label} className="bg-white border border-border-card rounded p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`w-9 h-9 rounded-lg ${s.bg} ${s.color} flex items-center justify-center`}>
+                    <s.Icon className="w-4 h-4" />
+                  </div>
+                  <span className="text-2xl font-bold text-text-primary tabular-nums">{s.value}</span>
+                </div>
+                <div className="text-[11px] font-medium text-text-secondary uppercase tracking-wide leading-snug">
+                  {s.label}
+                </div>
+                {'sub' in s && s.sub && <div className="text-[11px] text-green-700 mt-1">{s.sub}</div>}
               </div>
             ))}
           </div>

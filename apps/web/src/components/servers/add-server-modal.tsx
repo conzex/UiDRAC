@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AppModal from '@/components/ui/app-modal';
 import api from '@/lib/api';
+import { warmServerSummaries } from '@/lib/server-summary-prefetch';
 import { CLOUD_SAAS_PRODUCT } from '@idrac/shared';
 import { useAddServerModal } from './add-server-modal-context';
 
@@ -58,6 +59,7 @@ export function AddServerModal() {
     try {
       const { data } = await api.post('/servers', { name, ip, username, password, credentialsMode: credMode });
       handleClose();
+      void warmServerSummaries(data.id, true);
       router.push(`/servers/${data.id}/dashboard`);
       router.refresh();
     } catch (e: any) {

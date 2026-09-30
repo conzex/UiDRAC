@@ -1,6 +1,7 @@
 /** agent-bridge.service.ts — Route LAN operations to connected tenant agents (keyed by agent publicId). */
-import { Injectable, ServiceUnavailableException, BadRequestException } from '@nestjs/common';
-import type WebSocket from 'ws';
+import { Injectable, ServiceUnavailableException, GatewayTimeoutException } from '@nestjs/common';
+import { AgentHostIpService } from './agent-host-ip.service';
+import WebSocket from 'ws';
 import { UIDRAC_AGENT_NAME } from '@idrac/shared';
 import { RedisService } from '../../redis.service';
 import { AgentConsoleStore } from './agent-console.store';
@@ -22,10 +23,12 @@ export class AgentBridgeService {
   private byAgentId = new Map<string, AgentSocket>();
   private byTenant = new Map<string, AgentSocket>();
   private pending = new Map<string, PendingRequest>();
+  private browserConsoleRelays = new Map<string, WebSocket>();
 
   constructor(
     private redis: RedisService,
     private consoleStore: AgentConsoleStore,
+    private hostIp: AgentHostIpService,
   ) {}
 
   isAgentSocketOpen(publicId: string): boolean {
@@ -89,11 +92,16 @@ export class AgentBridgeService {
   }
 
   async isConnected(tenantId: string): Promise<boolean> {
+    return Boolean(this.socketForTenant(tenantId));
+  }
+
+  private socketForTenant(tenantId: string): AgentSocket | undefined {
+    const primary = this.byTenant.get(tenantId);
+    if (primary && primary.readyState === primary.OPEN) return primary;
     for (const ws of this.byAgentId.values()) {
-      if (ws.tenantId === tenantId && ws.readyState === ws.OPEN) return true;
+      if (ws.tenantId === tenantId && ws.readyState === ws.OPEN) return ws;
     }
-    const v = await this.redis.get(`${REDIS_ONLINE_TENANT}${tenantId}`);
-    return Boolean(v);
+    return undefined;
   }
 
   handleAgentMessage(raw: string, ws: AgentSocket) {
@@ -143,7 +151,37 @@ export class AgentBridgeService {
         authenticated: Boolean(data.authenticated),
         lastError: data.lastError != null ? String(data.lastError) : null,
         startedAt: String(data.startedAt ?? new Date().toISOString()),
+        localLanIp: data.localLanIp != null ? String(data.localLanIp) : null,
       });
+      if (ws.publicId && data.localLanIp != null) {
+        void this.hostIp.record(ws.publicId, String(data.localLanIp));
+      }
+      return;
+    }
+    if (msg.type === 'console.ws.frame' && (msg as { relayId?: string }).relayId) {
+      const frame = msg as { relayId: string; data?: string; binary?: boolean };
+      const browser = this.browserConsoleRelays.get(frame.relayId);
+      if (browser && browser.readyState === WebSocket.OPEN && frame.data) {
+        browser.send(Buffer.from(frame.data, 'base64'), { binary: Boolean(frame.binary) });
+      }
+      return;
+    }
+    if (msg.type === 'console.ws.closed' && (msg as { relayId?: string }).relayId) {
+      const closed = msg as { relayId: string; code?: number; reason?: string };
+      const browser = this.browserConsoleRelays.get(closed.relayId);
+      if (browser && browser.readyState === WebSocket.OPEN) {
+        browser.close(closed.code ?? 1000, closed.reason ?? 'idrac_closed');
+      }
+      this.browserConsoleRelays.delete(closed.relayId);
+      return;
+    }
+    if (msg.type === 'adapter.invoke.batch.result' && msg.id) {
+      const pending = this.pending.get(msg.id);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      this.pending.delete(msg.id);
+      if (msg.ok) pending.resolve(msg.data);
+      else pending.reject(new Error(msg.error || 'Agent batch request failed'));
       return;
     }
     if (!msg.id || !msg.type?.endsWith('.result')) return;
@@ -156,8 +194,8 @@ export class AgentBridgeService {
   }
 
   async request<T>(tenantId: string, type: string, payload: Record<string, unknown>, timeoutMs = 90_000): Promise<T> {
-    const ws = this.byTenant.get(tenantId);
-    if (!ws || ws.readyState !== ws.OPEN) {
+    const ws = this.socketForTenant(tenantId);
+    if (!ws) {
       throw new ServiceUnavailableException(
         `Your ${UIDRAC_AGENT_NAME} is not connected. Install and start an agent from Agents → Download Agent.`,
       );
@@ -166,7 +204,11 @@ export class AgentBridgeService {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new BadRequestException(`${UIDRAC_AGENT_NAME} did not respond in time. Check the agent on your LAN.`));
+        reject(
+          new GatewayTimeoutException(
+            `${UIDRAC_AGENT_NAME} did not respond in time. The iDRAC may be busy or another tab is still loading — wait and try again.`,
+          ),
+        );
       }, timeoutMs);
       this.pending.set(id, {
         resolve: resolve as (v: unknown) => void,
@@ -199,5 +241,72 @@ export class AgentBridgeService {
     },
   ): Promise<T> {
     return this.request<T>(tenantId, 'adapter.invoke', payload);
+  }
+
+  attachBrowserConsoleRelay(tenantId: string, relayId: string, browser: WebSocket) {
+    this.browserConsoleRelays.set(relayId, browser);
+    browser.on('message', (data, isBinary) => {
+      const buf = Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer);
+      this.sendConsoleWsToAgent(tenantId, relayId, buf, isBinary);
+    });
+    browser.on('close', () => {
+      if (this.browserConsoleRelays.get(relayId) !== browser) return;
+      this.browserConsoleRelays.delete(relayId);
+      const agent = this.socketForTenant(tenantId);
+      if (agent && agent.readyState === WebSocket.OPEN) {
+        agent.send(JSON.stringify({ type: 'console.ws.close', payload: { relayId } }));
+      }
+    });
+  }
+
+  sendConsoleWsToAgent(tenantId: string, relayId: string, data: Buffer, binary: boolean) {
+    const ws = this.socketForTenant(tenantId);
+    if (!ws || ws.readyState !== ws.OPEN) return;
+    ws.send(
+      JSON.stringify({
+        type: 'console.ws.send',
+        payload: { relayId, data: data.toString('base64'), binary },
+      }),
+    );
+  }
+
+  async relayConsoleHttp(
+    tenantId: string,
+    payload: {
+      ip: string;
+      token: string;
+      path: string;
+      method: string;
+      headers?: Record<string, string>;
+      bodyBase64?: string;
+    },
+  ) {
+    return this.request<{
+      status: number;
+      headers: Record<string, string>;
+      bodyBase64: string;
+    }>(tenantId, 'console.relay.http', payload, 180_000);
+  }
+
+  async openConsoleWsRelay(
+    tenantId: string,
+    payload: { relayId: string; ip: string; path: string; token: string },
+  ) {
+    return this.request<{ relayId: string }>(tenantId, 'console.ws.open', payload, 60_000);
+  }
+
+  async invokeAdapterBatch<T extends Record<string, unknown>>(
+    tenantId: string,
+    payload: {
+      generation: string;
+      ip: string;
+      username: string;
+      password: string;
+      calls: { key: string; method: string; args?: unknown[] }[];
+      parallel?: boolean;
+    },
+    timeoutMs = 95_000,
+  ): Promise<T> {
+    return this.request<T>(tenantId, 'adapter.invoke.batch', payload, timeoutMs);
   }
 }

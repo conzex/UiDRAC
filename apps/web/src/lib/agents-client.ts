@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@/lib/api';
 import type { AgentConnectionState } from '@idrac/shared';
+import { PRIMARY_AGENT_DISPLAY_NAME } from '@idrac/shared';
 
 export type AgentPlatform = 'linux' | 'darwin' | 'win';
 
@@ -20,6 +21,7 @@ export type AgentRow = {
   releaseAgentVersion: string;
   lastConnectedAt: string | null;
   lastHeartbeatAt: string | null;
+  lastSeenIp: string | null;
   cloudUrl: string;
 };
 
@@ -27,6 +29,8 @@ export type AgentDownloadMeta = {
   latestVersion: string;
   productionCloudUrl: string;
   wsUrl: string;
+  cdnBaseUrl: string;
+  installers: Record<AgentPlatform, { filename: string; url: string }>;
   platforms: { id: AgentPlatform; label: string; architectures: string[] }[];
   requirements: Record<string, string>;
 };
@@ -42,6 +46,10 @@ const STATUS_LABEL: Record<AgentConnectionState, string> = {
   disabled: 'Disabled',
   revoked: 'Revoked',
 };
+
+export function displayAgentName(agent: { name: string; isPrimary?: boolean }): string {
+  return agent.isPrimary ? PRIMARY_AGENT_DISPLAY_NAME : agent.name;
+}
 
 export function statusBadgeClass(status: AgentConnectionState): string {
   if (status === 'connected') return 'bg-green-100 text-green-800';
@@ -85,7 +93,7 @@ function saveBlob(data: BlobPart, filename: string, mime: string) {
 }
 
 /** Live agent list — polls API every few seconds for connection state. */
-export function useAgentsList(pollMs = 5_000) {
+export function useAgentsList(pollMs = 10_000) {
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -123,6 +131,17 @@ export function useAgentDownloadMeta() {
   return meta;
 }
 
+/** Tenant-locked credentials only (pair with CDN installer). */
+export async function downloadAgentCredentials(agentId: string, platform: AgentPlatform): Promise<void> {
+  const res = await api.get(`/agents/${agentId}/download`, {
+    params: { platform, format: 'json' },
+    responseType: 'blob',
+  });
+  const disposition = res.headers['content-disposition'] as string | undefined;
+  saveBlob(res.data, filenameFromDisposition(disposition, 'credentials.json'), 'application/json');
+}
+
+/** Legacy full ZIP (credentials + local scripts). */
 export async function downloadAgentForId(
   agentId: string,
   platform: AgentPlatform,

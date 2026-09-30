@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
-import { User, LogOut, KeyRound, UserCircle } from 'lucide-react';
+import { User, LogOut, KeyRound, UserCircle, Home } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { clearAllClientSessionData } from '@/lib/auth-client';
 import { AccountModals } from '@/components/profile/account-modals';
 import { CLOUD_SAAS_PRODUCT } from '@idrac/shared';
@@ -13,6 +14,7 @@ type UserMenuProps = {
 };
 
 export default function UserMenu({ email, role, tone = 'on-blue' }: UserMenuProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -59,6 +61,16 @@ export default function UserMenu({ email, role, tone = 'on-blue' }: UserMenuProp
                 {role.toLowerCase()}
               </div>
             )}
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-row-hover flex items-center gap-2"
+              onClick={() => {
+                setOpen(false);
+                router.push('/');
+              }}
+            >
+              <Home className="w-3.5 h-3.5" /> Back to Home
+            </button>
             <button
               type="button"
               className="w-full text-left px-3 py-2 text-sm hover:bg-row-hover flex items-center gap-2"

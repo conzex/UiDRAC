@@ -16,7 +16,12 @@ import { AgentService } from './agent.service';
 import { AuditService } from '../audit/audit.service';
 import { Roles } from '../auth/decorators';
 import { createHash } from 'crypto';
-import { APP_VERSION } from '@idrac/shared';
+import {
+  AGENT_CDN_BASE_URL,
+  AGENT_CDN_INSTALLER,
+  APP_VERSION,
+  agentCdnInstallerUrl,
+} from '@idrac/shared';
 
 @Controller('agents')
 export class AgentsController {
@@ -58,10 +63,18 @@ export class AgentsController {
   @Roles('VIEWER')
   downloadMeta() {
     const cfg = this.agent.getPublicConfig();
+    const cdnBaseUrl = process.env.AGENT_CDN_BASE_URL?.replace(/\/$/, '') || AGENT_CDN_BASE_URL;
+    const installers = {
+      linux: { filename: AGENT_CDN_INSTALLER.linux, url: agentCdnInstallerUrl('linux', cdnBaseUrl) },
+      win: { filename: AGENT_CDN_INSTALLER.win, url: agentCdnInstallerUrl('win', cdnBaseUrl) },
+      darwin: { filename: AGENT_CDN_INSTALLER.darwin, url: agentCdnInstallerUrl('darwin', cdnBaseUrl) },
+    };
     return {
       latestVersion: APP_VERSION,
       productionCloudUrl: cfg.cloudUrl,
       wsUrl: cfg.wsUrl,
+      cdnBaseUrl,
+      installers,
       platforms: [
         { id: 'win', label: 'Windows', architectures: ['x64'] },
         { id: 'linux', label: 'Linux', architectures: ['x64', 'arm64'] },
@@ -86,6 +99,18 @@ export class AgentsController {
     return result;
   }
 
+  @Get(':id/console/summary')
+  @Roles('VIEWER')
+  consoleSummary(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
+    return this.agent.getAgentConsoleSummary(req.user.tenantId, id);
+  }
+
+  @Get(':id/console/activity')
+  @Roles('VIEWER')
+  consoleActivity(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
+    return this.agent.getAgentConsoleActivity(req.user.tenantId, id);
+  }
+
   @Get(':id/console')
   @Roles('VIEWER')
   consoleView(@Req() req: { user: { tenantId: string } }, @Param('id') id: string) {
@@ -101,7 +126,11 @@ export class AgentsController {
   @Patch(':id')
   @Roles('OPERATOR')
   async rename(@Req() req: any, @Param('id') id: string, @Body() body: { name?: string }) {
-    const result = await this.agent.renameAgent(req.user.tenantId, id, body?.name?.trim() || 'Site agent');
+    const result = await this.agent.renameAgent(
+      req.user.tenantId,
+      id,
+      body?.name?.trim() || `Site connector`,
+    );
     try {
       await this.audit.create(req.user.tenantId, req.user.id, 'agent.rename', { agentId: id, name: body?.name }, this.ip(req));
     } catch { /* non-critical */ }

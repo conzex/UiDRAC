@@ -2,7 +2,19 @@
 # Conzex UiDRAC Agent — Linux install (systemd). Copyright (c) 2026 Conzex Global Private Limited
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG="${1:-$DIR/credentials.json}"
+CONFIG="$DIR/credentials.json"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --config)
+      CONFIG="${2:?}"
+      shift 2
+      ;;
+    *)
+      CONFIG="$1"
+      shift
+      ;;
+  esac
+done
 if [[ ! -f "$CONFIG" ]]; then
   echo "Missing credentials.json — download from Agents → Download Agent in the Conzex portal." >&2
   exit 1

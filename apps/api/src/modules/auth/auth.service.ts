@@ -1,5 +1,5 @@
 /** auth.service.ts — Authentication business logic with session management. */
-import { Injectable, UnauthorizedException, ConflictException, TooManyRequestsException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
@@ -33,7 +33,9 @@ export class AuthService {
   async login(email: string, password: string, ip = '0.0.0.0', userAgent = 'api') {
     const blockKey = `login_block:${ip}`;
     const blocked = await this.redis.get(blockKey);
-    if (blocked) throw new TooManyRequestsException('Too many failed login attempts. Try again in 15 minutes.');
+    if (blocked) {
+      throw new HttpException('Too many failed login attempts. Try again in 15 minutes.', HttpStatus.TOO_MANY_REQUESTS);
+    }
 
     const user = await this.prisma.user.findFirst({ where: { email } });
     if (!user) throw new UnauthorizedException('Invalid credentials');

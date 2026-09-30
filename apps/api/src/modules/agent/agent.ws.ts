@@ -37,6 +37,7 @@ export function attachAgentWebSocket(server: Server, bridge: AgentBridgeService,
             hostname?: string;
             os?: string;
             arch?: string;
+            hostLanIp?: string;
           };
           if (msg.type !== 'auth' || !msg.agentId || !msg.secret) {
             ws.send(JSON.stringify({ type: 'auth.fail', reason: 'expected_auth' }));
@@ -56,6 +57,7 @@ export function attachAgentWebSocket(server: Server, bridge: AgentBridgeService,
             hostname: msg.hostname,
             os: msg.os,
             arch: msg.arch,
+            hostLanIp: msg.hostLanIp,
           });
           ws.send(
             JSON.stringify({

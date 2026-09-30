@@ -16,10 +16,11 @@ Dual-repo workflow: [`REPOS.md`](../REPOS.md) on the Conzex tree.
 
 | Goal | Start here |
 |------|------------|
-| Production on a Linux VM | [Self-hosted VM](#self-hosted-vm-production) |
+| **Conzex SaaS in Docker** (agent required) | [**SAAS-DOCKER.md**](SAAS-DOCKER.md) — `docker-compose.prod.yml` + `docker-compose.saas.yml` |
+| Production on a Linux VM (API → iDRAC on LAN) | [Self-hosted VM](#self-hosted-vm-production) |
 | Publish via **Cloudflare Tunnel** (no open 80/443) | [Cloudflare Tunnel](CLOUDFLARE-TUNNEL.md) — origin **`https://127.0.0.1:443`** |
 | Local laptop / lab | [Lab Docker](#lab-docker-compose) |
-| Cloud + edge agent | [Cloud mode](#cloud-mode-uidracconzexcom) |
+| Cloud + edge agent (reference) | [Cloud mode](#cloud-mode-uidracconzexcom) |
 
 ---
 
@@ -104,8 +105,14 @@ bash scripts/generate-keys.sh
 bash scripts/host.sh
 ```
 
-- UI: http://localhost:3000  
-- API: http://localhost:4000/api  
+| Service | URL |
+|---------|-----|
+| **Portal (UI)** | http://localhost:3000 |
+| **API** | http://localhost:4000/api |
+| **Health** | http://localhost:4000/api/health |
+| **API port root** | http://localhost:4000/ — JSON with `portal` / `health` links (browsers redirect to :3000) |
+
+`GET /` on port 4000 is **not** the web UI. Use port **3000** for the operator interface.
 
 Build legacy console for iDRAC 6/7:
 
@@ -119,10 +126,12 @@ docker build -f docker/idrac-legacy.Dockerfile -t uidrac:legacy .
 
 When the API **cannot** reach iDRAC directly, use **edge agents** on customer LANs.
 
-1. Copy **`.env.cloud.example`** → `.env`
+1. Copy **`.env.saas.example`** → `.env` (or `.env.cloud.example` for legacy naming)
 2. Set `DEPLOYMENT_MODE=cloud`, `REQUIRE_EDGE_AGENT=true`, public URLs, `AGENT_SIGNING_SECRET`
-3. Deploy: `docker compose -f docker-compose.prod.yml up -d --build`
-4. Customers download the agent from **Settings** and connect via `wss://…/api/agent/ws`
+3. Deploy: `bash scripts/prod-saas-up.sh` or `docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml up -d --build`
+4. Customers install from **Agents**: **credentials.json** (portal) + CDN installers (`UidracAgent.pkg` / `UidracAgentSetup.exe` / `UidracAgent-linux.sh`) — see [UIDRAC_AGENT.md](UIDRAC_AGENT.md) and [KB-INDEX.md](KB-INDEX.md)
+
+Full operator and admin steps: [**SAAS-DOCKER.md**](SAAS-DOCKER.md).
 
 See [`UIDRAC_AGENT.md`](UIDRAC_AGENT.md).
 
@@ -166,26 +175,38 @@ HTTP redirects to HTTPS except `/health` on port 80 (load balancer checks).
 | Goal | Configuration |
 |------|----------------|
 | Your VM, API → iDRAC on LAN | `.env.selfhosted.example`, `REQUIRE_EDGE_AGENT=false` |
-| Conzex cloud | `.env.cloud.example`, `REQUIRE_EDGE_AGENT=true` |
+| Conzex cloud (SaaS Docker) | `.env.saas.example`, `docker-compose.saas.yml`, `REQUIRE_EDGE_AGENT=true` |
 | Test edge agent locally | `REQUIRE_EDGE_AGENT=true` + agent on same LAN |
 
 ---
 
 ## Troubleshooting
 
+### UI shows “Network Error” or cannot load servers / agents / audit
+
+The browser cannot reach a healthy API (often `u-api` crashed or is restarting).
+
+```bash
+docker compose ps   # or prod: docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml ps
+curl -s http://localhost:4000/api/health
+docker compose logs u-api --tail 80
+```
+
+Restart: `docker compose restart u-api`. Fix any startup error in logs (e.g. missing env, DB), then reload the UI.
+
 ### `502 Bad Gateway` from nginx
 
 ```bash
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs web api nginx
+docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml ps
+docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml logs u-web u-api nginx
 ```
 
-Wait for `api` healthcheck; first boot runs Prisma `db push`.
+Wait for `u-api` healthcheck; first boot runs Prisma `db push`.
 
 ### Registration works but add-server fails
 
 - Ping iDRAC from API container:  
-  `docker compose -f docker-compose.prod.yml exec api sh -c 'wget -qO- --no-check-certificate https://IDRAC_IP/redfish/v1'`
+  `docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml exec u-api sh -c 'wget -qO- --no-check-certificate https://IDRAC_IP/redfish/v1'`
 - If `REQUIRE_EDGE_AGENT=true`, install and connect the edge agent first.
 
 ### Certificate / HSTS issues

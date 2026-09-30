@@ -22,6 +22,9 @@ export const CONZEX_CLOUD_PRODUCTION_URL = 'https://uidrac.cloud.conzex.com';
 /** User-facing name for the tenant LAN connector (cloud product). */
 export const UIDRAC_AGENT_NAME = 'UiDRAC Agent';
 
+/** Canonical display name for the tenant default (primary) edge agent. */
+export const PRIMARY_AGENT_DISPLAY_NAME = 'Master-Agent (Default)';
+
 /** Agent console subtitle (portal); copyright is shown in the footer separately. */
 export const UIDRAC_AGENT_CONSOLE_TAGLINE = `${PRODUCT_NAME} — LAN bridge`;
 

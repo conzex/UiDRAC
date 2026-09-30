@@ -2,14 +2,14 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../../../packages/db/generated/client';
 import { PrismaService } from '../../prisma.service';
+import { parsePagination } from '../../common/pagination';
 
 @Injectable()
 export class AuditService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(tenantId: string | null, query?: { page?: number; pageSize?: number; action?: string }) {
-    const page = query?.page ?? 1;
-    const pageSize = query?.pageSize ?? 25;
+    const { page, pageSize } = parsePagination(query);
     const where: Record<string, unknown> = {};
     if (tenantId) where.tenantId = tenantId;
     if (query?.action) where.action = query.action;

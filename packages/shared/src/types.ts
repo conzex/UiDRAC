@@ -229,6 +229,18 @@ export interface ConsoleLaunch {
   type: ConsoleType;
   url: string;
   generation: IdracGeneration;
+  /** Redfish session was established server-side (saved credentials). */
+  authenticated?: boolean;
+}
+
+export interface ServerConsoleLaunch extends ConsoleLaunch {
+  serverId: string;
+  serverName: string;
+  serverIp: string;
+  hasSavedCredentials: boolean;
+  autoLaunch: boolean;
+  /** Legacy noVNC gateway session id (Gen 6/7). */
+  gatewaySessionId?: string;
 }
 
 // ── BIOS Configuration ──

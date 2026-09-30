@@ -68,7 +68,9 @@ function main() {
   if (state.changeCount >= 10) {
     state.version = bumpPatch(state.version || '1.0.0');
     state.changeCount = 0;
-    console.log(`[version-track] Bumped to v${state.version} (patch — not added to public release log)`);
+    console.log(
+      `[version-track] Bumped to v${state.version} — add a patch entry to packages/shared/src/release-history.json if this ships user-facing features.`,
+    );
   } else {
     console.log(`[version-track] Change ${state.changeCount}/10 (v${state.version})`);
   }
