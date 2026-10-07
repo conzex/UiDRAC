@@ -4,6 +4,9 @@ node_modules/
 
 # Build outputs
 dist/
+agent-macos/
+agent-windows/
+tmp/
 .next/
 .turbo/
 out/

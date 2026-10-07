@@ -75,9 +75,9 @@ if ($Iscc) {
 }
 
 Write-Host ""
-Write-Host "Publish to cloud API:"
-Write-Host "  COPY out\uidrac-agent-setup.msi  -> agent-windows\ (GET /api/agent/download/msi)"
-Write-Host "  COPY out\UidracAgentSetup.exe    -> agent-windows\ (GET /api/agent/download/setup)"
+Write-Host "Publish to CDN + API:"
+Write-Host "  WIN_EXE=$OutDir\UidracAgentSetup.exe pnpm agent:cdn-stage"
+Write-Host "  (places EXE/MSI under cdn-agent/ for upload and API download endpoints)"
 Write-Host ""
 Write-Host "Customer install (EXE): run UidracAgentSetup.exe, select uidrac-agent-win.json from portal"
 Write-Host "Customer install (MSI): msiexec /i uidrac-agent-setup.msi then install.ps1 -Config <json>"

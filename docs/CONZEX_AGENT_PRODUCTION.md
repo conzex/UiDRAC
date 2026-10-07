@@ -37,7 +37,7 @@ pnpm --filter @idrac/edge-agent run build:mac-exe   # macOS + linux bundle in ZI
 # ./scripts/build-edge-agent-macos.sh
 ```
 
-Copy artifacts into `agent-windows/` and `agent-macos/` so API ZIP builders include real MSI/PKG/setup files.
+Run `pnpm agent:cdn-stage` — all publishable OS artifacts go under **`cdn-agent/`** (upload to CDN; API resolves installers from there).
 
 ## Organization isolation
 

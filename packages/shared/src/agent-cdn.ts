@@ -20,3 +20,6 @@ export function agentCdnInstallerUrl(platform: UidracAgentPlatform, baseUrl = AG
 export function agentCdnInstallerFilename(platform: UidracAgentPlatform): string {
   return AGENT_CDN_INSTALLER[platform];
 }
+
+/** Linux CDN script also downloads these from the same folder (not linked in portal UI). */
+export const AGENT_CDN_LINUX_SUPPORT_FILES = ['agent-bundle.cjs', 'uidrac-agent.service'] as const;

@@ -1,13 +1,14 @@
 /** Resolve bundled macOS agent scripts and published PKG. */
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { cdnAgentFile } from './agent-cdn.paths';
 
 const MACOS_FILES = ['install.sh', 'uninstall.sh'] as const;
 
 export function resolveAgentMacosFile(name: (typeof MACOS_FILES)[number]): string | null {
   const roots = [
     join(process.cwd(), 'apps/edge-agent/macos'),
-    join(process.cwd(), 'agent-macos'),
+    join(process.cwd(), 'agent-macos'), // Docker: COPY of macos tree
     join(__dirname, '..', '..', '..', '..', 'edge-agent/macos'),
   ];
   for (const root of roots) {
@@ -27,7 +28,9 @@ export function readAgentMacosFile(name: (typeof MACOS_FILES)[number]): string {
 
 export function resolveAgentMacosPkgPath(): string | null {
   const candidates = [
+    cdnAgentFile('UidracAgent.pkg'),
     join(process.cwd(), 'apps/edge-agent/macos/out/UidracAgent.pkg'),
+    join(process.cwd(), 'agent-macos/out/UidracAgent.pkg'),
     join(process.cwd(), 'agent-macos/UidracAgent.pkg'),
     join(__dirname, '..', '..', '..', '..', 'edge-agent/macos/out/UidracAgent.pkg'),
   ];

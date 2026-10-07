@@ -38,16 +38,16 @@ jobs:
       - name: Build MSI and UidracAgentSetup.exe
         run: pwsh -File scripts/build-edge-agent-installer.ps1
 
-      - name: Stage for API Docker image
+      - name: Stage CDN folder (cdn-agent)
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path agent-windows | Out-Null
-          Copy-Item apps/edge-agent/installer/out/uidrac-agent-setup.msi agent-windows/ -ErrorAction SilentlyContinue
-          Copy-Item apps/edge-agent/installer/out/UidracAgentSetup.exe agent-windows/ -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path cdn-agent | Out-Null
+          Copy-Item apps/edge-agent/installer/out/UidracAgentSetup.exe cdn-agent/ -ErrorAction SilentlyContinue
+          Copy-Item apps/edge-agent/installer/out/uidrac-agent-setup.msi cdn-agent/ -ErrorAction SilentlyContinue
 
       - uses: actions/upload-artifact@v4
         with:
           name: uidrac-agent-windows-installers
           path: |
             apps/edge-agent/installer/out/**
-            agent-windows/**
+            cdn-agent/**

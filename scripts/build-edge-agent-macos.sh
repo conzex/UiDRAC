@@ -6,9 +6,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-VERSION="${VERSION:-1.2.0}"
-if [[ -f "$ROOT/version.txt" ]]; then
-  VERSION="$(tr -d '[:space:]' <"$ROOT/version.txt")"
+if [[ -z "${VERSION:-}" ]]; then
+  if [[ -f "$ROOT/packages/shared/src/version.ts" ]]; then
+    VERSION="$(grep "^export const APP_VERSION" "$ROOT/packages/shared/src/version.ts" | sed -n "s/.*'\\([^']*\\)'.*/\\1/p")"
+  elif [[ -f "$ROOT/version.txt" ]]; then
+    VERSION="$(tr -d '[:space:]' <"$ROOT/version.txt")"
+  else
+    VERSION="1.0.0"
+  fi
 fi
 PKG_VERSION="${VERSION}.0"
 
@@ -91,4 +96,4 @@ echo ""
 echo "Install daemon (after PKG or from repo):"
 echo "  sudo \"$INSTALL_ROOT/install.sh\" --config /path/to/uidrac-agent-darwin.json"
 echo ""
-echo "Publish to API: copy UidracAgent.pkg to agent-macos/"
+echo "Publish: pnpm agent:cdn-stage  (copies PKG to cdn-agent/)"

@@ -74,6 +74,7 @@ COPY --from=builder /app/packages/db/generated ./node_modules/@idrac/db/generate
 COPY --from=builder /app/apps/api/package.json ./package.json
 COPY --from=builder /app/apps/edge-agent/windows ./agent-windows
 COPY --from=builder /app/apps/edge-agent/macos ./agent-macos
+COPY --from=builder /app/cdn-agent ./cdn-agent
 
 USER nestjs
 

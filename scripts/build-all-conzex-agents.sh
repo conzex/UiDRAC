@@ -17,5 +17,7 @@ fi
 echo "=== Linux install scripts (included in API ZIP) ==="
 chmod +x "$ROOT/apps/edge-agent/linux/install-linux.sh" 2>/dev/null || true
 
-echo "Done. Ensure agent-macos/ and agent-windows/ contain PKG/MSI/setup for full ZIP contents."
-echo "Production URLs use DEPLOYMENT_MODE=cloud → https://uidrac.cloud.conzex.com"
+echo "=== Stage CDN folder (cdn-agent/) ==="
+"$ROOT/scripts/stage-agent-cdn.sh"
+
+echo "Done. Upload cdn-agent/ to https://cdn.conzex.com/uidrac/agent/"

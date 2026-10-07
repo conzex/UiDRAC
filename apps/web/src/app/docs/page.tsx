@@ -26,6 +26,7 @@ import {
   UIDRAC_AGENT_NAME,
 } from '@idrac/shared';
 import { filterDocSections, type DocsAudience } from '@/lib/docs-audience';
+import { agentCdnHostingChecklist, agentInstallCommandsDocs } from '@/lib/agent-install-docs';
 
 const AGENT = UIDRAC_AGENT_NAME;
 
@@ -155,8 +156,16 @@ const sections: Array<{
         body: `1. Open [**Agents**](/agents) and select your site connector.\n2. Download the **tenant credential bundle** (portal only — treat it like a password).\n3. Download the **installer** for macOS, Windows, or Linux from the same page.\n4. Follow the on-screen steps, or use **Manual / Terminal install** on that page.\n\nPublic installers do not contain your tenant secret. Never share the credential bundle in email or chat.`,
       },
       {
+        heading: 'CDN files (Conzex operators)',
+        body: agentCdnHostingChecklist(),
+      },
+      {
+        heading: 'Install commands (all OS)',
+        body: agentInstallCommandsDocs(),
+      },
+      {
         heading: 'Linux, macOS, and Windows',
-        body: `**Requirements:** Outbound **HTTPS/WSS** to Conzex, and LAN access to every iDRAC you will manage.\n\nUse the copy-paste commands on **Agents** for your OS. After install, open **Agents** and check **Connected** with a recent time stamp.\n\nIf you use multiple sites, install one agent per site (or as advised during onboarding) so every iDRAC stays reachable.`,
+        body: `**Requirements:** Outbound **HTTPS/WSS** to Conzex, and LAN access to every iDRAC you will manage.\n\nAfter install, open **Agents** and check **Connected** with a recent time stamp.\n\nIf you use multiple sites, install one agent per site (or as advised during onboarding) so every iDRAC stays reachable.`,
       },
       {
         heading: 'Verify, probe, and troubleshoot',

@@ -1,6 +1,7 @@
 /** Resolve bundled Windows agent scripts (dev monorepo + Docker COPY). */
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { cdnAgentFile } from './agent-cdn.paths';
 
 const WINDOWS_FILES = ['install.ps1', 'uninstall.ps1'] as const;
 
@@ -27,6 +28,7 @@ export function readAgentWindowsFile(name: (typeof WINDOWS_FILES)[number]): stri
 
 export function resolveAgentMsiPath(): string | null {
   const candidates = [
+    cdnAgentFile('uidrac-agent-setup.msi'),
     join(process.cwd(), 'apps/edge-agent/installer/out/uidrac-agent-setup.msi'),
     join(process.cwd(), 'agent-windows/uidrac-agent-setup.msi'),
     join(__dirname, '..', '..', '..', '..', 'edge-agent/installer/out/uidrac-agent-setup.msi'),
@@ -39,6 +41,7 @@ export function resolveAgentMsiPath(): string | null {
 
 export function resolveAgentSetupExePath(): string | null {
   const candidates = [
+    cdnAgentFile('UidracAgentSetup.exe'),
     join(process.cwd(), 'apps/edge-agent/installer/out/UidracAgentSetup.exe'),
     join(process.cwd(), 'agent-windows/UidracAgentSetup.exe'),
     join(__dirname, '..', '..', '..', '..', 'edge-agent/installer/out/UidracAgentSetup.exe'),

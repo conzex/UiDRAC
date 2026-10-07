@@ -21,10 +21,13 @@ Output: `apps/edge-agent/installer/out/`
 
 ## Publish to Conzex cloud API
 
-Copy to the API container/host:
+Stage for CDN and API:
 
-- `agent-windows/UidracAgentSetup.exe` → `GET /api/agent/download/setup`
-- `agent-windows/uidrac-agent-setup.msi` → `GET /api/agent/download/msi`
+```bash
+WIN_EXE=apps/edge-agent/installer/out/UidracAgentSetup.exe pnpm agent:cdn-stage
+```
+
+Files land in `cdn-agent/` (`UidracAgentSetup.exe`, optional `uidrac-agent-setup.msi`, PKG, Linux script, etc.).
 
 ## Customer flow
 

@@ -32,11 +32,15 @@ Do not use `http://localhost:4000/` alone expecting the UI—the UI is on port *
 
 ## Agent installers (CDN)
 
+Stage all publishable files: `pnpm agent:cdn-stage` → upload `cdn-agent/` (see `apps/edge-agent/installer/CDN-PUBLISH.md`).
+
 Public binaries (no tenant secrets):
 
 - https://cdn.conzex.com/uidrac/agent/UidracAgent.pkg
 - https://cdn.conzex.com/uidrac/agent/UidracAgentSetup.exe
 - https://cdn.conzex.com/uidrac/agent/UidracAgent-linux.sh
+- https://cdn.conzex.com/uidrac/agent/agent-bundle.cjs (Linux, via install script)
+- https://cdn.conzex.com/uidrac/agent/uidrac-agent.service (Linux, via install script)
 
 Tenant **credential bundle** is always downloaded from **Agents** in the portal (not on CDN).
 

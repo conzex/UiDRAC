@@ -19,9 +19,6 @@ rm -f "$ZIP"
   zip -r "$ZIP" agent-bundle.cjs run-uidrac-agent.cmd install.ps1 uninstall.ps1 console
 )
 
-mkdir -p "$ROOT/agent-windows"
-cp -f "$WIN/agent-bundle.cjs" "$WIN/run-uidrac-agent.cmd" "$ROOT/agent-windows/" 2>/dev/null || true
-cp -rf "$WIN/console" "$ROOT/agent-windows/" 2>/dev/null || true
-
 echo "Windows bundle: $ZIP"
 echo "Run on Windows for MSI/EXE: pwsh -File scripts/build-edge-agent-installer.ps1"
+echo "Then: WIN_EXE=apps/edge-agent/installer/out/UidracAgentSetup.exe pnpm agent:cdn-stage"
