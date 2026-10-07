@@ -9,7 +9,7 @@ on:
     paths:
       - 'apps/edge-agent/**'
       - 'scripts/build-edge-agent-installer.ps1'
-      - 'version.txt'
+      - 'packages/shared/src/version.ts'
 
 jobs:
   installers:

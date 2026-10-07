@@ -1,43 +1,35 @@
-# Windows UiDRAC agent — service install (Conzex cloud)
+# Windows UiDRAC agent (Conzex cloud)
 
-Installs a **Windows service** (`UiDRACAgent`) that keeps the edge agent connected to your Conzex cloud portal (similar to Cloudflare Tunnel).
+## Customer install
 
-## Operator flow
-
-1. **Settings → Agent download → Windows** — save `uidrac-agent-win.json`.
-2. **Install binaries** (pick one):
-   - **MSI (recommended):** download `uidrac-agent-setup.msi` from `{CLOUD_URL}/api/agent/download/msi` (after Conzex builds/publishes the MSI), or build locally with `scripts/build-edge-agent-msi.ps1`.
-   - **Dev:** place `nssm.exe` (win64 from [nssm.cc](https://nssm.cc/download)) in this folder and use Node 20+.
-3. **Register service** (elevated PowerShell):
+1. Portal → **Agents** → download **credentials.json**.
+2. Download **UidracAgentSetup.exe** from the portal (CDN).
+3. Run as Administrator, then:
 
 ```powershell
-Invoke-WebRequest -Uri "https://uidrac.cloud.conzex.com/api/agent/install.ps1" -OutFile install.ps1
-powershell -ExecutionPolicy Bypass -File install.ps1 -Config .\uidrac-agent-win.json
+powershell -ExecutionPolicy Bypass -File "$env:ProgramFiles\Conzex\UiDRAC Agent\install.ps1" -Config ".\credentials.json"
 ```
 
-Config is copied to `%ProgramData%\Conzex\UiDRAC\agent.json`. Logs: `%ProgramData%\Conzex\UiDRAC\logs\`.
+4. Confirm **Connected** under **Agents**.
 
-## Uninstall
+## Build installers (engineering, Windows)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Program Files\Conzex\UiDRAC Agent\uninstall.ps1"
+cd <repo-root>
+pwsh -File scripts/build-edge-agent-installer.ps1
 ```
 
-## Build MSI (Conzex release engineering, Windows machine)
+Output: `apps/edge-agent/installer/out/UidracAgentSetup.exe` (and optional MSI).
 
-```powershell
-cd repo
-pwsh -File scripts/build-edge-agent-msi.ps1
-# Output: apps/edge-agent/installer/out/uidrac-agent-setup.msi
+Publish:
+
+```bash
+WIN_EXE=apps/edge-agent/installer/out/UidracAgentSetup.exe pnpm agent:cdn-stage
 ```
 
-Copy the MSI to the API host or object storage so `GET /api/agent/download/msi` can serve it.
-
-## Files (git)
+## Files in this folder
 
 | File | Purpose |
 |------|---------|
-| `install.ps1` | Service registration (NSSM) |
-| `uninstall.ps1` | Remove service |
-| `nssm.exe` | **Not in git** — fetched at MSI build time |
-| `uidrac-agent.exe` | **Not in git** — built with `pkg` at MSI build time |
+| `install.ps1` / `uninstall.ps1` | Service registration |
+| `agent-bundle.cjs` | Built by `pnpm --filter @idrac/edge-agent run build:win-bundle` (not committed) |

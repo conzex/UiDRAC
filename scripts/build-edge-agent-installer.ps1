@@ -5,8 +5,11 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
-$Version = (Get-Content (Join-Path $Root 'version.txt') -Raw).Trim()
-if (-not $Version) { $Version = '1.2.0' }
+$VersionTs = Join-Path $Root 'packages/shared/src/version.ts'
+if (Test-Path $VersionTs) {
+  $Version = [regex]::Match((Get-Content $VersionTs -Raw), "APP_VERSION = '([^']+)'").Groups[1].Value
+}
+if (-not $Version) { $Version = '1.3.2' }
 $MsiVersion = if ($Version -match '^(\d+\.\d+\.\d+)') { "$($Matches[1]).0" } else { '1.2.0.0' }
 
 Write-Host "=== Conzex UiDRAC Agent Windows build (v$Version) ==="

@@ -126,7 +126,7 @@ docker build -f docker/idrac-legacy.Dockerfile -t uidrac:legacy .
 
 When the API **cannot** reach iDRAC directly, use **edge agents** on customer LANs.
 
-1. Copy **`.env.saas.example`** → `.env` (or `.env.cloud.example` for legacy naming)
+1. Copy **`.env.saas.example`** → `.env`
 2. Set `DEPLOYMENT_MODE=cloud`, `REQUIRE_EDGE_AGENT=true`, public URLs, `AGENT_SIGNING_SECRET`
 3. Deploy: `bash scripts/prod-saas-up.sh` or `docker compose -f docker-compose.prod.yml -f docker-compose.saas.yml up -d --build`
 4. Customers install from **Agents**: **credentials.json** (portal) + CDN installers (`UidracAgent.pkg` / `UidracAgentSetup.exe` / `UidracAgent-linux.sh`) — see [UIDRAC_AGENT.md](UIDRAC_AGENT.md) and [KB-INDEX.md](KB-INDEX.md)
